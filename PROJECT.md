@@ -13,7 +13,7 @@
 
 ## 要解决的问题
 
-扩展 Eagle 的展示、图像编辑、隐私处理、字体管理和媒体整理能力。
+扩展 Eagle 的展示、图像编辑、隐私处理、字体管理、媒体整理和外部内容导入能力。
 
 ## 产品边界
 
@@ -24,7 +24,7 @@
 
 ## 本阶段目标
 
-- 以 `extensions/media-organizer` 和 `extensions/online-publisher` 作为两项扩展的正式源码。
+- 以 `extensions/media-organizer`、`extensions/online-publisher` 和 `extensions/instagram-post-importer` 作为三项扩展的正式源码。
 - 保持 Eagle 宿主适配与共享模块边界清晰。
 - 继续通过自动测试、安装包和已安装插件对照验证发布。
 

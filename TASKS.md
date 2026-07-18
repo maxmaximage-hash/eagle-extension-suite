@@ -2,12 +2,13 @@
 
 ## 正在进行
 
-- 无。
+- 在 Chrome 中把“Instagram 整帖保存至 Eagle”的已解压扩展路径切换到 `extensions/instagram-post-importer`，并完成一次真实导入验收。
 
 ## 下一步
 
 - 记录 Eagle 宿主版本、桥接修改、备份和恢复流程。
 - 真实打开 Eagle 后做一次媒体整理和 MAX Publisher 的人工冒烟验收。
+- Instagram 单帖导入稳定后，再单独评估创作者主页批量下载、分批、断点续传和去重；当前版本尚未包含这些能力。
 
 ## 等待确认
 
@@ -22,3 +23,4 @@
 - 2026-07-18：MAX Publisher 1.2.5 迁入 `extensions/online-publisher`；线上发布数据独立到 `/Users/max/引力环球/Eagle线上发布数据`，配置与安装插件默认路径同步更新。
 - 2026-07-18：MAX Publisher 已脱离 MORROW 旧目录中的测试素材，73/73 项测试、隐私编辑器构建和插件打包全部通过；生成的 `.eagleplugin` 压缩包完整性通过。
 - 2026-07-18：在产品根建立独立 Git `main` 基线，首个提交为 `668f9d2`；依赖、构建缓存、插件包和真实发布数据未进入版本库。
+- 2026-07-18：将 MAX BRAIN 中的 `Instagram 整帖保存至 Eagle` 1.1.2 源码和安装包迁入 `extensions/instagram-post-importer`；代码语法、目录内容和安装包哈希均已核对。真实 Eagle 导入尚待验收，因此未标记为完整交付。

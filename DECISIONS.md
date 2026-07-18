@@ -13,3 +13,10 @@
 - 原因：未来 MORROW 和其他软件可能复用。
 - 影响：Eagle API 与资料库逻辑必须留在 Eagle 适配层。
 - 未来复查条件：出现第二个实际消费者时执行提取或核验现有共享实现。
+
+## 2026-07-18：Instagram 整帖导入归入 Eagle
+
+- 决定：`Instagram 整帖保存至 Eagle` 从 MAX BRAIN 迁入 EAGLE 扩展，作为独立扩展 `extensions/instagram-post-importer` 维护。
+- 原因：该功能的用户目标、运行依赖和最终输出都围绕 Eagle；MAX BRAIN 只是过去的开发存放位置，不是产品归属。
+- 影响：今后的功能讨论和缺陷修复在 Eagle 专项任务中进行；MAX BRAIN 不再保留重复源码。
+- 未来复查条件：如果未来出现不依赖 Eagle 的通用 Instagram 采集内核，再把宿主无关部分提升为共享模块。
