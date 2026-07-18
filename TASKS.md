@@ -21,3 +21,4 @@
 - 2026-07-18：媒体智能整理迁入 `extensions/media-organizer`；六组自动测试全部通过，关键源码与已安装插件一致，原始 `app.asar` 备份指纹通过校验。
 - 2026-07-18：MAX Publisher 1.2.5 迁入 `extensions/online-publisher`；线上发布数据独立到 `/Users/max/引力环球/Eagle线上发布数据`，配置与安装插件默认路径同步更新。
 - 2026-07-18：MAX Publisher 已脱离 MORROW 旧目录中的测试素材，73/73 项测试、隐私编辑器构建和插件打包全部通过；生成的 `.eagleplugin` 压缩包完整性通过。
+- 2026-07-18：在产品根建立独立 Git `main` 基线，首个提交为 `668f9d2`；依赖、构建缓存、插件包和真实发布数据未进入版本库。
