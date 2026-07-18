@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "host": {
+    "name": "Eagle",
+    "version": "4.0.0",
+    "build": "23"
+  },
+  "appAsar": {
+    "originalSha256": "b04a2efdb8bc8d06910552f43f38c056e6964c8f74798e1b2849f1bffab8a1bd",
+    "bridgedSha256": "4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3"
+  },
+  "changedFiles": {
+    "app/js/plugin/api.js": {
+      "originalSha256": "2bfcbc03d912065d25ec25f38e66c053ef8ab0550a35ce3214377415dfc679a5",
+      "bridgedSha256": "6a1833ed9bf3ecbf2709c5a27583be7ebd4388daf468cba1d249e64c2da3bca9"
+    },
+    "app/js/plugin/index.js": {
+      "originalSha256": "0d05827316a9f7405eecd8bb43a40c6c601124555e1af7434dd92c26aa850832",
+      "bridgedSha256": "7f8cda10b3ef706e3e51afd13877bae09e53ff0ab3bbd02b5203c36260a61353"
+    }
+  },
+  "marker": "/* eagle-photo-taken-sort */"
+}
