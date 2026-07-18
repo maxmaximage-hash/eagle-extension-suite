@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+*.log
+rename-batch-backup.json
+geo-tag-state.json
+media-time-cache.json
+media-location-cache.json

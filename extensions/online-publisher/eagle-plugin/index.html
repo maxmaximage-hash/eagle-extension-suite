@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MAX 水印与线上展示</title>
+    <link rel="stylesheet" href="./modules/watermark-editor/editor.css?v=1.1.1" />
+    <link rel="stylesheet" href="./dist/privacy-editor.css?v=1.2.5" />
+  </head>
+  <body>
+    <button type="button" id="closePlugin" class="plugin-close-button" aria-label="关闭插件" title="关闭插件（Esc）">
+      <span aria-hidden="true">×</span>
+      <strong>关闭</strong>
+    </button>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">M</span><div><strong>MAX Publisher</strong><small>Eagle 工作台</small></div></div>
+        <button class="nav active" data-view="export">本地导出</button>
+        <button class="nav" data-view="privacy">隐私打码</button>
+        <button class="nav" data-view="online">线上水印与发布</button>
+        <button class="nav" data-view="fonts">字体分类管理</button>
+        <button class="nav" data-view="settings">系统设置</button>
+        <div class="showcase-launch">
+          <div class="showcase-launch-title">本地作品页</div>
+          <div class="showcase-launch-row">
+            <span>端口</span>
+            <input id="showcasePort" type="number" min="1024" max="65535" step="1" value="8788"/>
+          </div>
+          <button type="button" id="openShowcasePage">打开作品页</button>
+          <small id="showcaseUrl">127.0.0.1:8788</small>
+        </div>
+        <div class="showcase-launch showcase-launch-online">
+          <div class="showcase-launch-title">线上作品页</div>
+          <button type="button" id="openOnlineShowcasePage">打开线上页</button>
+          <small id="onlineShowcaseUrl">max-eagle-showcase.pages.dev</small>
+        </div>
+        <div class="service-state"><span id="serviceDot"></span><div><strong id="serviceLabel">脚本未启动</strong><small id="lastSync">等待插件脚本加载</small></div></div>
+      </aside>
+
+      <main>
+        <section class="view active" id="view-export">
+          <header><div><h1>本地水印导出</h1></div></header>
+          <div class="grid">
+            <div class="card preview-card">
+              <div class="preview-toolbar"><button class="secondary" id="prevLocalPreview">‹</button><span id="localPreviewLabel">预览 1/1</span><button class="secondary" id="nextLocalPreview">›</button></div>
+              <div class="preview" id="localPreview"><div class="preview-stage"><div class="preview-photo"></div><div class="preview-watermark"></div></div></div>
+              <div id="localQuickExport"></div>
+            </div>
+            <div class="card form-card">
+              <h2>水印编辑</h2>
+              <div id="localWatermarkForm" class="watermark-form"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-privacy">
+          <div id="privacyApp"></div>
+        </section>
+
+        <section class="view" id="view-online">
+          <header><div><h1>线上发布</h1></div><button class="primary compact" id="syncNow">立即同步线上网页</button></header>
+          <div class="stats"><div><small>发布标签</small><strong id="publishTagLabel">线上展示</strong></div><div><small>已检测到</small><strong id="taggedCount">检查中</strong></div><div><small>已上线</small><strong id="publishedCount">0 张</strong></div><div><small>同步状态</small><strong id="syncStatus">等待配置</strong></div></div>
+          <div class="grid">
+            <div class="card preview-card">
+              <div class="preview-toolbar"><button class="secondary" id="prevOnlinePreview">‹</button><span id="onlinePreviewLabel">预览 1/1</span><button class="secondary" id="nextOnlinePreview">›</button></div>
+              <div class="preview" id="onlinePreview"><div class="preview-stage"><div class="preview-photo"></div><div class="preview-watermark"></div></div></div>
+              <button class="secondary" id="refreshOnlineItems">重新读取线上标签照片</button>
+            </div>
+            <div class="card form-card">
+              <h2>线上发布水印</h2>
+              <div id="onlineWatermarkForm" class="watermark-form"></div>
+              <button class="secondary danger" id="forceSync">用当前水印重新生成全部线上图片</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <header><div><h1>连接设置</h1><p>当前使用 Cloudflare Pages 纯静态发布。</p></div></header>
+          <div class="card settings-card">
+            <label>Pages 项目名<input id="projectName" autocomplete="off"/></label>
+            <label>Pages 本地目录<input id="pagesRoot" autocomplete="off"/></label>
+            <label>Pages 地址<input id="publicBaseUrl" placeholder="https://project.pages.dev"/></label>
+            <label>本地作品页端口<input id="localPreviewPort" type="number" min="1024" max="65535" step="1" placeholder="8788"/></label>
+            <label>Eagle 资料库目录<input id="eagleLibraryRoot" autocomplete="off"/></label>
+            <label>Wrangler 命令（可空）<input id="wranglerCommand" placeholder="留空自动使用项目里的 wrangler"/></label>
+            <div class="inline end"><button class="secondary" id="testCloudflare">测试配置</button><button class="primary compact" id="saveSettings">保存设置</button></div>
+            <p class="message" id="settingsMessage"></p>
+          </div>
+        </section>
+
+        <section class="view" id="view-fonts">
+          <header class="font-manager-header">
+            <div><h1>字体分类管理</h1><p>所有字体统一归入无衬线、有衬线或手写；你在这里做的调整会保存到本机，并直接作用于水印编辑器。</p></div>
+            <span class="count" id="fontManagerCount">正在读取字体…</span>
+          </header>
+          <div class="card font-manager-card">
+            <div class="font-manager-toolbar">
+              <label class="font-manager-search">搜索字体<input id="fontManagerSearch" type="search" placeholder="输入字体名称" autocomplete="off"/></label>
+              <label>显示范围<select id="fontManagerFilter">
+                <option value="all">全部字体</option>
+                <option value="manual">只看人工调整</option>
+                <option value="latin-sans">英文 · 无衬线</option>
+                <option value="latin-serif">英文 · 有衬线</option>
+                <option value="latin-handwriting">英文 · 手写</option>
+                <option value="cjk-sans">中文 · 无衬线</option>
+                <option value="cjk-serif">中文 · 有衬线</option>
+                <option value="cjk-handwriting">中文 · 手写</option>
+                <option value="hidden">已隐藏</option>
+              </select></label>
+            </div>
+            <div class="font-manager-note"><span>修改后自动保存</span><span id="fontManagerMessage">未进行人工调整</span></div>
+            <div id="fontManagerGroups" class="font-manager-groups"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="./modules/font-manager/catalog.js"></script>
+    <script src="./modules/font-manager/metadata.js"></script>
+    <script src="./modules/font-manager/classification.js"></script>
+    <script src="./modules/font-manager/classifier.js"></script>
+    <script src="./modules/watermark-editor/schema.js"></script>
+    <script src="./modules/watermark-editor/presets.js"></script>
+    <script src="./adapters/eagle/defaults.js"></script>
+    <script src="./modules/quick-export/browser.js?v=1.0.0"></script>
+    <script src="./adapters/eagle/plugin.js?v=1.2.0"></script>
+    <script src="./modules/font-manager/browser.js?v=1.1.2"></script>
+    <script src="./modules/watermark-editor/browser.js?v=1.1.1"></script>
+    <script src="./dist/privacy-editor.js?v=1.2.5"></script>
+  </body>
+</html>

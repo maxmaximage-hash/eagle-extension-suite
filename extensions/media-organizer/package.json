@@ -1,0 +1,14 @@
+{
+  "name": "eagle-photo-taken-sort",
+  "version": "2.4.1",
+  "private": true,
+  "description": "Organizes Eagle media with multi-level sorting, continuous renaming, and offline GPS location tags.",
+  "main": "plugin.js",
+  "scripts": {
+    "test": "node test/sort-core.test.js && node test/rename-core.test.js && node test/rename-batch-core.test.js && node test/geo-location.test.js && node test/geo-tag-service.test.js && node test/folder-tag-core.test.js",
+    "build:geodata": "node scripts/build-geodata.js"
+  },
+  "dependencies": {
+    "exifr": "7.1.3"
+  }
+}
