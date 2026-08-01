@@ -1,0 +1,44 @@
+name: Release gates
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            plugins/media-organizer/package-lock.json
+            plugins/max-publisher/package-lock.json
+            plugins/max-publisher/eagle-plugin/package-lock.json
+      - name: Test media organizer
+        working-directory: plugins/media-organizer
+        run: |
+          npm ci
+          npm test
+          npm audit --omit=dev
+          node --check plugin.js
+          find lib -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Test and build MAX Publisher
+        working-directory: plugins/max-publisher
+        run: |
+          npm ci
+          npm --prefix eagle-plugin ci
+          npm test
+          npm audit --omit=dev
+          npm --prefix eagle-plugin audit --omit=dev
+          npm run build:privacy
+      - name: Verify release hygiene
+        run: |
+          ./scripts/release-hygiene.sh
+          ./scripts/verify-release.sh

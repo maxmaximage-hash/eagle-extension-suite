@@ -1,0 +1,8 @@
+{
+  "name": "@gravity/quick-export",
+  "version": "1.0.1",
+  "private": true,
+  "files": [
+    "browser.js"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "id": "com.max.eagle-online-showcase",
+  "version": "1.2.7",
+  "platform": "all",
+  "arch": "all",
+  "name": "MAX Publisher",
+  "logo": "./logo.png",
+  "keywords": ["水印", "隐私打码", "导出", "线上展示", "Cloudflare"],
+  "main": {
+    "serviceMode": false,
+    "multiple": false,
+    "frame": true,
+    "url": "index.html",
+    "width": 1180,
+    "minWidth": 900,
+    "height": 780,
+    "minHeight": 680,
+    "resizable": true,
+    "backgroundColor": "#f5f5f4"
+  }
+}

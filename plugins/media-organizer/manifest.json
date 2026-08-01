@@ -1,0 +1,34 @@
+{
+  "id": "com.max.eagle-photo-taken-sort",
+  "version": "2.5.22-qa.27",
+  "platform": "all",
+  "arch": "all",
+  "name": "媒体智能整理",
+  "logo": "/logo.png",
+  "keywords": [
+    "EXIF",
+    "拍摄时间",
+    "多级排序",
+    "子文件夹",
+    "手动拖动",
+    "自动编号",
+    "GPS",
+    "地域标签",
+    "自动标签",
+    "文件夹标签",
+    "团队状态",
+    "跨电脑接力"
+  ],
+  "devTools": false,
+  "main": {
+    "serviceMode": true,
+    "keepAlive": true,
+    "childWindow": true,
+    "runAfterInstall": false,
+    "frame": true,
+    "url": "index.html",
+    "width": 760,
+    "height": 720,
+    "resizable": true
+  }
+}

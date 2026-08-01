@@ -1,0 +1,45 @@
+name: Bug 报告
+description: 报告 Eagle 真实界面中的可复现问题
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: input
+    id: eagle
+    attributes:
+      label: Eagle 与 macOS 版本
+      placeholder: Eagle 4.0.0 / macOS 15.x
+    validations:
+      required: true
+  - type: input
+    id: plugin
+    attributes:
+      label: 插件 ID 与版本
+      placeholder: com.max.eagle-photo-taken-sort 2.5.22-qa.27
+    validations:
+      required: true
+  - type: dropdown
+    id: context
+    attributes:
+      label: 使用场景
+      options:
+        - 普通文件夹排序
+        - 智能文件夹排序
+        - GPS/元数据标签
+        - 水印/字体/导出
+        - 马赛克/隐私处理
+        - Cloudflare 线上发布
+        - 安装或回滚
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 操作步骤、预期结果、实际结果
+      description: 请勿粘贴 API Key、NAS 凭据、真实客户素材或完整 Library 路径。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 已脱敏截图与日志时间段
+      description: 只附相关时间段；删除 token、账号和业务素材。

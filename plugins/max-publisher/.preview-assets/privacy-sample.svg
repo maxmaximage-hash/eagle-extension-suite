@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1800" viewBox="0 0 1200 1800">
+      <defs>
+        <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+          <stop stop-color="#efe7dc"/>
+          <stop offset="1" stop-color="#b9c9c1"/>
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="1800" fill="url(#background)"/>
+      <rect x="90" y="100" width="1020" height="1600" rx="42" fill="#fff" opacity=".88"/>
+      <circle cx="245" cy="310" r="96" fill="#9f7b67"/>
+      <text x="390" y="292" font-family="Arial" font-size="56" font-weight="700" fill="#27211e">学员聊天截图</text>
+      <text x="390" y="362" font-family="Arial" font-size="35" fill="#756c66">头像、姓名与敏感信息测试区</text>
+      <rect x="170" y="520" width="760" height="190" rx="34" fill="#dbeafe"/>
+      <text x="215" y="605" font-family="Arial" font-size="39" fill="#1e3a5f">我的手机号是 138 0000 0000</text>
+      <text x="215" y="665" font-family="Arial" font-size="31" fill="#52708d">这里可以框选矩形或椭圆进行打码</text>
+      <rect x="270" y="790" width="760" height="190" rx="34" fill="#dcfce7"/>
+      <text x="315" y="875" font-family="Arial" font-size="39" fill="#234b34">课程反馈和辅助说明文字</text>
+      <text x="315" y="935" font-family="Arial" font-size="31" fill="#4d725d">打码不会修改 Eagle 原图</text>
+      <rect x="170" y="1100" width="860" height="400" rx="38" fill="#f5f5f4"/>
+      <text x="225" y="1200" font-family="Arial" font-size="34" fill="#57534e">长截图滚动与导出测试</text>
+      <path d="M225 1270H970M225 1350H900M225 1430H940" stroke="#a8a29e" stroke-width="22" stroke-linecap="round"/>
+    </svg>

@@ -1,0 +1,14 @@
+{
+  "name": "eagle-photo-taken-sort",
+  "version": "2.5.22-qa.27",
+  "private": true,
+  "description": "Organizes Eagle media with multi-level sorting, continuous renaming, and offline GPS location tags.",
+  "main": "plugin.js",
+  "scripts": {
+    "test": "node test/governance-contract.test.js && node test/module-boundaries-contract.test.js && node test/github-release-contract.test.js && node test/injection-source-compilation.test.js && node test/injection-diagnostic-contract.test.js && node test/host-adapter-integration-contract.test.js && node test/collection-settings-renderer.test.js && node test/smart-collection-lifecycle-core.test.js && node test/smart-collection-presenter.test.js && node test/smart-drag-target-resolver.test.js && node test/drag-feedback-controller.test.js && node test/host-input-adapter.test.js && node test/rename-command-queue.test.js && node test/rename-lifecycle-core.test.js && node test/plugin-integration-contract.test.js && node test/order-coordinator-core.test.js && node test/manual-move-core.test.js && node test/manual-move-application-core.test.js && node test/sorting-system-core.test.js && node test/folder-tree-batch-core.test.js && node test/folder-level-core.test.js && node test/rename-core.test.js && node test/rename-batch-core.test.js && node test/geo-location.test.js && node test/geo-tag-service.test.js && node test/folder-tag-core.test.js && node test/monitor-core.test.js && node test/plugin-source.test.js && node test/team-state-sync-core.test.js && node test/team-state-file-core.test.js && node test/permanent-regression-contract.test.js",
+    "build:geodata": "node scripts/build-geodata.js"
+  },
+  "dependencies": {
+    "exifr": "7.1.3"
+  }
+}
