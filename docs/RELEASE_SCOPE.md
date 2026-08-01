@@ -18,12 +18,12 @@
 - NAS/iCloud 路径和搬运台账；
 - MAX Publisher `config.json`、`state.json` 和线上业务图片；
 - Cloudflare token、API Key、账号信息；
-- Eagle `app.asar`、宿主备份或任何 Eagle 二进制；
+- Eagle 完整 `app.asar`、宿主备份或任何 Eagle 二进制；
 - QA Library、历史候选和安装备份。
 
 ## 已知限制
 
-- 媒体智能整理原生排序入口受 Eagle 版本和既有、已审计宿主通信能力约束；官方 Eagle 4 插件 API 不足以单独实现主网格 1:1 排序。未知或缺少该能力的全新宿主必须拒绝安装，仓库不会修改 `app.asar`。
+- 媒体智能整理原生排序入口受 Eagle 版本和已审计宿主通信能力约束；官方 Eagle 4 插件 API 不足以单独实现主网格 1:1 排序。精确匹配的官方 Eagle 4.0.0 build 23 可由安装器在本机生成、备份并原子安装通信桥；未知宿主必须拒绝，仓库不分发完整 `app.asar`。
 - 智能文件夹只排序当前 Eagle 查询结果，不自动编号、不改名、不改来源普通文件夹。
 - 团队 sidecar 解决插件顺序同步，不把 Eagle Library 变成支持多人同时写入的数据库；团队仍应避免多电脑同时改同一 Library。
 - 自动地域标签依赖素材实际包含可读取的 GPS/视频位置字段；没有 GPS 的素材不会凭空推断地点。

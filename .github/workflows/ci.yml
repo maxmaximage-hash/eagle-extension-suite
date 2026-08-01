@@ -40,5 +40,7 @@ jobs:
           npm run build:privacy
       - name: Verify release hygiene
         run: |
+          node --check scripts/patch-host-bridge.mjs
+          zsh -n scripts/check.sh scripts/install.sh scripts/install-host-bridge.sh scripts/restore-host-bridge.sh scripts/rollback.sh
           ./scripts/release-hygiene.sh
           ./scripts/verify-release.sh

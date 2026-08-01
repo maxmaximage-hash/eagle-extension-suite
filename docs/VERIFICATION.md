@@ -27,7 +27,13 @@
 ./scripts/rollback.sh --backup '<安装器打印的绝对回滚目录>'
 ```
 
-回滚脚本只恢复两个插件目录，不修改 Library、团队 sidecar、素材或 Eagle 宿主。
+插件回滚脚本只恢复两个插件目录。若本轮还安装了宿主通信桥，先正常退出 Eagle，再运行：
+
+```bash
+./scripts/restore-host-bridge.sh --restore
+```
+
+宿主回滚只接受安装时留下的官方原版指纹，不修改插件、Library、团队 sidecar 或素材。
 
 ## 报告问题
 

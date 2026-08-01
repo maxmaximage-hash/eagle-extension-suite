@@ -41,14 +41,21 @@ done
 asar="$EAGLE_APP/Contents/Resources/app.asar"
 if [[ -f "$asar" ]]; then
   current=$(sha256 "$asar")
+  original=$(jq -r '.hostCompatibility.originalAppAsarSha256' "$MANIFEST")
   supported=$(jq -r '.hostCompatibility.acceptedAppAsarSha256[]' "$MANIFEST" 2>/dev/null || true)
+  print "Eagle app.asar SHA-256: $current"
   if print -r -- "$supported" | grep -Fxq "$current"; then
     print "媒体智能整理宿主通信能力: 已支持"
+  elif [[ "$current" == "$original" ]]; then
+    print "媒体智能整理宿主通信能力: 可受控补齐（完整安装时自动备份、生成并安装）"
+    "$ROOT/scripts/install-host-bridge.sh" --check
   else
-    print "媒体智能整理宿主通信能力: 不受支持（安装器将拒绝完整套件安装）"
+    fail "媒体智能整理宿主通信能力不受支持；宿主指纹未知，不会覆盖。"
   fi
 else
-  print "媒体智能整理宿主通信能力: 无法检查 app.asar"
+  fail "无法检查 Eagle app.asar。"
 fi
 
+print "插件计划回滚根目录: $HOME/Library/Application Support/Eagle/Backups/eagle-extension-suite/<安装时间>"
+print "Library/NAS/团队 sidecar: 不属于安装写入目标；首次启动 Eagle 后由插件只读识别当前 Library。"
 print "检查完成；没有写入插件、Eagle、Library、NAS 或配置。"

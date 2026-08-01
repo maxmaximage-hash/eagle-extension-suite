@@ -17,8 +17,15 @@ pgrep -x Eagle >/dev/null && fail "请先正常退出 Eagle，确认进程完全
 asar="$EAGLE_APP/Contents/Resources/app.asar"
 [[ -f "$asar" ]] || fail "找不到 Eagle app.asar，无法确认宿主兼容性。"
 current_asar=$(sha256 "$asar")
+original_asar=$(jq -r '.hostCompatibility.originalAppAsarSha256' "$MANIFEST")
 accepted=$(jq -r '.hostCompatibility.acceptedAppAsarSha256[]' "$MANIFEST")
-print -r -- "$accepted" | grep -Fxq "$current_asar" || fail "宿主通信能力不受支持；本安装器不会修改 Eagle app.asar。"
+if print -r -- "$accepted" | grep -Fxq "$current_asar"; then
+  host_action="none"
+elif [[ "$current_asar" == "$original_asar" ]]; then
+  host_action="install"
+else
+  fail "宿主通信能力不受支持；app.asar 指纹未知，不会覆盖。"
+fi
 
 timestamp=$(date +%Y%m%d-%H%M%S)
 backup_dir="$BACKUP_PARENT/$timestamp"
@@ -27,6 +34,7 @@ typeset -A staged_for target_for backup_for version_for touched_for
 keys=(mediaOrganizer maxPublisher)
 committed=0
 mutation_started=0
+host_touched=0
 
 rollback_on_exit() {
   if (( mutation_started == 1 && committed == 0 )); then
@@ -43,6 +51,10 @@ rollback_on_exit() {
         mv "$backup" "$target" 2>/dev/null || true
       fi
     done
+    if (( host_touched == 1 )); then
+      "$ROOT/scripts/restore-host-bridge.sh" --restore || \
+        print -u2 "警告：插件安装失败后的宿主自动回滚未完成，请保留现场。"
+    fi
   fi
   rm -rf "$stage_dir"
 }
@@ -73,9 +85,13 @@ for key in $keys; do
   version_for[$key]="$plugin_version"
 done
 
-# 两个安装包都已在临时目录完成校验后，才开始触碰现有插件。
+# 两个安装包都已在临时目录完成校验后，才开始触碰宿主或现有插件。
 mkdir -p "$backup_dir"
 mutation_started=1
+if [[ "$host_action" == "install" ]]; then
+  "$ROOT/scripts/install-host-bridge.sh" --install
+  host_touched=1
+fi
 for key in $keys; do
   target="${target_for[$key]}"
   backup="${backup_for[$key]}"
@@ -100,4 +116,7 @@ done
 committed=1
 
 print "安装完成。回滚目录：$backup_dir"
-print "本脚本没有启动 Eagle，也没有读取或修改任何 .library、NAS 素材或配置。"
+if (( host_touched == 1 )); then
+  print "已从本机官方原版生成并安装受控宿主通信桥；原版已留存到独立宿主回滚目录。"
+fi
+print "本脚本没有启动 Eagle，也没有读取或修改任何 .library、NAS 素材、团队 sidecar 或配置。"

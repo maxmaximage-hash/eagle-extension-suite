@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "release": "2026.08.01-baseline.1",
+  "schemaVersion": 2,
+  "release": "2026.08.01-baseline.2",
   "channel": "team-stable",
   "platform": "macOS",
   "sortingBehaviorBaseline": "2.5.22-qa.26/API103",
@@ -22,9 +22,12 @@
     "eagleVersions": [
       "4.0.0"
     ],
+    "originalAppAsarSha256": "b04a2efdb8bc8d06910552f43f38c056e6964c8f74798e1b2849f1bffab8a1bd",
+    "generatedBridgeSha256": "dbd90e0bf80ff13a01694f8bc84f43cffc93eecca8038894f901e5280ba2650d",
     "acceptedAppAsarSha256": [
-      "4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3"
+      "4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3",
+      "dbd90e0bf80ff13a01694f8bc84f43cffc93eecca8038894f901e5280ba2650d"
     ],
-    "policy": "read-only fingerprint check; never install or modify app.asar"
+    "policy": "exact fingerprint only; generate bridge locally; backup before atomic replacement; reject unknown hosts"
   }
 }

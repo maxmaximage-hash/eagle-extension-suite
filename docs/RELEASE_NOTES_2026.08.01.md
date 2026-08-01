@@ -21,11 +21,11 @@
 - 媒体智能整理生产依赖审计为 0 漏洞；
 - MAX Publisher Eagle 运行依赖锁定 `sharp 0.35.3`，生产依赖审计为 0 漏洞；
 - Cloudflare 构建/发布工具锁定 `wrangler 4.118.0`，根全依赖审计为 0 漏洞；
-- 仓库和安装包不含真实素材、Library、NAS 路径、团队 sidecar、标签状态、缓存、配置、API Key、Cloudflare token、Eagle `app.asar` 或桥接载荷。
+- 仓库和安装包不含真实素材、Library、NAS 路径、团队 sidecar、标签状态、缓存、配置、API Key、Cloudflare token 或 Eagle 完整 `app.asar`。
 
 ## 宿主限制
 
-当前 1:1 主网格排序要求 Eagle 4.0.0 已经具备发行清单列出的、审计通过的宿主通信能力。安装器只读核对宿主指纹；未知或全新宿主会拒绝完整套件安装，并且不会修改 `app.asar`。这是本基线的明确兼容前提，不应包装成“任意 Eagle 一键完整安装”。
+当前 1:1 主网格排序要求发行清单精确支持的 Eagle 4.0.0 build 23。baseline.2 起，完整安装器可对精确匹配的官方原版先创建回滚文件，再在本机生成并原子安装已审计通信桥；未知指纹仍会拒绝且没有强制覆盖开关。仓库不上传 Eagle 完整二进制。
 
 ## 验收状态
 
