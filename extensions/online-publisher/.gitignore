@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+fixtures/output/
+*.eagleplugin
+config.local.json
+*.log
+.DS_Store

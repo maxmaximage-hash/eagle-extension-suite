@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Instagram 整帖保存至 Eagle",
+  "version": "1.1.2",
+  "description": "在 Instagram 帖子内右键，一键将该帖的所有图片和视频保存至指定 Eagle 文件夹。",
+  "permissions": ["contextMenus", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.instagram.com/*",
+    "https://*.cdninstagram.com/*",
+    "https://*.fbcdn.net/*",
+    "http://localhost:41595/*",
+    "http://127.0.0.1:41595/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
