@@ -7,6 +7,7 @@
 **/*.log
 **/*.eagleplugin
 /releases/
+/runtime-data/
 
 # Local QA, recovery and user-data artifacts — never publish these to GitHub.
 /qa-candidate/
@@ -34,5 +35,6 @@
 
 # Local samples, generated package artifacts and deployment content.
 /extensions/instagram-post-importer/releases/
+/extensions/xiaohongshu-post-importer/releases/
 /extensions/online-publisher/.preview-assets/
 /extensions/online-publisher/cloudflare-pages/public/

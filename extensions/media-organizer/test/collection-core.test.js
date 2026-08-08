@@ -191,15 +191,35 @@ assert.deepStrictEqual(
   ["mixed-b", "mixed-a"]
 );
 
-// The real handoff state has 17 protection flags and 809 obsolete item IDs.
-const teamState = JSON.parse(fs.readFileSync(path.join(
-  __dirname,
-  "..",
-  "defaults",
-  "sort-state",
-  "team.eagle-sort-state.json"
-), "utf8"));
-const legacyStore = teamState.storage["eagle.photoTakenSort.folderLocks.v1"];
+// A sanitized fixture preserves the legacy migration shape without publishing
+// any real Library path, folder state or item IDs. It has the same 17/809
+// boundary that originally exposed the migration bug.
+const legacyFolderIds = [
+  "MKPBIEGNPKQR9",
+  "MLTB7G3NNV261",
+  ...Array.from({ length: 15 }, (_, index) => `synthetic-${index + 1}`)
+];
+const legacyStore = {
+  version: 1,
+  libraries: {
+    "/Volumes/synthetic.library": {
+      folders: Object.fromEntries(legacyFolderIds.map((folderId, index) => [
+        folderId,
+        {
+          config: {
+            orderBy: "PHOTO_TAKEN",
+            sortIncrease: true,
+            rules: [{ field: "TAKEN_AT", direction: "asc" }]
+          },
+          order: Array.from(
+            { length: index === legacyFolderIds.length - 1 ? 41 : 48 },
+            (_, itemIndex) => `${folderId}-item-${itemIndex + 1}`
+          )
+        }
+      ]))
+    }
+  }
+};
 const migration = runtime.migrateLegacyProtection(legacyStore);
 assert.strictEqual(migration.protectedCount, 17);
 assert.strictEqual(migration.ignoredOrderCount, 809);

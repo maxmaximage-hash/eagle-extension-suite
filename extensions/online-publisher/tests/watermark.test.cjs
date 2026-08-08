@@ -7,9 +7,20 @@ const sharp = require('../eagle-plugin/node_modules/sharp');
 const { renderWatermarked, renderWatermarkLayer, renderWatermarkPreviewPayload, renderWatermarkVectorPreviewPayload, overlaysFor, positionFor, exactFontForSettings, textMark } = require('../eagle-plugin/modules/watermark-editor/renderer.js');
 
 const root = path.resolve(__dirname, '..');
-const source = path.resolve(root, '.preview-assets', 'detail-post-01.jpg');
 const logo = path.resolve(root, 'eagle-plugin', 'logo.png');
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'max-watermark-tests-'));
+const source = path.join(output, 'generated-source.jpg');
+
+test.before(async () => {
+  await sharp({
+    create: {
+      width: 1200,
+      height: 800,
+      channels: 3,
+      background: { r: 48, g: 96, b: 144 }
+    }
+  }).jpeg({ quality: 90 }).toFile(source);
+});
 
 test.after(() => {
   fs.rmSync(output, { recursive: true, force: true });

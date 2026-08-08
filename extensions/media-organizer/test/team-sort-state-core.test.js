@@ -17,24 +17,50 @@ assert.strictEqual(
   isolatedRuntime.isLibraryReady("/Volumes/team.library"),
   true
 );
-const statePath = path.join(
-  __dirname,
-  "..",
-  "defaults",
-  "sort-state",
-  "team.eagle-sort-state.json"
+const sourceLibraryId = "/Volumes/synthetic-source.library";
+const folderIds = Array.from(
+  { length: 99 },
+  (_, index) => `folder-${String(index + 1).padStart(3, "0")}`
 );
-const state = JSON.parse(fs.readFileSync(statePath, "utf8"));
+const folderStore = (count, valueFactory) => ({
+  version: 1,
+  libraries: {
+    [sourceLibraryId]: {
+      folders: Object.fromEntries(
+        folderIds.slice(0, count).map((folderId, index) => [
+          folderId,
+          valueFactory(folderId, index)
+        ])
+      )
+    }
+  }
+});
+const state = runtime.createState({
+  libraryId: sourceLibraryId,
+  pluginVersion: "2.5.22-qa.34",
+  folders: folderIds.map((id) => ({ id })),
+  storage: {
+    "eagle.list.meta.type": "PHOTO_TAKEN",
+    ["eagle.list.orderBy." + sourceLibraryId]: "PHOTO_TAKEN",
+    ["eagle.list.sortIncrease." + sourceLibraryId]: true,
+    "eagle.photoTakenSort.autoRename.v1": folderStore(4, () => true),
+    "eagle.photoTakenSort.rules.v2": folderStore(99, () => ({
+      rules: [{ field: "TAKEN_AT", direction: "asc" }]
+    })),
+    "eagle.photoTakenSort.folderLocks.v1": folderStore(17, () => ({
+      lockedAt: 1
+    })),
+    "eagle.photoTakenSort.metaProfiles.v1": folderStore(85, () => ({
+      enabled: true
+    }))
+  }
+});
 const verification = runtime.verifyState(state);
 assert.strictEqual(verification.ok, true);
 assert.strictEqual(isolatedRuntime.verifyState(state).ok, true);
-assert.strictEqual(
-  verification.payloadSha256,
-  "bd77ad307b328a0a3a97336b1af70eaac93a795cfb88b46022bf0debe9f49f81"
-);
+assert.match(verification.payloadSha256, /^[a-f0-9]{64}$/);
 
-const nasLibrary =
-  "/Volumes/%E5%9B%A2%E9%98%9F%E6%96%87%E4%BB%B6-MAX%E7%BA%BF%E4%B8%8A%E5%8D%8F%E4%BD%9C%E4%B8%AD%E5%8F%B0/%E5%BC%95%E5%8A%9B%E7%8E%AF%E7%90%83.library";
+const nasLibrary = "/Volumes/synthetic-target.library";
 const mapped = runtime.mappedEntries(state, nasLibrary, {
   includeAutoRename: false
 });

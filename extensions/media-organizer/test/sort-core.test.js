@@ -169,17 +169,12 @@ const artItems = artIds.map((id, index) => ({
 const artTimestamps = Object.fromEntries(
   artIds.map((id, index) => [id, artTimes[index]])
 );
-const teamState = JSON.parse(fs.readFileSync(path.join(
-  __dirname,
-  "..",
-  "defaults",
-  "sort-state",
-  "team.eagle-sort-state.json"
-), "utf8"));
-const legacyLocks = teamState.storage["eagle.photoTakenSort.folderLocks.v1"];
-const sourceLibrary = Object.keys(legacyLocks.libraries)[0];
-const legacyArtProfile = legacyLocks.libraries[sourceLibrary]
-  .folders.MKPBIEGNPKQR9;
+const legacyArtProfile = {
+  rules: [
+    { field: "NAME_GROUP", direction: "asc" },
+    { field: "TAKEN_AT", direction: "desc" }
+  ]
+};
 const baseResult = runtime.buildSortResult(artItems, {
   timestamps: artTimestamps,
   rules: legacyArtProfile.rules,
