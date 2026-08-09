@@ -10,7 +10,8 @@
 | MAX Publisher | 需要水印、隐私打码、导出或线上作品页的成员 | 仅线上发布需要本人 Cloudflare 凭证 |
 | Live Photo 管家 | 需要安全检查 JPG/HEIC + MOV 配对的成员 | 否 |
 | 头像共享源 | 维护指定 Eagle 头像文件夹的管理员 | 否；消费者只读取共享源 |
-| Instagram / 小红书导入器 | 需要将单条公开帖子整理为 Eagle 导入计划的成员 | 否 |
+| 网页媒体导入器 | 需要把当前网页已加载的直连图片/视频交给 Eagle 的成员 | 否 |
+| Instagram / 小红书专用导入器 | 需要使用站点专用单帖流程的成员 | 否 |
 | iCloud 搬运台账 | 管理 iCloud 素材批次的成员 | 否；当前不执行下载 |
 
 ## 开始前的三件事
@@ -112,15 +113,37 @@ npm run package:plugin
 
 Live Photo 管家会识别同名 JPG/JPEG/HEIC 与 MOV 的安全配对，缺件或重复时进入冲突队列，绝不猜测配对。iCloud 搬运台账只记录批次、冲突和“继续上次”的选择锚点；它目前不登录 iCloud、不下载、不创建 NAS 目录。
 
-### 6. Instagram / 小红书单帖导入
+### 6. 网页媒体和站点专用单帖导入
 
-两个导入器均是独立的浏览器扩展源码：只把当前公开帖子的图片、视频和必要来源信息组织成导入计划。安装前分别进入对应目录运行 `npm test` 与 `npm run check`，再按各自 README 的浏览器开发者模式流程加载。它们不覆盖 Eagle 现有素材，也不能用于批量抓取或绕过站点权限。
+通用网页媒体导入器只读取用户当前打开、已经加载并具有直接 HTTP(S) 文件地址的图片或视频：
+
+```bash
+cd eagle-extension-suite/extensions/web-media-importer
+npm test
+npm run check
+npm run package:stable
+```
+
+在 Chrome 打开 `chrome://extensions/`，开启开发者模式，选择「加载已解压的扩展程序」，加载
+`extensions/web-media-importer` 或根目录 `releases/网页媒体保存至Eagle-Stable/eagle-web-media-importer`。
+之后点击扩展按钮，或在网页/媒体上右键，选择页面媒体，再从网页内选择一个 Eagle 普通文件夹。
+弹窗保留最近批次与失败项重试入口。安装前已经打开的普通网页也会由后台安全补注入，无需先刷新。
+
+它不支持 `blob:`、`.m3u8`、`.mpd`、DRM/加密视频、没有直接文件地址的媒体，也不绕过登录、
+站点权限或反爬限制；因此不能描述为“所有网页、所有视频都能下载”。Eagle API 返回成功时界面只显示
+“Eagle 已接收”，最终是否可见仍以 Eagle 界面为准。下载缓存只在 API 接收后安排清理，并保留 24 小时。
+
+Instagram 和小红书导入器仍是两个独立的站点专用扩展。Instagram 处理当前有权查看的单帖轮播和
+直连视频；小红书稳定版当前只处理单帖静态图片。安装前分别进入对应目录运行其 README 要求的测试和
+检查，再按开发者模式加载。三者都不覆盖 Eagle 现有素材，不能用于创作者主页批量抓取或权限绕过。
 
 ## 界面示例
 
 ![Eagle 正常资料库界面](screenshots/2026-08-09-normal-library.jpeg)
 
 截图仅用于说明界面；不代表团队成员的真实素材、排序数据或线上发布内容会被上传到 GitHub。
+网页媒体导入器尚未获准安装到真实 Chrome/Eagle，因此本版不放置伪造的现场截图；真实界面截图只会在
+获得批准并完成低风险验收后补充。
 
 ## 更新、回滚与问题处理
 

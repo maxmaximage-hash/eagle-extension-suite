@@ -1,5 +1,20 @@
 # 决策记录
 
+## 2026-08-09：网页媒体保存统一为显式触发、直连媒体和 accepted 队列
+
+- 决定：新增独立 Chrome 扩展 `extensions/web-media-importer`，作为当前网页直连媒体的通用入口；
+  Instagram 和小红书站点专用单帖识别继续独立维护，不互相导入业务实现。
+- 决定：只有用户点击扩展按钮或右键菜单后才采集；仅接受当前页面已加载的直接 HTTP(S) 图片/视频。
+  `blob:`、`data:`、HLS/DASH、DRM/加密、未知源和权限绕过明确不支持。
+- 决定：批次稳定去重、最多 80 项并严格串行；选择目标只允许普通 Eagle 文件夹。队列和失败原因保留
+  在 Chrome 本地存储，不进入 GitHub、Library 或团队 sidecar。
+- 决定：Eagle 公开 API `success` 只表示 accepted，不冒充界面可见；缓存仅在 accepted 后安排清理并
+  保留至少 24 小时，避免慢磁盘/NAS 导入时源文件被过早删除。
+- 决定：下载使用原始直连地址，但写进 Eagle 来源字段的网页/媒体 URL 要移除常见 token、签名、凭证、
+  过期和追踪参数，避免临时访问凭据进入共享 Library。
+- 边界：自动门禁和干净打包通过仍不等于真实 Chrome/Eagle 验收。本轮不安装、不启动或操作 Eagle，
+  不读取/修改 `.library`、NAS 素材、`app.asar` 或真实账号数据。
+
 ## 2026-08-04：Live Photo 自有扩展先管理组件组，不再批量依赖官方 LIVP Viewer
 
 - 决定：`MAX Live Photo 管家` 作为独立扩展维护，当前真源仍是同一资产组中的
