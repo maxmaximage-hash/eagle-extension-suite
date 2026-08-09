@@ -46,6 +46,85 @@ test('限制文件大小会把 JPEG 成品压到目标以内', async () => {
   assert.ok(fs.statSync(output).size <= 0.2 * 1_000_000);
 });
 
+test('限制文件大小会把 PNG 成品严格压到十进制目标以内', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'max-export-png-limit-'));
+  const input = path.join(directory, 'input.jpg');
+  const output = path.join(directory, 'output.png');
+  await createPhoto(input);
+  await renderWatermarked(input, output, {
+    maxWidth: 0,
+    quality: 100,
+    maxFileSizeMb: 0.5,
+    format: 'png',
+    watermark: { enabled: false }
+  });
+  assert.ok(fs.statSync(output).size <= 500_000);
+});
+
+test('导出进度逐张等待宿主回调且覆盖失败项', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'max-export-progress-'));
+  const input = path.join(directory, 'input.jpg');
+  await createPhoto(input, 300, 400);
+  const items = [
+    { id: 'one', name: '第一张', ext: 'jpg', filePath: input },
+    { id: 'two', name: '第二张', ext: 'jpg', filePath: input },
+    { id: 'three', name: '第三张', ext: 'jpg', filePath: input },
+    { id: 'four', name: '第四张', ext: 'jpg', filePath: input },
+    { id: 'missing', name: '缺失图片', ext: 'jpg', filePath: path.join(directory, 'missing.jpg') },
+    { id: 'six', name: '第六张', ext: 'jpg', filePath: input },
+    { id: 'seven', name: '第七张', ext: 'jpg', filePath: input },
+    { id: 'eight', name: '第八张', ext: 'jpg', filePath: input },
+    { id: 'nine', name: '第九张', ext: 'jpg', filePath: input }
+  ];
+  const publisher = new Publisher({
+    eagleApi: { item: { getSelected: async () => items } },
+    getConfig: () => ({}),
+    onStatus: () => {}
+  });
+  const progress = [];
+  await publisher.exportSelected(directory, {
+    items,
+    format: 'jpg',
+    compressionMode: 'quality',
+    quality: 90,
+    suffix: '-progress',
+    collisionMode: 'rename',
+    watermark: { enabled: false }
+  }, async ({ current, total }) => {
+    await new Promise((resolve) => setImmediate(resolve));
+    progress.push(`${current}/${total}`);
+  });
+  assert.deepEqual(progress, ['1/9', '2/9', '3/9', '4/9', '5/9', '6/9', '7/9', '8/9', '9/9']);
+});
+
+test('按文件大小导出不读取隐藏的质量滑杆值', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'max-export-size-mode-'));
+  const input = path.join(directory, 'input.jpg');
+  await createPhoto(input, 300, 400);
+  const item = { id: 'size-mode', name: '体积模式', ext: 'jpg', filePath: input };
+  const publisher = new Publisher({
+    eagleApi: { item: { getSelected: async () => [item] } },
+    getConfig: () => ({}),
+    onStatus: () => {}
+  });
+  let receivedOptions;
+  await publisher.exportItems(directory, [item], {
+    format: 'jpg',
+    compressionMode: 'size',
+    quality: 40,
+    maxFileSizeMb: 5,
+    suffix: '-size',
+    collisionMode: 'rename',
+    watermark: { enabled: false }
+  }, async (inputPath, outputPath, options) => {
+    receivedOptions = options;
+    fs.copyFileSync(inputPath, outputPath);
+  });
+  assert.equal(receivedOptions.quality, 100);
+  assert.equal(receivedOptions.maxFileSizeMb, 5);
+  assert.equal(receivedOptions.maxOutputBytes, 0);
+});
+
 test('同名文件可以选择生成新文件名或覆盖', async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'max-export-collision-'));
   const input = path.join(directory, 'input.jpg');

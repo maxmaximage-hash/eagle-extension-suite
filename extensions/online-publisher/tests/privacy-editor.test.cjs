@@ -8,7 +8,8 @@ const sharp = require('../eagle-plugin/node_modules/sharp');
 
 const pluginRoot = path.resolve(__dirname, '../eagle-plugin');
 const upstreamRoot = path.resolve(
-  '/Users/max/引力环球/软件开发中台/共享模块/packages/gravity-privacy-editor'
+  __dirname,
+  '../../../../共享模块/packages/gravity-privacy-editor'
 );
 const vendorRoot = path.join(pluginRoot, 'modules/vendor/gravity-privacy-editor');
 const privacyNode = require('../eagle-plugin/modules/vendor/gravity-privacy-editor/1.1.0/node.cjs');

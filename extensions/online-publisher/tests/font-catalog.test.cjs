@@ -14,6 +14,21 @@ function loadBrowserData(filename, property) {
 }
 
 const catalog = loadBrowserData('catalog.js', 'MAX_FONT_CATALOG');
+const catalogSource = fs.readFileSync(path.join(__dirname, '..', 'eagle-plugin', 'modules', 'font-manager', 'catalog.js'), 'utf8');
+const browserSource = fs.readFileSync(path.join(__dirname, '..', 'eagle-plugin', 'modules', 'font-manager', 'browser.js'), 'utf8');
+
+test('发行字体目录不携带开发者用户名路径', () => {
+  assert.doesNotMatch(catalogSource, /\/Users\/[^/]+\/Library\/Fonts/);
+});
+
+test('Eagle 运行时先从当前 Mac 发现字体，再使用无路径兜底目录', () => {
+  assert.match(browserSource, /function loadSystemFontCatalog\(\) \{[\s\S]*?if \(childProcess\) \{[\s\S]*?system_profiler[\s\S]*?resolve\(bundledFontCatalog\(\)\)/);
+  assert.doesNotMatch(browserSource, /Array\.isArray\(window\.MAX_FONT_CATALOG\)/);
+});
+
+test('已保存但未安装的字体在选择器中明确标示为不可用', () => {
+  assert.match(browserSource, /未安装字体/);
+});
 const metadata = loadBrowserData('metadata.js', 'MAX_FONT_METADATA');
 
 test('完整字体清单只输出中文和英文字体', () => {
@@ -64,14 +79,14 @@ test('江城黑体各独立字重会合并为一个家族', () => {
   assert.ok(variants.some((item) => item.label === 'Italic 700W'));
 });
 
-test('编辑器重点字体都绑定真实 Mac 字体文件', () => {
+test('随包字体参考目录保留字面身份，不声明其他电脑一定存在', () => {
   for (const family of ['Skia', 'Univers LT Std', 'Brush Script MT', 'Galeere', 'Explora', 'Herculanum']) {
     const entry = catalog.find((font) => font.family === family);
     assert.ok(entry, `缺少字体：${family}`);
     assert.ok(entry.faces.length > 0, `${family} 缺少字面`);
     for (const face of entry.faces) {
-      assert.ok(face.fontPath, `${family}/${face.postscriptName} 缺少真实文件路径`);
-      assert.ok(fs.existsSync(face.fontPath), `${family}/${face.postscriptName} 字体文件不存在`);
+      assert.ok(face.postscriptName, `${family} 缺少 PostScript 字面`);
+      assert.doesNotMatch(face.fontPath || '', /\/Users\//, `${family}/${face.postscriptName} 不应绑定特定用户目录`);
     }
   }
 });

@@ -55,8 +55,9 @@ test('Eagle 只通过共享模块公开入口挂载水印、字体和快速导�
   assert.doesNotMatch(adapterSource, /function mountWatermarkForm\(/);
   assert.doesNotMatch(adapterSource, /function renderFontManager\(/);
   assert.match(adapterSource, /GravityQuickExport\.mount\('localQuickExport'/);
-  assert.match(watermarkSource, /version: '1\.1\.1'/);
-  assert.match(fontSource, /version: '1\.1\.2'/);
+  assert.match(watermarkSource, /version: '1\.1\.2'/);
+  assert.match(fontSource, /version: '1\.1\.3'/);
+  assert.match(quickExportSource, /const VERSION = '1\.0\.1'/);
 });
 
 test('同名文件策略使用软件统一的分段按钮，不使用原生下拉框', () => {
@@ -72,6 +73,9 @@ test('两组导出选项使用单层矩形分段控件和明确选中态', () =>
   assert.match(quickExportSource, /button\.setAttribute\('aria-pressed', active \? 'true' : 'false'\)/);
   assert.match(quickExportSource, /button\.dataset\.exportMode === state\.compressionMode/);
   assert.match(quickExportSource, /button\.dataset\.collisionMode === state\.collisionMode/);
+  assert.match(quickExportSource, /quality\.disabled = !qualityActive/);
+  assert.match(quickExportSource, /size\.disabled = qualityActive/);
+  assert.match(quickExportSource, /await nextPaint\(\)/);
 });
 
 test('每次导出结果卡片只需点击一次便消失', () => {

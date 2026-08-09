@@ -1,11 +1,21 @@
 (function attachQuickExport(global) {
   'use strict';
 
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
 
   function clamp(value, min, max, fallback = min) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  }
+
+  function nextPaint() {
+    return new Promise((resolve) => {
+      if (typeof global.requestAnimationFrame === 'function') {
+        global.requestAnimationFrame(() => resolve());
+      } else {
+        global.setTimeout(resolve, 0);
+      }
+    });
   }
 
   function template(title) {
@@ -65,8 +75,16 @@
       quality.value = state.quality;
       qualityNumber.value = state.quality;
       size.value = state.maxFileSizeMb || '';
-      qualityField.hidden = state.compressionMode !== 'quality';
-      sizeField.hidden = state.compressionMode !== 'size';
+      const qualityActive = state.compressionMode === 'quality';
+      qualityField.hidden = !qualityActive;
+      qualityField.setAttribute('aria-hidden', qualityActive ? 'false' : 'true');
+      qualityField.style.setProperty('display', qualityActive ? '' : 'none', qualityActive ? '' : 'important');
+      quality.disabled = !qualityActive;
+      qualityNumber.disabled = !qualityActive;
+      sizeField.hidden = qualityActive;
+      sizeField.setAttribute('aria-hidden', qualityActive ? 'true' : 'false');
+      sizeField.style.setProperty('display', qualityActive ? 'none' : '', qualityActive ? 'important' : '');
+      size.disabled = qualityActive;
       all('[data-export-mode]').forEach((button) => {
         const active = button.dataset.exportMode === state.compressionMode;
         button.classList.toggle('active', active);
@@ -120,12 +138,13 @@
       try {
         const results = await options.exportItems?.({
           state,
-          onProgress({ current, total, item }) {
+          async onProgress({ current, total, item }) {
             if (currentRun !== runVersion) return;
             progressText.textContent = `正在处理：${item.name}`;
             progressCount.textContent = `${current}/${total}`;
             progressBar.max = total;
             progressBar.value = current;
+            await nextPaint();
           }
         });
         if (currentRun !== runVersion) return;

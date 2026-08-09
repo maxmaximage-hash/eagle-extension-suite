@@ -1116,7 +1116,7 @@ function refreshActiveWatermarkPreviews() {
 
 
 globalThis.GravityWatermarkEditor = Object.freeze({
-  version: '1.1.1',
+  version: '1.1.2',
   mount: mountWatermarkForm,
   fields: watermarkFields,
   prepare: prepareWatermarkSettings,

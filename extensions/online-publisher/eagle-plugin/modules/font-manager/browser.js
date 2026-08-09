@@ -367,7 +367,20 @@ function faceMatchesValue(face, value) {
 function runtimeWatermarkSettings(settings) {
   if (!settings || settings.type === 'image') return settings;
   const entry = fontFamilyEntry(settings.fontFamily, { allowFallback: false });
-  if (!entry) return settings;
+  if (!entry) {
+    const fallback = fontFamilyEntry('Arial') || FALLBACK_FONT_CATALOG[0];
+    const fallbackFace = defaultFaceForEntry(fallback);
+    return {
+      ...settings,
+      unavailableFontFamily: settings.fontFamily || '',
+      fontFamily: fallback.family,
+      fontFace: fallbackFace.fullName || fallbackFace.postscriptName || fallback.family,
+      fontPostscriptName: fallbackFace.postscriptName || '',
+      fontPath: fallbackFace.fontPath || '',
+      fontWeight: Number(fallbackFace.weight || 400),
+      fontStyle: fallbackFace.style || 'normal'
+    };
+  }
   const face = selectedFaceForSettings(settings, entry);
   if (!face) return settings;
   return {
@@ -477,19 +490,26 @@ function applyFontFace(settings, face) {
 }
 
 function bundledFontCatalog() {
-  if (typeof window === 'undefined') return null;
-  if (Array.isArray(window.MAX_FONT_CATALOG) && window.MAX_FONT_CATALOG.length) {
-    return normalizeFontCatalog([...FALLBACK_FONT_CATALOG, ...window.MAX_FONT_CATALOG]);
-  }
+  if (typeof window === 'undefined') return FALLBACK_FONT_CATALOG;
   if (Array.isArray(window.MAX_SYSTEM_FONTS) && window.MAX_SYSTEM_FONTS.length) {
     return catalogFromFlatFonts([...FALLBACK_FONTS, ...window.MAX_SYSTEM_FONTS]);
   }
-  return null;
+  return FALLBACK_FONT_CATALOG;
 }
 
 function loadSystemFontCatalog() {
-  const bundled = bundledFontCatalog();
-  if (bundled) return Promise.resolve(bundled);
+  if (childProcess) {
+    return new Promise((resolve) => {
+      childProcess.execFile('system_profiler', ['SPFontsDataType', '-json'], { timeout: 60000, maxBuffer: 40 * 1024 * 1024 }, (error, stdout) => {
+        if (error || !stdout) return resolve(bundledFontCatalog());
+        try {
+          resolve(catalogFromSystemProfiler(JSON.parse(stdout)));
+        } catch (error) {
+          resolve(bundledFontCatalog());
+        }
+      });
+    });
+  }
   if (!childProcess) {
     if (typeof window !== 'undefined' && typeof window.queryLocalFonts === 'function') {
       return window.queryLocalFonts()
@@ -505,20 +525,10 @@ function loadSystemFontCatalog() {
             }]
           }))
         ]))
-        .catch((error) => FALLBACK_FONT_CATALOG);
+        .catch((error) => bundledFontCatalog());
     }
-    return Promise.resolve(FALLBACK_FONT_CATALOG);
+    return Promise.resolve(bundledFontCatalog());
   }
-  return new Promise((resolve) => {
-    childProcess.execFile('system_profiler', ['SPFontsDataType', '-json'], { timeout: 60000, maxBuffer: 40 * 1024 * 1024 }, (error, stdout) => {
-      if (error || !stdout) return resolve(FALLBACK_FONT_CATALOG);
-      try {
-        resolve(catalogFromSystemProfiler(JSON.parse(stdout)));
-      } catch (error) {
-        resolve(FALLBACK_FONT_CATALOG);
-      }
-    });
-  });
 }
 
 function renderFontStyleSelects() {
@@ -535,7 +545,10 @@ function renderFontStyleSelects() {
     if (list) list.innerHTML = '';
     if (!entry) {
       if (input) input.value = current || family;
-      if (button) button.querySelector('span').textContent = current && current !== family ? current : '当前样式';
+      if (button) {
+        button.querySelector('span').textContent = '未安装字体';
+        button.setAttribute('aria-label', `未安装字体：${displayFontName(family)}；导出将使用可用兜底字体`);
+      }
       return;
     }
     const selectedFace = selectedFaceForSettings(settings, entry)
@@ -697,7 +710,7 @@ async function refreshFonts() {
 
 
 globalThis.GravityFontManager = Object.freeze({
-  version: '1.1.2',
+  version: '1.1.3',
   refresh: refreshFonts,
   render: renderFontManager,
   favorites: () => favoriteFontFamilies().slice(),

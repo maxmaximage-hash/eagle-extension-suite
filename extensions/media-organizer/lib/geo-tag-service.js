@@ -9,7 +9,7 @@ const BATCH_SIZE = 50;
 function defaultState() {
   return {
     version: STATE_VERSION,
-    globalEnabled: true,
+    globalEnabled: false,
     libraries: {}
   };
 }
@@ -17,6 +17,7 @@ function defaultState() {
 function createLibraryState() {
   return {
     initializedAt: new Date().toISOString(),
+    baselineEstablished: false,
     records: {},
     coordinateCache: {}
   };
@@ -174,25 +175,33 @@ function createGeoTagService(options) {
   async function readState() {
     try {
       const parsed = JSON.parse(await fs.promises.readFile(statePath, "utf8"));
-      if (parsed.version === STATE_VERSION && parsed.libraries) state = parsed;
+      if (parsed.version === STATE_VERSION && parsed.libraries) {
+        state = parsed;
+        for (const library of Object.values(state.libraries)) {
+          if (typeof library.baselineEstablished !== "boolean") {
+            library.baselineEstablished = Object.keys(library.records || {}).length > 0;
+          }
+        }
+      }
     } catch (error) {
       if (error.code !== "ENOENT") log.warn("Unable to read geo tag state", error);
     }
   }
 
-  async function ensureLibraryInitialized() {
+  async function ensureLibraryBaseline() {
     const key = libraryKey();
-    if (state.libraries[key]) return;
-    const library = createLibraryState();
-    state.libraries[key] = library;
+    const library = currentLibrary();
+    if (library.baselineEstablished) return;
     const ids = await eagle.item.getIdsWithModifiedAt();
     for (const entry of ids) {
       library.records[String(entry.id)] = {
-        status: "pending",
-        origin: "historical",
-        modifiedAt: entry.modifiedAt || null
+        ...library.records[String(entry.id)],
+        status: library.records[String(entry.id)]?.status || "pending",
+        origin: library.records[String(entry.id)]?.origin || "baseline",
+        modifiedAt: library.records[String(entry.id)]?.modifiedAt || entry.modifiedAt || null
       };
     }
+    library.baselineEstablished = true;
     await saveNow();
     emitState();
   }
@@ -200,14 +209,12 @@ function createGeoTagService(options) {
   async function initialize(nextLibraryPath) {
     currentLibraryPath = nextLibraryPath || eagle.library?.path || currentLibraryPath;
     await readState();
-    await ensureLibraryInitialized();
     emitState();
     return getSnapshot();
   }
 
   async function switchLibrary(nextLibraryPath) {
     currentLibraryPath = nextLibraryPath || eagle.library?.path || "";
-    await ensureLibraryInitialized();
     emitState();
   }
 
@@ -417,7 +424,7 @@ function createGeoTagService(options) {
   }
 
   async function scanExisting() {
-    await ensureLibraryInitialized();
+    await ensureLibraryBaseline();
     const library = currentLibrary();
     const ids = Object.entries(library.records)
       .filter(([, record]) => record.status === "pending")
@@ -450,8 +457,8 @@ function createGeoTagService(options) {
 
   async function poll() {
     if (!state.globalEnabled || activeJob) return null;
-    await ensureLibraryInitialized();
     const library = currentLibrary();
+    if (!library.baselineEstablished) return null;
     const allIds = await eagle.item.getIdsWithModifiedAt();
     const now = Date.now();
     const automaticIds = [];
@@ -480,10 +487,9 @@ function createGeoTagService(options) {
 
   async function setGlobalEnabled(enabled) {
     state.globalEnabled = Boolean(enabled);
-    await ensureLibraryInitialized();
+    if (state.globalEnabled) await ensureLibraryBaseline();
     await saveNow();
     emitState();
-    if (state.globalEnabled) return poll();
     return null;
   }
 

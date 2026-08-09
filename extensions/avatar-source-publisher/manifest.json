@@ -1,0 +1,20 @@
+{
+  "id": "com.max.eagle-avatar-source-publisher",
+  "version": "1.0.0",
+  "platform": "all",
+  "arch": "all",
+  "name": "MAX 头像共享源",
+  "keywords": ["头像", "团队", "共享", "MORROW", "NAS"],
+  "main": {
+    "serviceMode": true,
+    "keepAlive": true,
+    "runAfterInstall": true,
+    "multiple": false,
+    "frame": false,
+    "url": "index.html",
+    "width": 1,
+    "height": 1,
+    "resizable": false,
+    "show": false
+  }
+}

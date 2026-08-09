@@ -8078,7 +8078,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "062-SSHeiFengTi",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/08e03201c3804c07a2297cfb10826c7e.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8091,7 +8091,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_35_Thin",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-35-Thin.otf"
+        "fontPath": ""
       },
       {
         "label": "45 Light",
@@ -8099,7 +8099,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_45_Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-45-Light.otf"
+        "fontPath": ""
       },
       {
         "label": "55 Regular",
@@ -8107,7 +8107,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_55_Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-55-Regular.otf"
+        "fontPath": ""
       },
       {
         "label": "65 Medium",
@@ -8115,7 +8115,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_65_Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-65-Medium.otf"
+        "fontPath": ""
       },
       {
         "label": "75 SemiBold",
@@ -8123,7 +8123,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_75_SemiBold",
         "weight": 600,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-75-SemiBold.otf"
+        "fontPath": ""
       },
       {
         "label": "105 Heavy",
@@ -8131,7 +8131,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_105_Heavy",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-105-Heavy.otf"
+        "fontPath": ""
       },
       {
         "label": "115 Black",
@@ -8139,7 +8139,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_115_Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-115-Black.otf"
+        "fontPath": ""
       },
       {
         "label": "85 Bold",
@@ -8147,7 +8147,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_85_Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-85-Bold.otf"
+        "fontPath": ""
       },
       {
         "label": "95 ExtraBold",
@@ -8155,7 +8155,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlibabaPuHuiTi_3_95_ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlibabaPuHuiTi-3-95-ExtraBold.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -8168,7 +8168,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Thin",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Thin-Round",
@@ -8176,7 +8176,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Thin-Round",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Thin-Square",
@@ -8184,7 +8184,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Thin-Square",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Light",
@@ -8192,7 +8192,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Light-Round",
@@ -8200,7 +8200,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Light-Round",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Light-Square",
@@ -8208,7 +8208,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Light-Square",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Regular",
@@ -8216,7 +8216,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Regular-Round",
@@ -8224,7 +8224,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Regular-Round",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Regular-Square",
@@ -8232,7 +8232,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Regular-Square",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Medium",
@@ -8240,7 +8240,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Medium-Round",
@@ -8248,7 +8248,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Medium-Round",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Medium-Square",
@@ -8256,7 +8256,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Medium-Square",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "SemiBold",
@@ -8264,7 +8264,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-SemiBold",
         "weight": 600,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "SemiBold-Round",
@@ -8272,7 +8272,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-SemiBold-Round",
         "weight": 600,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "SemiBold-Square",
@@ -8280,7 +8280,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-SemiBold-Square",
         "weight": 600,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Bold",
@@ -8288,7 +8288,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       },
       {
         "label": "Bold-Square",
@@ -8296,7 +8296,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaFangYuanTiVF-Bold-Square",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaFangYuanTiVF-Thin.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8309,7 +8309,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AlimamaShuHeiTi",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AlimamaShuHeiTi-Bold.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -8322,7 +8322,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Aidian-QianMingTi",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/爱点签名体.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8335,7 +8335,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "DingTalk-JinBuTi",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/DingTalkJinBuTi-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8369,7 +8369,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FanThinkGrotesk-Bold",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FanThinkGrotesk-Bold.otf"
+        "fontPath": ""
       },
       {
         "label": "Light",
@@ -8377,7 +8377,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FanThinkGrotesk-Light",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FanThinkGrotesk-Light.otf"
+        "fontPath": ""
       },
       {
         "label": "Text",
@@ -8385,7 +8385,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FanThinkGrotesk-Text",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FanThinkGrotesk-Text.otf"
+        "fontPath": ""
       },
       {
         "label": "Thin",
@@ -8393,7 +8393,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FanThinkGrotesk-Thin",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FanThinkGrotesk-Thin.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -8406,7 +8406,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZBAIZDZ113S--GB1-0",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZBaiZDZ113JW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8419,7 +8419,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZBAIZRZTS--GB1-0",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZBaiZRZTJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8432,7 +8432,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZFSJW--GB1-0",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/方正仿宋 简体中文.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8445,7 +8445,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZHEIJGTS--GB1-0",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZHeiJGTJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8458,7 +8458,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZLTDHJW--GB1-0",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZLTDHJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8471,7 +8471,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZNIUHS-EB--GB1-0",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZNiuHJW-EB.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8484,7 +8484,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZSSJW--GB1-0",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/方正书宋 简体中文.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8497,7 +8497,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZTIANZSS-EB--GB1-0",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZTianZSJW-EB.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8510,7 +8510,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYDCHK--GBK1-0",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYDCHK.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8523,7 +8523,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYDCHJW--GB1-0",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYDCHJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8536,7 +8536,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYDTHK--GBK1-0",
         "weight": 900,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYDTHK.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8549,7 +8549,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYDTHJW--GB1-0",
         "weight": 900,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYDTHJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8562,7 +8562,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYDZHK--GBK1-0",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYDZHK.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8575,7 +8575,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYDZHJW--GB1-0",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYDZHJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8588,7 +8588,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZZJ-YRXFTJW--GB1-0",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZZJ-YRXFTJW.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8601,7 +8601,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FZYooncheQWHS-B--GB1-0",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FZYooncheQWHJW-B.TTF"
+        "fontPath": ""
       }
     ]
   },
@@ -8614,7 +8614,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "FlyFlowerSong",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/FlyFlowerSong-TTF.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8627,7 +8627,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "HYRuiYiSong_35W",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/汉仪瑞意宋 35W.ttf"
+        "fontPath": ""
       },
       {
         "label": "45W",
@@ -8635,7 +8635,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "HYRuiYiSong_45W",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/汉仪瑞意宋 45W.ttf"
+        "fontPath": ""
       },
       {
         "label": "50 Text W",
@@ -8643,7 +8643,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "HYRuiYiSong_50_Text_W",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/汉仪瑞意宋 50 Text W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8656,7 +8656,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "HYRuiYiSongI_35W",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/汉仪瑞意宋I 35W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8669,7 +8669,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "HYRuiYiSongX_80W",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/汉仪瑞意宋X 80W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8682,7 +8682,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "GEETYPE-FeilongGBT-Flash",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/HeFengShuDaoZhaoHeFeiLongTi-Shan(GEETYPE-FeilongGBT-Flash)-2.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8750,7 +8750,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-100W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 100W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8763,7 +8763,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-200W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 200W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8776,7 +8776,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-300W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 300W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8789,7 +8789,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-400W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 400W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8802,7 +8802,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-500W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 500W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8815,7 +8815,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-600W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 600W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8828,7 +8828,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-700W",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 700W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8841,7 +8841,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-100W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 100W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8854,7 +8854,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-200W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 200W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8867,7 +8867,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-300W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 300W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8880,7 +8880,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-400W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 400W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8893,7 +8893,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-500W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 500W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8906,7 +8906,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-600W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 600W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8919,7 +8919,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengHeiTi-Italic-700W",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城黑体 Italic 700W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -8932,7 +8932,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-100W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 100W.ttf"
+        "fontPath": ""
       },
       {
         "label": "200W",
@@ -8940,7 +8940,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-200W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 200W.ttf"
+        "fontPath": ""
       },
       {
         "label": "300W",
@@ -8948,7 +8948,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-300W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 300W.ttf"
+        "fontPath": ""
       },
       {
         "label": "400W",
@@ -8956,7 +8956,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-400W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 400W.ttf"
+        "fontPath": ""
       },
       {
         "label": "500W",
@@ -8964,7 +8964,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-500W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 500W.ttf"
+        "fontPath": ""
       },
       {
         "label": "700W",
@@ -8972,7 +8972,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-700W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 700W.ttf"
+        "fontPath": ""
       },
       {
         "label": "900W",
@@ -8980,7 +8980,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JiangChengXieSong-900W",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/江城斜宋体 900W.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -9397,7 +9397,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "JBHGDBS",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/QingNiaoHuaGuangDaBiaoSong-2.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -9410,7 +9410,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "TW-Sung-98_1",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/TW-Sung-98_1.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -9423,7 +9423,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "REEJI-DuoguanGB-free-Flash",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/RuiZiAoYunJingShenDuoGuanJianMianFei-Shan(REEJI-DuoguanGB-free-Flash)-2.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -9436,7 +9436,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "REEJI-PinboGB-Flash",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/RuiZiAoYunJingShenPinBoJianMianFei-Shan(REEJI-PinboGB-Flash)-2.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -9449,7 +9449,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-ExtraLightItalic",
         "weight": 100,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 ExtraLight.ttf"
+        "fontPath": ""
       },
       {
         "label": "Light",
@@ -9457,7 +9457,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-LightItalic",
         "weight": 300,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 Light.ttf"
+        "fontPath": ""
       },
       {
         "label": "Medium",
@@ -9465,7 +9465,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-MediumItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "Bold",
@@ -9473,7 +9473,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-BoldItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "Heavy",
@@ -9481,7 +9481,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-HeavyItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 Heavy.ttf"
+        "fontPath": ""
       },
       {
         "label": "Normal",
@@ -9489,7 +9489,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-NormalItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 Normal.ttf"
+        "fontPath": ""
       },
       {
         "label": "Regular",
@@ -9497,7 +9497,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSansXT-Regular",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/思源黑体斜体 Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -9510,7 +9510,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-ExtraLight",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-ExtraLight-3.otf"
+        "fontPath": ""
       },
       {
         "label": "Light",
@@ -9518,7 +9518,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-Light-5.otf"
+        "fontPath": ""
       },
       {
         "label": "Regular",
@@ -9526,7 +9526,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-Regular-1.otf"
+        "fontPath": ""
       },
       {
         "label": "Medium",
@@ -9534,7 +9534,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-Medium-6.otf"
+        "fontPath": ""
       },
       {
         "label": "SemiBold",
@@ -9542,7 +9542,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-SemiBold",
         "weight": 600,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-SemiBold-7.otf"
+        "fontPath": ""
       },
       {
         "label": "Bold",
@@ -9550,7 +9550,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-Bold-2.otf"
+        "fontPath": ""
       },
       {
         "label": "Heavy",
@@ -9558,7 +9558,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "SourceHanSerifCN-Heavy",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/SourceHanSerifCN-Heavy-4.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -9637,7 +9637,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WenYuanSerifSC-ExtraLight",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WenYuanSerifSC-ExtraLight.ttf"
+        "fontPath": ""
       },
       {
         "label": "Light",
@@ -9645,7 +9645,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WenYuanSerifSC-Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WenYuanSerifSC-Light.ttf"
+        "fontPath": ""
       },
       {
         "label": "Regular",
@@ -9653,7 +9653,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WenYuanSerifSC-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WenYuanSerifSC-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "Medium",
@@ -9661,7 +9661,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WenYuanSerifSC-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WenYuanSerifSC-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "Bold",
@@ -9669,7 +9669,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WenYuanSerifSC-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WenYuanSerifSC-Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "Heavy",
@@ -9677,7 +9677,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WenYuanSerifSC-Heavy",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WenYuanSerifSC-Heavy.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12719,7 +12719,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Source-KeynoteartHans-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/演示斜黑体.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -12732,7 +12732,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "YEFONTAoYeHei-Regular",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/YeZiGongChangAoYeHei-2.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12745,7 +12745,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "ZTQingYaTi-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/卓特清雅体.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12758,7 +12758,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "ziticqnananti",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/1634914280107229.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12771,7 +12771,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "xihuanti",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/字制区喜脉喜欢体.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12797,7 +12797,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AdeDisplay",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AdeDisplay.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -12926,7 +12926,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AmoreDreamingSansSerif",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Amore Dreaming Sans Serif.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12939,7 +12939,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AmoreDreamingSignature",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Amore Dreaming Signature.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -12965,7 +12965,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Aniyah",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Aniyah.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -13639,7 +13639,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AvenirNextWorld-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AvenirNextWorld-Regular.OTF"
+        "fontPath": ""
       },
       {
         "label": "特黑体",
@@ -13647,7 +13647,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AvenirNextWorld-Heavy",
         "weight": 900,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/AvenirNextWorld-Heavy.OTF"
+        "fontPath": ""
       },
       {
         "label": "超细斜体",
@@ -13655,7 +13655,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AvenirNextWorld-UltLtIt",
         "weight": 100,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/AvenirNextWorld-UltLtIt.OTF"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -13663,7 +13663,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AvenirNextWorld-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/AvenirNextWorld-Italic.OTF"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -13671,7 +13671,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "AvenirNextWorld-ExtraBoldIt",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/AvenirNextWorld-ExtraBoldIt.OTF"
+        "fontPath": ""
       }
     ]
   },
@@ -13710,7 +13710,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Ballet-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Ballet-Regular-VariableFont_opsz.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -13915,7 +13915,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -13923,7 +13923,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Regular_SemiBold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -13931,7 +13931,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Regular_Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗体",
@@ -13939,7 +13939,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Regular_Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑体",
@@ -13947,7 +13947,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Regular_Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗体",
@@ -13955,7 +13955,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Regular_ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -13963,7 +13963,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-Italic-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗斜体",
@@ -13971,7 +13971,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Italic_SemiBold-Italic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-Italic-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑斜体",
@@ -13979,7 +13979,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Italic_Medium-Italic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-Italic-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -13987,7 +13987,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Italic_Bold-Italic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-Italic-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑斜体",
@@ -13995,7 +13995,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Italic_Black-Italic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-Italic-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -14003,7 +14003,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa-Italic_ExtraBold-Italic",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa-Italic-VariableFont_opsz,wght.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -14016,7 +14016,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -14024,7 +14024,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-SemiBold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-SemiBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -14032,7 +14032,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗体",
@@ -14040,7 +14040,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑体",
@@ -14048,7 +14048,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-Black.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗体",
@@ -14056,7 +14056,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-ExtraBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -14064,7 +14064,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-Italic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗斜体",
@@ -14072,7 +14072,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-SemiBoldItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-SemiBoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑斜体",
@@ -14080,7 +14080,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-MediumItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-MediumItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -14088,7 +14088,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-BoldItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-BoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑斜体",
@@ -14096,7 +14096,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-BlackItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-BlackItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -14104,7 +14104,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa18pt-ExtraBoldItalic",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_18pt-ExtraBoldItalic.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -14117,7 +14117,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -14125,7 +14125,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-SemiBold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-SemiBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -14133,7 +14133,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗体",
@@ -14141,7 +14141,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑体",
@@ -14149,7 +14149,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-Black.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗体",
@@ -14157,7 +14157,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-ExtraBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -14165,7 +14165,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-Italic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗斜体",
@@ -14173,7 +14173,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-SemiBoldItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-SemiBoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑斜体",
@@ -14181,7 +14181,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-MediumItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-MediumItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -14189,7 +14189,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-BoldItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-BoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑斜体",
@@ -14197,7 +14197,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-BlackItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-BlackItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -14205,7 +14205,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa28pt-ExtraBoldItalic",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_28pt-ExtraBoldItalic.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -14218,7 +14218,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -14226,7 +14226,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-SemiBold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-SemiBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -14234,7 +14234,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗体",
@@ -14242,7 +14242,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑体",
@@ -14250,7 +14250,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-Black.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗体",
@@ -14258,7 +14258,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-ExtraBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -14266,7 +14266,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-Italic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗斜体",
@@ -14274,7 +14274,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-SemiBoldItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-SemiBoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑斜体",
@@ -14282,7 +14282,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-MediumItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-MediumItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -14290,7 +14290,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-BoldItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-BoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑斜体",
@@ -14298,7 +14298,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-BlackItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-BlackItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -14306,7 +14306,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa48pt-ExtraBoldItalic",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_48pt-ExtraBoldItalic.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -14319,7 +14319,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -14327,7 +14327,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-SemiBold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-SemiBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -14335,7 +14335,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗体",
@@ -14343,7 +14343,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑体",
@@ -14351,7 +14351,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-Black.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗体",
@@ -14359,7 +14359,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-ExtraBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -14367,7 +14367,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-Italic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗斜体",
@@ -14375,7 +14375,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-SemiBoldItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-SemiBoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑斜体",
@@ -14383,7 +14383,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-MediumItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-MediumItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -14391,7 +14391,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-BoldItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-BoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑斜体",
@@ -14399,7 +14399,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-BlackItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-BlackItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -14407,7 +14407,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa72pt-ExtraBoldItalic",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_72pt-ExtraBoldItalic.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -14420,7 +14420,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -14428,7 +14428,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-SemiBold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-SemiBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -14436,7 +14436,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗体",
@@ -14444,7 +14444,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-Bold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-Bold.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑体",
@@ -14452,7 +14452,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-Black",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-Black.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗体",
@@ -14460,7 +14460,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-ExtraBold",
         "weight": 800,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-ExtraBold.ttf"
+        "fontPath": ""
       },
       {
         "label": "斜体",
@@ -14468,7 +14468,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-Italic",
         "weight": 400,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-Italic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗斜体",
@@ -14476,7 +14476,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-SemiBoldItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-SemiBoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑斜体",
@@ -14484,7 +14484,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-MediumItalic",
         "weight": 500,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-MediumItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -14492,7 +14492,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-BoldItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-BoldItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "黑斜体",
@@ -14500,7 +14500,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-BlackItalic",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-BlackItalic.ttf"
+        "fontPath": ""
       },
       {
         "label": "加粗斜体",
@@ -14508,7 +14508,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "BodoniModa9pt-ExtraBoldItalic",
         "weight": 800,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/BodoniModa_9pt-ExtraBoldItalic.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -14676,7 +14676,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "ChironSansHKPro-Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/1637503450610372.otf"
+        "fontPath": ""
       },
       {
         "label": "加细斜体",
@@ -14684,7 +14684,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "ChironSansHKPro-ExtraLightIt",
         "weight": 100,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/1637503453589126.otf"
+        "fontPath": ""
       },
       {
         "label": "粗斜体",
@@ -14692,7 +14692,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "ChironSansHKPro-BoldIt",
         "weight": 700,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/1637503453460377.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -14705,7 +14705,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "CloisterBlack-Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/CloisterBlack-1.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -15073,7 +15073,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Explora-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Explora-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -15157,7 +15157,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Galeere",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Galeere-2.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -15291,7 +15291,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "GFSDidot-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/GFSDidot-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -15499,7 +15499,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Hangyaku",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Hangyaku-drwnR.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -15893,7 +15893,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Isenheim-Fin",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Isenheim_Fin.otf"
+        "fontPath": ""
       },
       {
         "label": "Régulier",
@@ -15901,7 +15901,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Isenheim-Regulier",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Isenheim_Regulier.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -16067,7 +16067,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Kapakana-Light",
         "weight": 300,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Kapakana-Light.ttf"
+        "fontPath": ""
       },
       {
         "label": "常规体",
@@ -16075,7 +16075,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Kapakana-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Kapakana-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -16347,7 +16347,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "KuenstlerScript-TwoBold",
         "weight": 700,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/KuenstlerScript-TwoBold.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -16441,7 +16441,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MADESAONARA",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/MADE SAONARA PERSONAL USE.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -16454,7 +16454,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MADESAONARA2",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/MADE SAONARA 2 PERSONAL USE.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -16530,7 +16530,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MeaCulpa-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/MeaCulpa-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -16593,7 +16593,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MiSans-ExtraLight",
         "weight": 100,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/小米字体MiSans-ExtraLight.ttf"
+        "fontPath": ""
       },
       {
         "label": "常规体",
@@ -16601,7 +16601,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MiSans-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/小米字体MiSans-Regular.ttf"
+        "fontPath": ""
       },
       {
         "label": "中粗体",
@@ -16609,7 +16609,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MiSans-Semibold",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/小米字体MiSans-Semibold.ttf"
+        "fontPath": ""
       },
       {
         "label": "中黑体",
@@ -16617,7 +16617,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MiSans-Medium",
         "weight": 500,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/小米字体MiSans-Medium.ttf"
+        "fontPath": ""
       },
       {
         "label": "特黑体",
@@ -16625,7 +16625,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MiSans-Heavy",
         "weight": 900,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/小米字体MiSans-Heavy.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -16677,7 +16677,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MonsieurLaDoulaise-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/MonsieurLaDoulaise-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -16690,7 +16690,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MrsSaintDelafield-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/MrsSaintDelafield-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -17165,7 +17165,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "NotoSansSC",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/NotoSansSC.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -17345,7 +17345,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "OldLondon",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/OldLondon-1.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -17445,7 +17445,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "MPalaceScript",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/MPalaceScript.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -17563,7 +17563,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "PoiretOne-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/PoiretOne-Regular.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -17755,7 +17755,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Raykuns-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Raykuns.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -18324,7 +18324,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "ThePallace-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/the-pallace 2.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -18453,7 +18453,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "Univers-ExtraBlackExtOblique",
         "weight": 900,
         "style": "italic",
-        "fontPath": "/Users/max/Library/Fonts/UVFVO-2.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -18466,7 +18466,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "UniversLTStd-UltraCn",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/Univers-LT-Std-2.otf"
+        "fontPath": ""
       }
     ]
   },
@@ -18589,7 +18589,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "WireOne-Regular",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/WireOne-Regular.ttf"
+        "fontPath": ""
       }
     ]
   },
@@ -18628,7 +18628,7 @@ window.MAX_FONT_CATALOG = [
         "postscriptName": "HYb0gj",
         "weight": 400,
         "style": "normal",
-        "fontPath": "/Users/max/Library/Fonts/HanYiChaoCuHeiJian-1.ttf"
+        "fontPath": ""
       }
     ]
   }

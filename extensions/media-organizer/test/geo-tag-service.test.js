@@ -63,13 +63,36 @@ function createItem(id, options = {}) {
           : { status: "resolved", label: "日本", scope: "country" };
       }
     },
-    mediaTypeForExtension: (ext) => ext === "jpg" ? "image" : null,
-    readMediaLocation: async (filePath) => locations.get(filePath) || null,
+    mediaTypeForExtension: (ext) => ext === "jpg" ? "image" : ext === "mov" ? "video" : null,
+    readMediaLocation: async (filePath) => {
+      if (filePath.includes("ffprobe-missing")) {
+        const error = new Error("视频地点读取需要 ffprobe");
+        error.code = "FFPROBE_UNAVAILABLE";
+        throw error;
+      }
+      return locations.get(filePath) || null;
+    },
     log: { warn() {} }
   });
 
   await service.initialize();
+  assert.strictEqual(service.getSnapshot().globalEnabled, false);
+  assert.strictEqual(
+    service.getSnapshot().stats.total,
+    0,
+    "a clean install must not enumerate the existing library during initialization"
+  );
+  assert.strictEqual(old.saveCount, 0);
+  assert.strictEqual(existing.saveCount, 0);
+
+  await service.setGlobalEnabled(true);
   assert.strictEqual(service.getSnapshot().stats.pending, 2);
+  assert.strictEqual(old.saveCount, 0, "enabling must establish a baseline, not write tags");
+  assert.strictEqual(existing.saveCount, 0, "baseline items must not be auto-tagged");
+  await service.poll();
+  assert.strictEqual(old.saveCount, 0, "a baseline item must never be treated as new");
+  assert.strictEqual(existing.saveCount, 0, "a baseline item must never be treated as new");
+
   await service.scanExisting();
   assert.strictEqual(old.tags.includes("杭州"), true);
   assert.strictEqual(old.saveCount, 1);
@@ -179,6 +202,12 @@ function createItem(id, options = {}) {
     ["杭州", "迪拜", "阿联酋"],
     "location picker must exclude unrelated Eagle tags"
   );
+
+  const ffprobeMissing = createItem("ffprobe-missing", { ext: "mov" });
+  items.set(ffprobeMissing.id, ffprobeMissing);
+  await service.scanCurrent([ffprobeMissing.id]);
+  assert.strictEqual(service.getSnapshot().resultStats.unresolved, 1);
+  assert.match((await service.listExceptions("unresolved"))[0].reason, /ffprobe/);
 
   console.log("geo tag service tests passed");
 })().catch((error) => {

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gravity.avatar-source-locator.v1",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "sourceId", "libraryIdentity", "currentManifest", "assetRoot"],
+  "properties": {
+    "kind": { "const": "gravity.avatar-source-locator.v1" },
+    "schemaVersion": { "const": 1 },
+    "sourceId": { "const": "gravity.eagle.avatar-source.v1" },
+    "libraryIdentity": { "type": "string", "minLength": 1 },
+    "currentManifest": { "const": "manifests/current.json" },
+    "assetRoot": { "const": "assets" }
+  },
+  "additionalProperties": true
+}

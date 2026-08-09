@@ -1,4 +1,4 @@
-# MAX Publisher 1.2
+# MAX Publisher 1.2.7
 
 这是 Eagle 水印导出、隐私打码与线上作品发布工具。1.2 在 1.0 的纯净水印版本上新增独立隐私打码工作区，并继续只保留唯一水印模块、唯一字体目录和唯一导出链。
 
@@ -49,3 +49,9 @@ npm run package:plugin
 - `eagle-plugin/modules/vendor/gravity-privacy-editor/1.1.0/README.md`
 - `eagle-plugin/modules/quick-export/README.md`
 - `eagle-plugin/adapters/eagle/README.md`
+
+## GitHub 稳定发行
+
+从 GitHub 获取源码后执行 `npm ci`、`npm test`、`npm run build:privacy` 与 `npm run package:plugin`；产物为根目录 `max-eagle-publisher-1.2.7.eagleplugin`，版本必须与 `eagle-plugin/manifest.json` 一致。
+
+水印、马赛克、文字标注、字体发现和本地导出不需要 API Key。线上发布仅在操作者本机已通过 Wrangler 登录，或由本机环境变量提供凭证时可用；凭证、Wrangler 状态、Eagle 配置和发布数据均不进入仓库或插件包。

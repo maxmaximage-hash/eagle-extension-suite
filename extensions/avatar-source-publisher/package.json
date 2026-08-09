@@ -1,0 +1,11 @@
+{
+  "name": "eagle-avatar-source-publisher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Exports the approved Eagle avatar folders as a versioned, MORROW-safe shared source.",
+  "main": "plugin.js",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "package": "node scripts/package-plugin.js"
+  }
+}

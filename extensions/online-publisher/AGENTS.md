@@ -21,7 +21,7 @@ npm run package:plugin
 - 隐私编辑器构建通过。
 - 插件包版本与 manifest 一致。
 - 在 Eagle 中验证真实图片的水印、打码、字体和导出。
-- 发布操作只写入 `/Users/max/引力环球/Eagle线上发布数据`，不写回 Eagle 原图。
+- 发布操作只写入 `~/引力环球/Eagle线上发布数据`，不写回 Eagle 原图。
 
 ## 约束
 

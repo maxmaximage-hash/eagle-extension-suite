@@ -1,4 +1,4 @@
-# Gravity Watermark Editor 1.1.1
+# Gravity Watermark Editor 1.1.2
 
 这是 Eagle 1.0 使用的唯一水印原版。共享的是 UI、交互、配置结构、预览和真实导出算法，不包含 Eagle Library、预设数据或任何项目图片。
 
@@ -9,7 +9,11 @@
 - `browser.js`：浏览器全局 `GravityWatermarkEditor`，负责完整编辑 UI 和实时预览。
 - `renderer.js`：Node/CommonJS 真实渲染器。
 - `editor.css`：当前 1.0 的完整界面样式，是迁移 UI 时的唯一样式源。
-- `index.js`：服务端统一入口，版本为 `1.1.1`。
+- `index.js`：服务端统一入口，版本为 `1.1.2`。
+
+## 1.1.2
+
+- 按文件大小导出时，PNG 与 JPEG/WebP 一样执行硬性字节上限；必要时逐级缩小尺寸，无法满足则明确失败。
 
 ## 1.1.1
 

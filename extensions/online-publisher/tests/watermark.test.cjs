@@ -297,8 +297,8 @@ test('统一水印层在不同预览尺寸下保持归一化位置和大小', as
 });
 
 test('所选字体直接读取真实字体文件并以字形路径渲染', async (context) => {
-  const thinPath = '/Users/max/Library/Fonts/江城斜宋体 100W.ttf';
-  const heavyPath = '/Users/max/Library/Fonts/江城斜宋体 900W.ttf';
+  const thinPath = path.join(os.homedir(), 'Library', 'Fonts', '江城斜宋体 100W.ttf');
+  const heavyPath = path.join(os.homedir(), 'Library', 'Fonts', '江城斜宋体 900W.ttf');
   if (!fs.existsSync(thinPath) || !fs.existsSync(heavyPath)) {
     context.skip('当前机器没有江城斜宋体完整字重文件');
     return;
@@ -468,7 +468,7 @@ test('紧凑实时预览图层可无损还原真实导出水印层', async () =>
 });
 
 test('字间距和行间距可以复用真实字形路径生成快速矢量预览', async (context) => {
-  const fontPath = '/Users/max/Library/Fonts/江城斜宋体 100W.ttf';
+  const fontPath = path.join(os.homedir(), 'Library', 'Fonts', '江城斜宋体 100W.ttf');
   if (!fs.existsSync(fontPath)) {
     context.skip('当前机器没有江城斜宋体 100W');
     return;

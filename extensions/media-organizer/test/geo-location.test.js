@@ -2,9 +2,11 @@
 
 const assert = require("assert");
 const {
+  createFfprobeUnavailableError,
   extractVideoLocation,
   normalizeLocation,
-  parseIso6709Location
+  parseIso6709Location,
+  readVideoLocation
 } = require("../lib/media-location");
 const {
   createGeoResolver,
@@ -32,6 +34,19 @@ assert.deepStrictEqual(
   }),
   { latitude: 35.6762, longitude: 139.6503 }
 );
+
+(async () => {
+  await assert.rejects(
+    () => readVideoLocation("/tmp/example.mov", null),
+    (error) => error.code === "FFPROBE_UNAVAILABLE" && /ffprobe/.test(error.message),
+    "a missing ffprobe must be a visible diagnostic rather than a silent no-GPS result"
+  );
+  assert.strictEqual(createFfprobeUnavailableError().code, "FFPROBE_UNAVAILABLE");
+  console.log("geo video dependency diagnostics passed");
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
 
 assert.strictEqual(shortChinaPlaceName("杭州市"), "杭州");
 assert.strictEqual(shortChinaPlaceName("阿坝藏族羌族自治州"), "阿坝");

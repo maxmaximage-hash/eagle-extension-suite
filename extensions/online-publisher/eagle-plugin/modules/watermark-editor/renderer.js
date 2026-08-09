@@ -525,13 +525,15 @@ async function encodeRenderedBuffer(input, outputPath, options = {}) {
     : 0;
   const maxBytes = requestedSizeBytes || sourceSizeCapBytes;
   let output = await encode(quality);
-  if (maxBytes && format !== 'png' && output.length > maxBytes) {
-    output = await bestEncodingWithinLimit(maxBytes);
+  if (maxBytes && output.length > maxBytes) {
+    output = format === 'png' ? null : await bestEncodingWithinLimit(maxBytes);
     if (!output) {
       let nextWidth = base.info.width;
       while (!output && nextWidth > 320) {
         nextWidth = Math.max(320, Math.floor(nextWidth * 0.85));
-        output = await bestEncodingWithinLimit(maxBytes, nextWidth);
+        output = format === 'png'
+          ? await encode(quality, nextWidth).then((attempt) => attempt.length <= maxBytes ? attempt : null)
+          : await bestEncodingWithinLimit(maxBytes, nextWidth);
       }
     }
     if (!output) {
@@ -540,6 +542,9 @@ async function encodeRenderedBuffer(input, outputPath, options = {}) {
         : `${Math.max(1, Math.floor(sourceSizeCapBytes / 1_000))} KB`;
       throw new Error(`无法在不超过 ${limitLabel} 的条件下完成导出`);
     }
+  }
+  if (maxBytes && output.length > maxBytes) {
+    throw new Error(`导出结果超过硬性体积上限 ${maxBytes} bytes`);
   }
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, output);

@@ -7,6 +7,15 @@ const { findFfprobe, mediaTypeForExtension } = require("./media-time");
 
 const execFile = util.promisify(childProcess.execFile);
 
+function createFfprobeUnavailableError(cause) {
+  const error = new Error(
+    "视频地点读取需要 ffprobe；请安装 FFmpeg，或安装 Eagle 的 ffmpeg 插件后重试"
+  );
+  error.code = "FFPROBE_UNAVAILABLE";
+  if (cause) error.cause = cause;
+  return error;
+}
+
 function normalizeLocation(latitude, longitude) {
   const lat = Number(latitude);
   const lon = Number(longitude);
@@ -76,18 +85,23 @@ async function readImageLocation(filePath) {
 }
 
 async function readVideoLocation(filePath, ffprobePath = findFfprobe()) {
-  if (!ffprobePath) return null;
-  const { stdout } = await execFile(
-    ffprobePath,
-    [
-      "-v", "error",
-      "-show_entries", "format_tags:stream_tags",
-      "-of", "json",
-      filePath
-    ],
-    { maxBuffer: 1024 * 1024, timeout: 15000 }
-  );
-  return extractVideoLocation(JSON.parse(stdout));
+  if (!ffprobePath) throw createFfprobeUnavailableError();
+  try {
+    const { stdout } = await execFile(
+      ffprobePath,
+      [
+        "-v", "error",
+        "-show_entries", "format_tags:stream_tags",
+        "-of", "json",
+        filePath
+      ],
+      { maxBuffer: 1024 * 1024, timeout: 15000 }
+    );
+    return extractVideoLocation(JSON.parse(stdout));
+  } catch (error) {
+    if (error?.code === "ENOENT") throw createFfprobeUnavailableError(error);
+    throw error;
+  }
 }
 
 async function readMediaLocation(filePath, extension) {
@@ -98,9 +112,11 @@ async function readMediaLocation(filePath, extension) {
 }
 
 module.exports = {
+  createFfprobeUnavailableError,
   extractVideoLocation,
   locationFromTagObject,
   normalizeLocation,
   parseIso6709Location,
+  readVideoLocation,
   readMediaLocation
 };

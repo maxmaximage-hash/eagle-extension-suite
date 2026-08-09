@@ -1,12 +1,32 @@
-# EAGLE 扩展
+# Eagle Extension Suite
 
-这是独立于 MORROW 的 Eagle 产品体系。所有围绕 Eagle 运行的线上展示、水印、打码、字体和媒体整理能力归这里。
+面向 Eagle 4 的团队媒体工作套件：排序与安全改名、GPS/元数据标签、水印与隐私打码、线上展示、Live Photo 管理和 iCloud 搬运台账。它独立于 MORROW；任何跨产品数据交换都只走版本化、只读的契约。
 
-当前只建立干净项目骨架，历史代码尚未迁入。
+当前源码基线：`媒体智能整理 2.5.22-qa.71 / API148`、`MAX Publisher 1.2.7`。这份仓库只包含源码、测试、说明和界面示例，绝不包含 Eagle `.library`、NAS 素材、运行缓存、恢复资料、`app.asar`、密钥或发布后的用户状态。
 
-## 计划结构
+## 从这里开始
 
-- `extensions/`：可安装、可运行的 Eagle 扩展。
-- `modules/`：只在 Eagle 产品体系内部复用的模块。
-- `adapters/`：Eagle API、窗口、资料库和共享能力接入。
-- `tests/`：扩展和兼容性验证。
+- [团队安装、配置与使用指南](docs/GITHUB-SETUP-AND-USER-GUIDE.md)：给团队成员和 Codex 的完整操作入口。
+- [功能与实现架构](docs/ARCHITECTURE-AND-FEATURE-MAP.md)：每项功能的实现位置、数据边界和同步方式。
+- [模块边界与 Eagle 原生主权](docs/EAGLE-EXTENSION-MODULE-BOUNDARIES.md)：排序、发布、标签三条业务线不得耦合的强制规则。
+- [排序历史回归与验收](extensions/media-organizer/docs/PERMANENT-REGRESSION-CONTRACT.md)：排序修复不能回归的永久门禁。
+
+## 功能地图
+
+| 业务线 | 对应目录 | 当前能力 |
+| --- | --- | --- |
+| 排序与安全改名 | `extensions/media-organizer/` | 普通/智能文件夹排序、多级规则、拍摄时间、手动拖动、排序锁定、自动编号、团队排序状态同步 |
+| GPS/元数据标签 | `extensions/media-organizer/` | 离线读取图片/视频 GPS、地域标签审核、人工纠错、文件夹地点标签 |
+| 水印、隐私与线上发布 | `extensions/online-publisher/` | 水印编辑、字体库、模糊/马赛克/文字标注、快速导出、Cloudflare Pages 发布 |
+| Live Photo 管理 | `extensions/live-photo-manager/` | JPG/HEIC 与 MOV 安全配对、冲突识别、可恢复处理队列、只读 Demo |
+| 团队头像只读共享源 | `extensions/avatar-source-publisher/` | 从指定 Eagle 头像文件夹生成版本化 manifest 与内容寻址资源 |
+| iCloud 搬运台账 | `tools/icloud-intake-workbench/` | 本地批次台账、“继续上次”、Live Photo 配对；不登录、不下载、不写 NAS |
+
+## 仓库结构
+
+- `extensions/`：各可独立安装或运行的扩展。
+- `docs/`：产品说明、治理规则、安装指南和界面示例。
+- `tools/`：不直接接管 Eagle 的独立辅助工具。
+- `PROJECT.md`、`TASKS.md`、`DECISIONS.md`：项目范围、状态和可追溯决策。
+
+> 安全底线：扩展不能替代或破坏 Eagle 的选择、预览、右键、导入导出、拖出、普通文件夹、智能文件夹等原生能力。未经明确批准，不得修改 Eagle 宿主、`.library` 内部结构或 NAS 原素材。

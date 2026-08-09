@@ -7,3 +7,34 @@
 **/*.log
 **/*.eagleplugin
 /releases/
+/graphify-out/
+/docs/acceptance/
+
+# Local QA, recovery and user-data artifacts — never publish these to GitHub.
+/qa-candidate/
+/qa-evidence/
+/qa-fixtures/
+/qa-fixtures-unique/
+/qa-library/
+/qa-held-out/
+/.release-worktree/
+/design-qa.md
+/PROJECT_MANAGER.md
+
+# Media organizer runtime state, real-library recovery records and generated releases.
+/extensions/media-organizer/backups/
+/extensions/media-organizer/recovery/
+/extensions/media-organizer/releases/
+/extensions/media-organizer/graphify-out/
+/extensions/media-organizer/lib/graphify-out/
+/extensions/media-organizer/photo-taken-cache.json
+/extensions/media-organizer/geo-tag-state.json
+/extensions/media-organizer/media-location-cache.json
+/extensions/media-organizer/media-time-cache.json
+/extensions/media-organizer/rename-batch-backup.json
+/extensions/media-organizer/defaults/sort-state/
+
+# Local samples, generated package artifacts and deployment content.
+/extensions/instagram-post-importer/releases/
+/extensions/online-publisher/.preview-assets/
+/extensions/online-publisher/cloudflare-pages/public/

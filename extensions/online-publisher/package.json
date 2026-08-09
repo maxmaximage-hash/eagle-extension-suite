@@ -1,6 +1,6 @@
 {
   "name": "max-eagle-publisher",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "private": true,
   "description": "MAX Publisher 1.0 for Eagle watermark export and Cloudflare Pages publishing",
   "scripts": {
@@ -10,7 +10,7 @@
     "fonts:paths": "system_profiler SPFontsDataType -json > /tmp/max-fonts-system.json && node scripts/refresh-font-paths.cjs /tmp/max-fonts-system.json",
     "preview": "node scripts/preview.cjs",
     "test:pages": "wrangler pages dev cloudflare-pages/public --persist-to .wrangler/state",
-    "package:plugin": "npm run build:privacy && rm -f max-eagle-publisher.eagleplugin && cd eagle-plugin && zip -qr ../max-eagle-publisher.eagleplugin . -x '*.DS_Store'"
+    "package:plugin": "npm run build:privacy && rm -f max-eagle-publisher-1.2.7.eagleplugin && cd eagle-plugin && zip -qr ../max-eagle-publisher-1.2.7.eagleplugin . -x '*.DS_Store'"
   },
   "devDependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -18,7 +18,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "vite": "^6.4.3",
-    "wrangler": "^4.107.0"
+    "wrangler": "4.118.0"
   },
   "allowScripts": {
     "esbuild@0.28.1": true,

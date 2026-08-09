@@ -141,30 +141,36 @@ class Publisher {
       const inputPath = resolveItemFilePath(item, { cloudflare: { eagleLibraryRoot: options.eagleLibraryRoot } });
       if (!inputPath) {
         results.push({ id: item.id, ok: false, error: '原图文件不存在' });
-        continue;
+      } else {
+        const format = options.format === 'png' ? 'png' : options.format === 'webp' ? 'webp' : 'jpg';
+        const filename = `${safeName(item.name)}${options.suffix || '-watermarked'}.${format}`;
+        const requestedOutputPath = path.join(destination, filename);
+        const outputPath = options.collisionMode === 'overwrite'
+          ? requestedOutputPath
+          : uniqueOutputPath(requestedOutputPath);
+        try {
+          await renderItem(inputPath, outputPath, {
+            maxWidth: options.maxWidth,
+            quality: options.compressionMode === 'size' ? 100 : options.quality,
+            maxFileSizeMb: options.compressionMode === 'size' ? options.maxFileSizeMb : '',
+            maxOutputBytes: options.compressionMode === 'quality' ? fs.statSync(inputPath).size : 0,
+            format,
+            watermark: options.watermark,
+            privacyLayer: options.privacyLayer,
+            annotations: options.annotations
+          });
+          const limitBytes = options.compressionMode === 'size'
+            ? Math.floor(Number(options.maxFileSizeMb || 0) * 1_000_000)
+            : 0;
+          if (limitBytes && fs.statSync(outputPath).size > limitBytes) {
+            throw new Error(`导出结果超过 ${options.maxFileSizeMb} MB 上限`);
+          }
+          results.push({ id: item.id, ok: true, outputPath });
+        } catch (error) {
+          results.push({ id: item.id, ok: false, error: error.message });
+        }
       }
-      const format = options.format === 'png' ? 'png' : options.format === 'webp' ? 'webp' : 'jpg';
-      const filename = `${safeName(item.name)}${options.suffix || '-watermarked'}.${format}`;
-      const requestedOutputPath = path.join(destination, filename);
-      const outputPath = options.collisionMode === 'overwrite'
-        ? requestedOutputPath
-        : uniqueOutputPath(requestedOutputPath);
-      try {
-        await renderItem(inputPath, outputPath, {
-          maxWidth: options.maxWidth,
-          quality: options.quality,
-          maxFileSizeMb: options.compressionMode === 'size' ? options.maxFileSizeMb : '',
-          maxOutputBytes: options.compressionMode === 'quality' ? fs.statSync(inputPath).size : 0,
-          format,
-          watermark: options.watermark,
-          privacyLayer: options.privacyLayer,
-          annotations: options.annotations
-        });
-        results.push({ id: item.id, ok: true, outputPath });
-      } catch (error) {
-        results.push({ id: item.id, ok: false, error: error.message });
-      }
-      if (onProgress) onProgress({ current: index + 1, total: items.length, item, results });
+      if (onProgress) await onProgress({ current: index + 1, total: items.length, item, results });
     }
     return results;
   }

@@ -1,5 +1,6 @@
 const isNodeRuntime = typeof require === 'function';
 let fs = { existsSync: () => false };
+let os = { homedir: () => '' };
 let path = {
   basename: (value) => String(value || '').split(/[\\/]/).pop() || '',
   join: (...parts) => parts.filter(Boolean).join('/')
@@ -75,6 +76,7 @@ function pluginModulePath(nativePath, relativePath) {
 if (isNodeRuntime) {
   try {
     fs = require('fs');
+    os = require('os');
     path = require('path');
     http = require('http');
     childProcess = require('child_process');
@@ -642,7 +644,7 @@ function openOnlineShowcasePage() {
 function inferredPagesRoot() {
   const configured = config.cloudflare && String(config.cloudflare.pagesRoot || '').trim();
   if (configured) return configured;
-  const projectDefault = '/Users/max/引力环球/Eagle线上发布数据';
+  const projectDefault = path.join(os.homedir(), '引力环球', 'Eagle线上发布数据');
   if (fs.existsSync && fs.existsSync(projectDefault)) return projectDefault;
   if (!window.location || window.location.protocol !== 'file:' || !path.dirname) return '';
   const htmlPath = decodeURIComponent(window.location.pathname || '');

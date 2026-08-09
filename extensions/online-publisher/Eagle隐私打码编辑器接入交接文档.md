@@ -30,25 +30,25 @@
 ### 2.1 Eagle 正式源码
 
 ```text
-/Users/max/引力环球/朋友圈模拟器/Eagle线上展示
+~/引力环球/朋友圈模拟器/Eagle线上展示
 ```
 
 Eagle 插件源码：
 
 ```text
-/Users/max/引力环球/朋友圈模拟器/Eagle线上展示/eagle-plugin
+~/引力环球/朋友圈模拟器/Eagle线上展示/eagle-plugin
 ```
 
 当前安装版：
 
 ```text
-/Users/max/Library/Application Support/Eagle/Plugins/com.max.eagle-online-showcase
+~/Library/Application Support/Eagle/Plugins/com.max.eagle-online-showcase
 ```
 
 当前插件包：
 
 ```text
-/Users/max/引力环球/朋友圈模拟器/Eagle线上展示/max-eagle-publisher.eagleplugin
+~/引力环球/朋友圈模拟器/Eagle线上展示/max-eagle-publisher.eagleplugin
 ```
 
 当前插件信息：
@@ -61,19 +61,19 @@ Eagle 插件源码：
 ### 2.2 隐私编辑器唯一上游
 
 ```text
-/Users/max/.codex/worktrees/d3f0/朋友圈模拟器/共享模块/gravity-privacy-editor/1.0.0
+~/.codex/worktrees/d3f0/朋友圈模拟器/共享模块/gravity-privacy-editor/1.0.0
 ```
 
 现有朋友圈模拟器安装副本：
 
 ```text
-/Users/max/.codex/worktrees/d3f0/朋友圈模拟器/应用源码/src/modules/shared/vendor/gravity-privacy-editor/1.0.0
+~/.codex/worktrees/d3f0/朋友圈模拟器/应用源码/src/modules/shared/vendor/gravity-privacy-editor/1.0.0
 ```
 
 现有微信宿主适配参考：
 
 ```text
-/Users/max/.codex/worktrees/d3f0/朋友圈模拟器/应用源码/src/modules/simulator/chat/index.jsx
+~/.codex/worktrees/d3f0/朋友圈模拟器/应用源码/src/modules/simulator/chat/index.jsx
 ```
 
 禁止让 Eagle 在运行时 import 朋友圈模拟器或上述工作树路径。Eagle 必须安装自己的版本副本。
@@ -678,19 +678,19 @@ Phase 1 完成必须满足：
 请继续把 @gravity/privacy-editor 接入现有 Eagle MAX Publisher。
 
 Eagle 项目：
-/Users/max/引力环球/朋友圈模拟器/Eagle线上展示
+~/引力环球/朋友圈模拟器/Eagle线上展示
 
 Eagle 插件源码：
-/Users/max/引力环球/朋友圈模拟器/Eagle线上展示/eagle-plugin
+~/引力环球/朋友圈模拟器/Eagle线上展示/eagle-plugin
 
 交接文档：
-/Users/max/引力环球/朋友圈模拟器/Eagle线上展示/Eagle隐私打码编辑器接入交接文档.md
+~/引力环球/朋友圈模拟器/Eagle线上展示/Eagle隐私打码编辑器接入交接文档.md
 
 共享隐私模块唯一上游：
-/Users/max/.codex/worktrees/d3f0/朋友圈模拟器/共享模块/gravity-privacy-editor/1.0.0
+~/.codex/worktrees/d3f0/朋友圈模拟器/共享模块/gravity-privacy-editor/1.0.0
 
 微信宿主适配参考：
-/Users/max/.codex/worktrees/d3f0/朋友圈模拟器/应用源码/src/modules/simulator/chat/index.jsx
+~/.codex/worktrees/d3f0/朋友圈模拟器/应用源码/src/modules/simulator/chat/index.jsx
 
 先阅读 Eagle 项目 README、package.json、manifest.json、adapters/eagle/README.md、现有测试和交接文档。
 

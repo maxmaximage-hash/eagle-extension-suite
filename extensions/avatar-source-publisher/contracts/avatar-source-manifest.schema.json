@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gravity.avatar-source-manifest.v1",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "manifestVersion", "snapshotKind", "source", "records", "tombstones", "counts", "integrity"],
+  "properties": {
+    "kind": { "const": "gravity.avatar-source-manifest.v1" },
+    "schemaVersion": { "const": 1 },
+    "manifestVersion": { "type": "integer", "minimum": 1 },
+    "snapshotKind": { "const": "full" },
+    "source": {
+      "type": "object",
+      "required": ["sourceId", "libraryIdentity", "generatedAt", "folders"],
+      "properties": {
+        "sourceId": { "const": "gravity.eagle.avatar-source.v1" },
+        "libraryIdentity": { "type": "string", "minLength": 1 },
+        "generatedAt": { "type": "string" },
+        "folders": { "type": "array" }
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["eagleItemId", "rawName", "displayName", "gender", "status", "validationIssues", "resourceRef"],
+        "properties": {
+          "eagleItemId": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["active", "invalid"] },
+          "validationIssues": { "type": "array", "items": { "type": "string" } },
+          "resourceRef": {
+            "anyOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "required": ["scheme", "authority", "assetKey", "relativePath", "integrity"],
+                "properties": {
+                  "scheme": { "const": "gravity.avatar.asset.v1" },
+                  "authority": { "const": "gravity.eagle.avatar-source.v1" },
+                  "relativePath": { "pattern": "^assets/sha256/[a-f0-9]{2}/[a-f0-9]{64}\\.(webp|png|jpg|jpeg)$" }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "tombstones": { "type": "array" },
+    "counts": { "type": "object" },
+    "integrity": {
+      "type": "object",
+      "required": ["algorithm", "canonicalPayloadSha256"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "canonicalPayloadSha256": { "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

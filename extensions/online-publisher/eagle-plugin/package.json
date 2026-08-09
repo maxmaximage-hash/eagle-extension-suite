@@ -1,12 +1,12 @@
 {
   "name": "max-eagle-publisher-plugin",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "private": true,
   "dependencies": {
     "fontkit": "2.0.4",
-    "sharp": "0.32.6"
+    "sharp": "0.35.3"
   },
   "allowScripts": {
-    "sharp@0.32.6": true
+    "sharp@0.35.3": true
   }
 }

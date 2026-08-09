@@ -1,13 +1,19 @@
-# Gravity Font Manager 1.1.2
+# Gravity Font Manager 1.1.3
 
 字体管理已经与 Eagle 业务逻辑分离，可在以后独立成 Mac 字体管理软件。
 
 - `classifier.js`：中英文与无衬线、有衬线、手写分类算法。
 - `classification.js`：人工校准表。
-- `catalog.js`：当前 Mac 字体家族、字面、字重和真实字体路径目录。
+- `catalog.js`：字体家族、字面和字重的离线参考；真实路径仅在当前 Mac 运行时发现。
 - `metadata.js`：字体文件语言覆盖和元数据。
 - `browser.js`：管理页、搜索、筛选、分类、隐藏与字重预览；公开浏览器全局 `GravityFontManager`。
-- `index.js`：CommonJS 入口，版本为 `1.1.2`。
+- `index.js`：CommonJS 入口，版本为 `1.1.3`。
+
+## 1.1.3
+
+- 随包目录只保留字体身份参考，不再携带任一开发者的用户字体路径。
+- Eagle 首次运行和手动刷新均通过 `system_profiler` 发现当前 Mac 已安装字体，按真实 PostScript 名保留字重选择。
+- 已保存但未安装的字体会在导出时明确降级到可用兜底字体；不会把旧路径伪装成仍可用的字面。
 
 ## 1.1.2
 

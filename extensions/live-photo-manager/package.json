@@ -1,0 +1,12 @@
+{
+  "name": "max-eagle-live-photo-manager",
+  "version": "0.1.0-demo.1",
+  "private": true,
+  "description": "Read-only Live Photo pairing and preview demo for Eagle.",
+  "main": "plugin.js",
+  "scripts": {
+    "sync:core": "node scripts/sync-live-core.js",
+    "test": "npm run sync:core && node --test test/*.test.js",
+    "demo": "npm run sync:core && node server.js"
+  }
+}

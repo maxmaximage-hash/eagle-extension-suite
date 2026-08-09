@@ -16,7 +16,7 @@
 
 ## 版本化模块
 
-- 隐私共享上游：`/Users/max/.codex/worktrees/d3f0/朋友圈模拟器/共享模块/gravity-privacy-editor/1.1.0`
+- 隐私共享上游：`~/.codex/worktrees/d3f0/朋友圈模拟器/共享模块/gravity-privacy-editor/1.1.0`
 - Eagle 安装副本：`eagle-plugin/modules/vendor/gravity-privacy-editor/1.1.0`
 - 两处通过自动测试逐文件 SHA-256 校验一致。
 - 共享包公开浏览器 API：Schema、normalize、Canvas renderer、`PrivacyCanvas`、`PrivacyEditor`、`PrivacyControlPanel`。
