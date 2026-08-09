@@ -60,9 +60,9 @@ GPS 模块独立读取图片 EXIF 和视频位置字段，在离线数据集中�
 
 - `extensions/live-photo-manager/`：Live Photo 的配对、冲突识别、预览队列与恢复锚点。当前不封装 `.livp`、不写 Eagle Library、不直接导入正式 NAS。
 - `extensions/avatar-source-publisher/`：指定 Eagle 头像文件夹是唯一人工维护入口；它导出不含绝对路径的版本化 manifest 和内容寻址 assets。MORROW 只能通过其自己的 adapter 消费该契约，不能调用 Eagle API 或读取 `.library` 内部。
-- `extensions/web-media-importer/`：通用浏览器入口。内容脚本只在用户明确触发后收集当前页面直连媒体；
-  纯 `core.js` 做分类、拒绝、去重与队列状态；后台逐项使用 Chrome Downloads 缓存并调用 Eagle 公开
-  `addFromPath`。API `success` 只记为 `accepted`，失败可重试；缓存仅在 accepted 后延迟 24 小时清理。
+- `extensions/web-media-importer/`：浏览器媒体入口。`provider-adapters.js` 为微博/B站/抖音/YouTube/
+  generic 证明当前内容归属；`core.js` 负责候选、真实下载验真、限额、状态机和脱敏；后台每项持久化，
+  API `success` 只 accepted，公开 API 读回同 ID、未删除才 confirmed，只有 confirmed 缓存可清理。
 - `extensions/instagram-post-importer/`、`extensions/xiaohongshu-post-importer/`：站点专用单帖工具，
   与通用入口及 Eagle 插件业务状态隔离；不得读取排序 sidecar 或在后台批量抓取。
 - `tools/icloud-intake-workbench/`：本地、可恢复的搬运台账。当前仅用于计划和核对，绝不静默下载、删除、移动或导入素材。
@@ -71,18 +71,19 @@ GPS 模块独立读取图片 EXIF 和视频位置字段，在离线数据集中�
 
 ```mermaid
 flowchart LR
-  U["用户点击按钮或右键"] --> C["当前页面媒体采集"]
-  C --> P["纯核心：直连分类 / 拒绝 / 去重 / 限流"]
-  P --> F["用户选择 Eagle 普通文件夹"]
-  F --> Q["持久化串行队列"]
-  Q --> D["Chrome Downloads 缓存"]
-  D --> A["Eagle 公开 API addFromPath"]
-  A -->|"success"| K["accepted + 24 小时后清理缓存"]
-  A -->|"失败"| R["保留原因并允许重试"]
+  U["用户点击按钮或右键"] --> C["Provider adapter：证明当前帖子/视频归属"]
+  C --> P["候选门：流/分轨/权限/数量与估计大小"]
+  P --> F["用户确认项目并选择 Eagle 普通文件夹"]
+  F --> Q["每项持久事务 + session 临时签名地址"]
+  Q --> D["Chrome Downloads：MIME/字节/危险状态/扩展验真"]
+  D --> A["Eagle addFromPath = accepted"]
+  A --> I["公开 item/info 同 ID 且未删除 = API-readable confirmed"]
+  I --> K["confirmed 项 24 小时后精确清理 downloadId"]
+  A -->|"无 ID/读回失败"| R["accepted_unconfirmed：保留缓存"]
 ```
 
-`blob:`、`data:`、HLS/DASH 清单、DRM/加密和没有直接文件地址的媒体在纯核心阶段终止；它们不会进入
-下载或 Eagle 队列。通用入口不读取 `.library`、NAS 路径、排序 sidecar 或发布/标签状态。
+`blob:`、`data:`、HLS/DASH、DRM/加密、归属不明和音轨不明媒体在候选阶段终止；HTML 登录页、JSON、
+空文件或 MIME 不符在下载验真阶段终止。`confirmed` 仍不等于 UI visible；真实 Eagle 界面是最终验收。
 
 ## 发布与验收门禁
 

@@ -1,6 +1,10 @@
 const savePageButton = document.getElementById("save-page");
 const status = document.getElementById("status");
 const queues = document.getElementById("queues");
+const maxItems = document.getElementById("max-items");
+const maxItemMb = document.getElementById("max-item-mb");
+const maxBatchMb = document.getElementById("max-batch-mb");
+const saveSettings = document.getElementById("save-settings");
 
 savePageButton.addEventListener("click", async () => {
   savePageButton.disabled = true;
@@ -18,6 +22,28 @@ savePageButton.addEventListener("click", async () => {
   }
 });
 
+saveSettings.addEventListener("click", async () => {
+  saveSettings.disabled = true;
+  const response = await chrome.runtime.sendMessage({
+    type: "update-web-media-settings",
+    settings: {
+      maxItems: Number(maxItems.value),
+      maxItemBytes: Number(maxItemMb.value) * 1024 * 1024,
+      maxBatchBytes: Number(maxBatchMb.value) * 1024 * 1024
+    }
+  });
+  status.textContent = response?.ok ? "安全上限已保存。" : (response?.error || "保存失败");
+  saveSettings.disabled = false;
+});
+
+async function loadSettings() {
+  const response = await chrome.runtime.sendMessage({ type: "get-web-media-settings" });
+  if (!response?.ok) return;
+  maxItems.value = response.settings.maxItems;
+  maxItemMb.value = Math.round(response.settings.maxItemBytes / 1024 / 1024);
+  maxBatchMb.value = Math.round(response.settings.maxBatchBytes / 1024 / 1024);
+}
+
 async function refreshQueues() {
   const response = await chrome.runtime.sendMessage({ type: "web-media-import-status" });
   queues.replaceChildren();
@@ -27,9 +53,9 @@ async function refreshQueues() {
     row.className = "queue";
     const summary = queue.summary || {};
     row.innerHTML = `<strong></strong><span></span>`;
-    row.querySelector("strong").textContent = `Eagle 已接收 ${summary.accepted || 0} · 失败 ${summary.failed || 0}`;
+    row.querySelector("strong").textContent = `API 已读回 ${summary.confirmed || 0} · 待确认 ${summary.accepted_unconfirmed || 0} · 失败/阻止 ${(summary.failed || 0) + (summary.blocked || 0)}`;
     row.querySelector("span").textContent = new Date(queue.updatedAt || queue.createdAt || Date.now()).toLocaleString();
-    if (Number(summary.failed || 0) > 0) {
+    if (Number(summary.failed || 0) + Number(summary.blocked || 0) > 0) {
       const retry = document.createElement("button");
       retry.type = "button";
       retry.textContent = "重试失败项";
@@ -41,8 +67,35 @@ async function refreshQueues() {
       });
       row.append(retry);
     }
+    if (Number(summary.accepted_unconfirmed || 0) > 0) {
+      const recheck = document.createElement("button");
+      recheck.type = "button";
+      recheck.textContent = "重新确认已接收项";
+      recheck.addEventListener("click", async () => {
+        recheck.disabled = true;
+        const result = await chrome.runtime.sendMessage({ type: "recheck-web-media-batch", batchId: queue.id });
+        status.textContent = result?.ok
+          ? `本轮新增 API 已读回 ${result.confirmed || 0} 项；不会重复导入。`
+          : (result?.error || "重新确认失败");
+        await refreshQueues();
+      });
+      row.append(recheck);
+    }
+    const active = Number(summary.pending || 0) + Number(summary.downloading || 0) + Number(summary.downloaded || 0) + Number(summary.validated || 0);
+    if (active > 0) {
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "取消未完成项";
+      cancel.addEventListener("click", async () => {
+        cancel.disabled = true;
+        const result = await chrome.runtime.sendMessage({ type: "cancel-web-media-batch", batchId: queue.id });
+        status.textContent = result?.ok ? "未完成项已取消；已被 Eagle 接收的项目不会删除。" : (result?.error || "取消失败");
+        await refreshQueues();
+      });
+      row.append(cancel);
+    }
     queues.append(row);
   }
 }
 
-refreshQueues().catch(() => {});
+Promise.all([loadSettings(), refreshQueues()]).catch(() => {});

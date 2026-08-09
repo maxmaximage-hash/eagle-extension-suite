@@ -26,22 +26,22 @@ test("browser importer is user-triggered, supports direct web media and never ed
   assert.match(background, /retry-web-media-batch/);
   assert.match(background, /open-web-media-collector/);
   assert.match(background, /CLEANUP_DELAY_MINUTES\s*=\s*24\s*\*\s*60/);
-  assert.match(background, /scheduleCleanup\(download\.id\)/);
+  assert.match(background, /scheduleCleanup\(queue\.id, entry\.id, entry\.downloadId\)/);
   assert.match(background, /type:\s*"accepted"/);
-  assert.match(background, /validateImportRequest/);
+  assert.match(background, /assertOrdinaryFolder/);
   assert.match(background, /isSelectableFolder/);
   assert.match(popup, /open-web-media-collector/);
   assert.doesNotMatch(popup, /chrome\.tabs\.sendMessage/);
-  assert.match(`${popupHtml}\n${popup}`, /保存当前页面媒体/);
+  assert.match(`${popupHtml}\n${popup}`, /保存当前帖子\/内容/);
   assert.match(popup, /重试失败项/);
-  assert.match(source, /保存本页全部图片和视频至 Eagle/);
+  assert.match(source, /保存当前帖子\/内容至 Eagle/);
   assert.match(source, /保存当前媒体至 Eagle/);
   assert.match(background, /selectedKind:\s*String\(info\.mediaType/);
   assert.match(content, /request\.selectedKind/);
   assert.match(content, /attachShadow/);
   assert.match(content, /aria-live/);
   assert.match(background, /item\?\.state === "interrupted"/);
-  assert.ok(background.indexOf("scheduleCleanup(download.id)") > background.indexOf('type: "accepted"'));
+  assert.ok(background.indexOf("scheduleCleanup(queue.id") > background.indexOf('type: "confirmed"'));
   assert.doesNotMatch(source, /app\.asar|\.library/);
 });
 
@@ -49,6 +49,7 @@ test("release package excludes tests, project records and generated state", () =
   const packageScript = read("scripts/package-stable.sh");
   assert.match(packageScript, /manifest\.json/);
   assert.match(packageScript, /core\.js/);
+  assert.match(packageScript, /provider-adapters\.js/);
   assert.match(packageScript, /background\.js/);
   assert.match(packageScript, /content\.js/);
   assert.match(packageScript, /popup\.html/);

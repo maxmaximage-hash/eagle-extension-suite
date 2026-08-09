@@ -115,7 +115,9 @@ Live Photo 管家会识别同名 JPG/JPEG/HEIC 与 MOV 的安全配对，缺件�
 
 ### 6. 网页媒体和站点专用单帖导入
 
-通用网页媒体导入器只读取用户当前打开、已经加载并具有直接 HTTP(S) 文件地址的图片或视频：
+网页媒体导入器 2.0 只在用户触发后识别归属明确的当前帖子/视频：微博当前帖子图片、B站当前封面与
+页面显式渐进完整视频、抖音当前图文与显式完整 play 地址、YouTube 当前视频封面，以及通用网页中
+唯一正文/右键选中的媒体。它不会把头像、Logo 和推荐卡片当成当前帖子。
 
 ```bash
 cd eagle-extension-suite/extensions/web-media-importer
@@ -126,12 +128,17 @@ npm run package:stable
 
 在 Chrome 打开 `chrome://extensions/`，开启开发者模式，选择「加载已解压的扩展程序」，加载
 `extensions/web-media-importer` 或根目录 `releases/网页媒体保存至Eagle-Stable/eagle-web-media-importer`。
-之后点击扩展按钮，或在网页/媒体上右键，选择页面媒体，再从网页内选择一个 Eagle 普通文件夹。
-弹窗保留最近批次与失败项重试入口。安装前已经打开的普通网页也会由后台安全补注入，无需先刷新。
+之后点击扩展按钮，或在网页/媒体上右键；先检查候选数量、估计大小、遗漏/阻止提示，再选择一个
+Eagle 普通文件夹并勾选确认。popup 可配置默认 25 项、单项 1 GiB、整批 2 GiB 上限，并显示
+API 已读回、待确认、失败/阻止、重试和取消未完成项。
+
+Chrome Downloads 不注入 Referer、Cookie、Authorization 或 token；登记跨站 CDN 会标记为需要真实浏览器
+验证。待确认项会退避读取已有 Eagle item ID，或由用户点“重新确认已接收项”，不会重复导入。
 
 它不支持 `blob:`、`.m3u8`、`.mpd`、DRM/加密视频、没有直接文件地址的媒体，也不绕过登录、
-站点权限或反爬限制；因此不能描述为“所有网页、所有视频都能下载”。Eagle API 返回成功时界面只显示
-“Eagle 已接收”，最终是否可见仍以 Eagle 界面为准。下载缓存只在 API 接收后安排清理，并保留 24 小时。
+站点权限或反爬限制；YouTube 视频必须走官方导出/下载，本插件只保存封面。Eagle API `success` 只记
+accepted；返回 ID 且公开 API 读回同 ID、未删除才显示“API 已读回”。这仍不是 UI visible，最终可见
+以 Eagle 界面为准。只有 API 已读回项会在 24 小时后精确清理缓存，待确认项不清理。
 
 Instagram 和小红书导入器仍是两个独立的站点专用扩展。Instagram 处理当前有权查看的单帖轮播和
 直连视频；小红书稳定版当前只处理单帖静态图片。安装前分别进入对应目录运行其 README 要求的测试和

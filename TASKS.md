@@ -1,6 +1,25 @@
 # 任务
 
-## 2026-08-09：网页媒体保存至 Eagle 1.0.0 源码候选
+## 2026-08-09：网页媒体保存至 Eagle 2.0.0 对抗审查候选
+
+- [x] 以 `generic/weibo/bilibili/douyin/youtube` provider registry 取代整页媒体扫描；不能证明当前
+  内容时 fail-open，微博/抖音只收当前作品媒体，B站/YouTube 只认当前视频页封面。
+- [x] B站只接收页面显式 `__playinfo__.data.durl` 渐进完整媒体，DASH 继续 blocked；抖音只接收
+  当前作品 `RENDER_DATA` 的显式 play 地址。YouTube 视频坚持官方出口，本插件不第三方下载。
+- [x] 下载后验证真实 MIME、字节数、最终 URL、危险状态和扩展名；HTML/JSON/空文件/类型不符永久拒绝。
+- [x] MV3 每项事务、worker 重建恢复、Chrome 中断续传、取消、幂等事件、短期签名 URL session 隔离完成。
+- [x] 任务默认 25 项、单项 1 GiB、整批 2 GiB且可配置；不向 Chrome Downloads 注入 Referer、Cookie、
+  token 或 Authorization。跨站登记 CDN 标记 `requires-browser-validation`，真实 Chrome 前不宣称稳定。
+- [x] Eagle 普通文件夹三重校验；API `success` 只 accepted，返回 ID 且 `/item/info` 读回同 ID、未删除
+  才记 confirmed（仅 API-readable，不代表 UI visible）；只有 confirmed 缓存延时精确清理。
+- [x] accepted_unconfirmed 使用 1/5/15/60/240 分钟退避重新确认，并提供手动“重新确认已接收项”；
+  只读既有 item ID，禁止再次 `addFromPath` 造成重复。
+- [x] 38/38 自动测试和六个运行脚本语法检查通过；1.x accepted 队列迁移为 accepted_unconfirmed。
+- [x] 2.0.0 两次确定性发布包 SHA-256 一致：
+  `1671d07bad41a96db58dd3bcedc9108550382fd505b477bd116f9050f14026ef`；包不含测试、状态或账号数据。
+- [ ] 未安装 Chrome、未启动/操作 Eagle、未读取账号页面或 Library/NAS；四个平台和 Eagle UI 仍是红灯门禁。
+
+## 2026-08-09：网页媒体保存至 Eagle 1.0.0 历史候选（已由 2.0 取代）
 
 - [x] 新建独立 `extensions/web-media-importer`，用户点击扩展按钮或右键菜单后才收集当前页直连图片/视频。
 - [x] 普通 Eagle 文件夹选择、稳定去重、80 项上限、串行 Chrome 下载 + 公开 `addFromPath` 队列、
@@ -12,7 +31,7 @@
 - [x] 9/9 自动测试、四个运行脚本语法检查和干净发布包通过；发布包不含测试、台账、缓存或配置。
 - [x] 两次确定性打包 SHA-256 一致：`062cce01e6292bafcbbf76cb4ff7f8d5dcb406902581255dc4e2bc1ade2b2dfe`；
   打包目录和安装指南统一为 `eagle-web-media-importer`。
-- [ ] 本轮按边界未安装 Chrome 扩展、未启动/操作 Eagle、未操作真实网页账号、Library 或 NAS；
+- [x] 本轮按边界未安装 Chrome 扩展、未启动/操作 Eagle、未操作真实网页账号、Library 或 NAS；
   真实可见验收须另获用户批准。
 
 ## 2026-08-04 MAX Live Photo 管家只读 Demo

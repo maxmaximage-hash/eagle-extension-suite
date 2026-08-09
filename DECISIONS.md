@@ -1,5 +1,20 @@
 # 决策记录
 
+## 2026-08-09：网页媒体 2.0 以站点归属、下载验真和 API-readable 确认为三段真源
+
+- 通用整页标签扫描退出产品语义；微博、B站、抖音、YouTube 和 generic 分别拥有 adapter，无法证明
+  当前帖子/视频归属时 fail-open。页面只读结构化数据可作为候选事实，但下载后 MIME/大小/危险状态
+  才是文件真实性真源。
+- B站渐进 `durl`、抖音当前作品显式 play 地址只有在页面已公开、可直接 HTTP(S) 下载并被标识为
+  完整含声音媒体时进入队列；DASH、`blob:`、分片和音轨未知均 blocked。YouTube 只保存当前封面。
+- MV3 每项状态持久化并可恢复；签名 URL 只留 session。Chrome Downloads 不允许可靠自定义 Referer，
+  因此不注入任何 Referer/Cookie/token/Authorization；同站走浏览器原生上下文，登记跨站 CDN 标记
+  `requires-browser-validation`，真实 Chrome 前不得宣称平台稳定。
+- Eagle `success` 不再触发清理。返回 ID 且公开 `item/info` 读回同 ID、未删除才记 `confirmed`；该词
+  只表示 API-readable，不表示用户界面已可见。无 ID/读回失败为 `accepted_unconfirmed`，缓存保留。
+- `accepted_unconfirmed` 不重复导入；后台退避或用户手动操作只重新读取已有 item ID，读回后再清理。
+- 1.x accepted 历史只能迁移为 accepted_unconfirmed；不能凭旧日志补写 confirmed。
+
 ## 2026-08-09：网页媒体保存统一为显式触发、直连媒体和 accepted 队列
 
 - 决定：新增独立 Chrome 扩展 `extensions/web-media-importer`，作为当前网页直连媒体的通用入口；

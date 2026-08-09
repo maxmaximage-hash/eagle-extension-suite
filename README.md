@@ -20,7 +20,7 @@
 | 水印、隐私与线上发布 | `extensions/online-publisher/` | 水印编辑、字体库、模糊/马赛克/文字标注、快速导出、Cloudflare Pages 发布 |
 | Live Photo 管理 | `extensions/live-photo-manager/` | JPG/HEIC 与 MOV 安全配对、冲突识别、可恢复处理队列、只读 Demo |
 | 团队头像只读共享源 | `extensions/avatar-source-publisher/` | 从指定 Eagle 头像文件夹生成版本化 manifest 与内容寻址资源 |
-| 网页与帖子媒体导入 | `extensions/web-media-importer/`、`extensions/instagram-post-importer/`、`extensions/xiaohongshu-post-importer/` | 用户明确触发后保存当前页直连媒体，或使用站点专用单帖流程；不改写现有 Library |
+| 网页与帖子媒体导入 | `extensions/web-media-importer/`、`extensions/instagram-post-importer/`、`extensions/xiaohongshu-post-importer/` | 2.0 按当前内容归属识别微博图片、B站/YouTube 封面、抖音图文和受限完整视频；下载验真、可恢复队列、Eagle API 读回确认 |
 | iCloud 搬运台账 | `tools/icloud-intake-workbench/` | 本地批次台账、“继续上次”、Live Photo 配对；不登录、不下载、不写 NAS |
 
 ## 仓库结构

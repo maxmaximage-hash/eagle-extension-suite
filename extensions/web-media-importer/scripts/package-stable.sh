@@ -11,7 +11,7 @@ archive="$release_dir/eagle-web-media-importer-v${version}.zip"
 mkdir -p "$release_dir"
 find "$release_dir" -mindepth 1 -delete
 mkdir -p "$stage_dir"
-for file in manifest.json core.js background.js content.js popup.html popup.js README.md; do
+for file in manifest.json core.js structured-media.js provider-adapters.js background.js content.js popup.html popup.js README.md; do
   cp "$project_dir/$file" "$stage_dir/$file"
 done
 /usr/bin/find "$stage_dir" -exec /usr/bin/touch -t 202608090000 {} +
