@@ -342,6 +342,27 @@
     return hostname === suffix || hostname.endsWith(`.${suffix}`);
   }
 
+  function isPrivateNetworkHost(hostname) {
+    const host = String(hostname || "").toLowerCase().replace(/^\[|\]$/g, "");
+    if (!host) return true;
+    if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return true;
+    if (host.includes(":")) {
+      if (host === "::" || host === "::1") return true;
+      if (/^f[cd][0-9a-f]{0,2}:/i.test(host) || /^fe[89ab][0-9a-f]?:/i.test(host)) return true;
+      if (host.startsWith("::ffff:")) return true;
+      return false;
+    }
+    const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!ipv4) return false;
+    const octets = ipv4.slice(1).map(Number);
+    if (octets.some((value) => value > 255)) return true;
+    const [a, b] = octets;
+    return a === 0 || a === 10 || a === 127 || a >= 224
+      || (a === 169 && b === 254)
+      || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168);
+  }
+
   function classifyNetworkAccess(entry = {}, rawUrl = "") {
     try {
       const page = new URL(redactUrl(entry.pageUrl || ""));
@@ -354,7 +375,13 @@
         || media.hostname.endsWith(`.${page.hostname}`);
       const allowed = PROVIDER_CDN_SUFFIXES[String(entry.provider || "")] || [];
       const registeredCdn = allowed.some((suffix) => hostnameMatchesSuffix(media.hostname, suffix));
-      if (!sameSite && !registeredCdn) return { ok: false, reason: "NETWORK_ORIGIN_NOT_ALLOWED" };
+      const explicitlySelectedPublicImage = entry.sourceEvidence === "user-selected-media"
+        && entry.type !== "video"
+        && media.protocol === "https:"
+        && !isPrivateNetworkHost(media.hostname);
+      if (!sameSite && !registeredCdn && !explicitlySelectedPublicImage) {
+        return { ok: false, reason: "NETWORK_ORIGIN_NOT_ALLOWED" };
+      }
       return {
         ok: true,
         mode: "browser-managed",

@@ -76,6 +76,60 @@ test("network policy uses Chrome-managed context and flags registered cross-site
   }, "https://v3.douyinvod.com/a.mp4")), /SECRET|Cookie|Authorization|Referer/);
 });
 
+test("an explicitly right-clicked HTTPS image may use an unrelated public CDN without widening page scans", () => {
+  assert.deepEqual(core.classifyNetworkAccess({
+    provider: "generic",
+    pageUrl: "https://news.example.com/article/1",
+    sourceEvidence: "user-selected-media"
+  }, "https://images.other-cdn.net/photo.webp?width=1600"), {
+    ok: true,
+    mode: "browser-managed",
+    requiresBrowserValidation: true,
+    pageOrigin: "https://news.example.com"
+  });
+
+  assert.deepEqual(core.classifyNetworkAccess({
+    provider: "generic",
+    pageUrl: "https://news.example.com/article/1",
+    sourceEvidence: "dom-media-element"
+  }, "https://images.other-cdn.net/photo.webp"), {
+    ok: false,
+    reason: "NETWORK_ORIGIN_NOT_ALLOWED"
+  });
+
+  for (const privateUrl of [
+    "https://localhost/photo.jpg",
+    "https://127.0.0.1/photo.jpg",
+    "https://192.168.1.8/photo.jpg",
+    "https://[::1]/photo.jpg",
+    "https://[::ffff:127.0.0.1]/photo.jpg",
+    "https://[fd00::1]/photo.jpg",
+    "https://[fe80::1]/photo.jpg",
+    "http://images.other-cdn.net/photo.jpg"
+  ]) {
+    assert.equal(core.classifyNetworkAccess({
+      provider: "generic",
+      pageUrl: "https://news.example.com/article/1",
+      sourceEvidence: "user-selected-media"
+    }, privateUrl).ok, false);
+  }
+
+  assert.equal(core.classifyNetworkAccess({
+    provider: "generic",
+    pageUrl: "https://news.example.com/article/1",
+    sourceEvidence: "user-selected-media",
+    type: "video"
+  }, "https://video.other-cdn.net/file.mp4").ok, false);
+
+  for (const ordinaryPublicHostname of ["https://fcdn.example/photo.jpg", "https://feed80.example/photo.jpg"]) {
+    assert.equal(core.classifyNetworkAccess({
+      provider: "generic",
+      pageUrl: "https://news.example.com/article/1",
+      sourceEvidence: "user-selected-media"
+    }, ordinaryPublicHostname).ok, true);
+  }
+});
+
 test("real MIME safely names extensionless files and rejects conflicting known extensions", () => {
   const extensionless = core.validateDownloadItem(
     { type: "image", extension: "" },

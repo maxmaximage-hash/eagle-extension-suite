@@ -39,13 +39,28 @@
       video: metaContent('meta[property="og:video"],meta[property="og:video:url"],meta[name="twitter:player:stream"]')
     };
     const selectedUrl = String(request.sourceUrl || "");
+    const selectedElement = selectedUrl ? findMediaElement(selectedUrl) : null;
+    if (request.mode === "selected" && selectedUrl) {
+      return {
+        provider,
+        pageUrl: location.href,
+        pageTitle: document.title,
+        meta,
+        containers: [{
+          id: `${provider}-selected`,
+          owned: true,
+          candidates: [candidateForSelected(request, selectedElement)],
+          incompleteCount: 0
+        }],
+        structured: {}
+      };
+    }
     const selectors = provider === "weibo"
       ? ["article", "[mid]", "[data-testid*='feed']"]
       : provider === "douyin"
         ? ["article", "[data-e2e*='feed']", "[data-e2e*='video']"]
         : ["article", "main"];
     const elements = uniqueElements(selectors.flatMap((selector) => [...document.querySelectorAll(selector)]));
-    const selectedElement = selectedUrl ? findMediaElement(selectedUrl) : null;
     const selectedContainer = selectedElement?.closest(selectors.join(","));
     const visible = elements.filter(isVisible);
     let ownedElement = selectedContainer || null;
@@ -60,14 +75,6 @@
       incompleteCount: detectIncompleteCount(element)
     }));
 
-    if (request.mode === "selected" && selectedUrl && !ownedElement) {
-      containers.push({
-        id: `${provider}-selected`,
-        owned: true,
-        candidates: [candidateForSelected(request, selectedElement)],
-        incompleteCount: 0
-      });
-    }
     return {
       provider,
       pageUrl: location.href,

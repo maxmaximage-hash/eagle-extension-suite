@@ -2,7 +2,7 @@
 
 - 项目名称：网页媒体保存至 Eagle
 - 类型：Chrome MV3 扩展 / Eagle 外部导入工具
-- 当前源码版本：`2.0.1` 候选
+- 当前源码版本：`2.1.0` 候选
 - 标准源码：本目录
 - 发布目录：仓库根 `releases/网页媒体保存至Eagle-Stable/eagle-web-media-importer`
 

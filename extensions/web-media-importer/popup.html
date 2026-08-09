@@ -4,33 +4,70 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>网页媒体保存至 Eagle</title>
-    <style>
-      :root { color-scheme: light dark; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
-      body { width: 330px; margin: 0; padding: 16px; background: Canvas; color: CanvasText; }
-      h1 { margin: 0 0 6px; font-size: 16px; } p { margin: 0 0 14px; color: #777; font-size: 12px; line-height: 1.5; }
-      button { width: 100%; min-height: 36px; border: 0; border-radius: 8px; background: #1769e0; color: #fff; font: inherit; cursor: pointer; }
-      button:disabled { opacity: .55; cursor: default; } #status { min-height: 20px; margin: 10px 0; font-size: 12px; line-height: 1.45; }
-      .queue { padding: 10px 0; border-top: 1px solid #ddd; } .queue strong { display: block; font-size: 12px; } .queue span { color: #777; font-size: 11px; }
-      .queue button { width: auto; min-height: 28px; margin-top: 7px; padding: 0 9px; background: #555; font-size: 12px; }
-      details { margin: 10px 0; font-size: 12px; } .settings { display: grid; grid-template-columns: 1fr 90px; gap: 7px; align-items: center; padding-top: 8px; }
-      .settings input { min-width: 0; padding: 5px; } .settings button { grid-column: 1 / -1; min-height: 30px; }
-    </style>
+    <link rel="stylesheet" href="popup.css">
   </head>
   <body>
-    <h1>网页媒体保存至 Eagle</h1>
-    <p>只处理归属当前帖子/内容且通过文件真实性校验的媒体。YouTube 视频只保存封面。</p>
-    <button id="save-page" type="button">保存当前帖子/内容</button>
-    <details>
-      <summary>安全上限</summary>
-      <div class="settings">
-        <label for="max-items">单批最多（项）</label><input id="max-items" type="number" min="1" max="200">
-        <label for="max-item-mb">单项最多（MB）</label><input id="max-item-mb" type="number" min="1">
-        <label for="max-batch-mb">单批最多（MB）</label><input id="max-batch-mb" type="number" min="1">
-        <button id="save-settings" type="button">保存上限</button>
+    <header class="app-header">
+      <img class="app-icon" src="icons/icon-48.png" alt="">
+      <div>
+        <h1>网页媒体保存至 Eagle</h1>
+        <p class="version">网页图片与帖子媒体导入工具 · 2.1.0</p>
       </div>
-    </details>
-    <div id="status" role="status"></div>
-    <div id="queues"></div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="right-click-title">
+        <p class="eyebrow">最快的保存方式</p>
+        <h2 id="right-click-title">网页图片，右键就能保存</h2>
+        <p class="hero-copy">在大多数普通网页图片上点击右键，选择“保存当前媒体至 Eagle…”，再确认目标文件夹即可。</p>
+        <div class="menu-preview" aria-label="右键菜单操作说明">
+          <span>在图片上点击右键</span>
+          <strong>保存当前媒体至 Eagle…</strong>
+        </div>
+        <p class="privacy-note">只有你主动操作后才会识别；需要你确认后才会导入。</p>
+      </section>
+
+      <section class="scan-section" aria-labelledby="scan-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">需要保存多张时</p>
+            <h2 id="scan-title">扫描当前帖子/页面</h2>
+          </div>
+          <span id="page-state" class="page-state">正在检查页面…</span>
+        </div>
+        <p>识别当前内容中归属明确、已经加载并可直接取得的图片或完整媒体文件。</p>
+        <button id="save-page" class="primary-button" type="button">扫描当前帖子/页面</button>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <details class="explanation">
+        <summary>为什么有些内容不能保存？</summary>
+        <div class="explanation-body">
+          <p><strong>大多数网页图片：</strong>PNG、JPG、GIF、WebP、SVG 等普通图片可直接右键保存。</p>
+          <p><strong>YouTube：</strong>当前视频只保存封面，不下载视频文件。</p>
+          <p><strong>微博、B站、抖音：</strong>只处理当前作品中归属明确且已经加载的媒体。</p>
+          <p><strong>不能保存：</strong>受保护的流媒体、DRM、临时 blob、登录权限或站点防盗链阻止的资源。</p>
+        </div>
+      </details>
+
+      <section class="recent" aria-labelledby="recent-title">
+        <div class="section-heading compact">
+          <h2 id="recent-title">最近任务</h2>
+          <span>最多显示 5 批</span>
+        </div>
+        <div id="queues" class="queues"></div>
+      </section>
+
+      <details class="settings-panel">
+        <summary>导入安全上限</summary>
+        <div class="settings">
+          <label for="max-items">单批最多（项）</label><input id="max-items" type="number" min="1" max="200">
+          <label for="max-item-mb">单项最多（MB）</label><input id="max-item-mb" type="number" min="1">
+          <label for="max-batch-mb">单批最多（MB）</label><input id="max-batch-mb" type="number" min="1">
+          <button id="save-settings" class="secondary-button" type="button">保存安全上限</button>
+        </div>
+      </details>
+    </main>
     <script src="popup.js"></script>
   </body>
 </html>

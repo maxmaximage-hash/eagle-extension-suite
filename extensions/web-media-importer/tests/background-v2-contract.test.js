@@ -50,8 +50,8 @@ test("runtime package includes provider adapters and version 2 candidate", () =>
   const manifest = JSON.parse(read("manifest.json"));
   const packageJson = JSON.parse(read("package.json"));
   const packageScript = read("scripts/package-stable.sh");
-  assert.equal(manifest.version, "2.0.1");
-  assert.equal(packageJson.version, "2.0.1");
+  assert.equal(manifest.version, "2.1.0");
+  assert.equal(packageJson.version, "2.1.0");
   assert.match(JSON.stringify(manifest.content_scripts), /structured-media\.js/);
   assert.match(JSON.stringify(manifest.content_scripts), /provider-adapters\.js/);
   assert.match(packageScript, /provider-adapters\.js/);
