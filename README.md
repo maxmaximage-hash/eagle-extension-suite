@@ -20,6 +20,7 @@
 | 水印、隐私与线上发布 | `extensions/online-publisher/` | 水印编辑、字体库、模糊/马赛克/文字标注、快速导出、Cloudflare Pages 发布 |
 | Live Photo 管理 | `extensions/live-photo-manager/` | JPG/HEIC 与 MOV 安全配对、冲突识别、可恢复处理队列、只读 Demo |
 | 团队头像只读共享源 | `extensions/avatar-source-publisher/` | 从指定 Eagle 头像文件夹生成版本化 manifest 与内容寻址资源 |
+| 内容导入 | `extensions/instagram-post-importer/`、`extensions/xiaohongshu-post-importer/` | 将单条公开帖子媒体整理为可导入 Eagle 的计划；不改写现有 Library |
 | iCloud 搬运台账 | `tools/icloud-intake-workbench/` | 本地批次台账、“继续上次”、Live Photo 配对；不登录、不下载、不写 NAS |
 
 ## 仓库结构

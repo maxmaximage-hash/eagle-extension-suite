@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "小红书整帖保存至 Eagle",
+  "version": "1.0.0",
+  "description": "保存小红书整篇笔记到 Eagle，并把静态图片转换为 JPG。",
+  "permissions": ["alarms", "contextMenus", "downloads", "scripting", "tabs"],
+  "host_permissions": [
+    "https://www.xiaohongshu.com/*",
+    "https://*.xhscdn.com/*",
+    "https://*.xiaohongshu.com/*",
+    "http://localhost:41595/*",
+    "http://127.0.0.1:41595/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "保存当前小红书整篇至 Eagle" },
+  "content_scripts": [{
+    "matches": ["https://www.xiaohongshu.com/*"],
+    "js": ["core.js", "content.js"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["page-bridge.js"],
+    "matches": ["https://www.xiaohongshu.com/*"]
+  }]
+}

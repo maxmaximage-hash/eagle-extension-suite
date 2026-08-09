@@ -10,6 +10,7 @@
 | MAX Publisher | 需要水印、隐私打码、导出或线上作品页的成员 | 仅线上发布需要本人 Cloudflare 凭证 |
 | Live Photo 管家 | 需要安全检查 JPG/HEIC + MOV 配对的成员 | 否 |
 | 头像共享源 | 维护指定 Eagle 头像文件夹的管理员 | 否；消费者只读取共享源 |
+| Instagram / 小红书导入器 | 需要将单条公开帖子整理为 Eagle 导入计划的成员 | 否 |
 | iCloud 搬运台账 | 管理 iCloud 素材批次的成员 | 否；当前不执行下载 |
 
 ## 开始前的三件事
@@ -110,6 +111,10 @@ npm run package:plugin
 ### 5. Live Photo 管家和 iCloud 搬运台账
 
 Live Photo 管家会识别同名 JPG/JPEG/HEIC 与 MOV 的安全配对，缺件或重复时进入冲突队列，绝不猜测配对。iCloud 搬运台账只记录批次、冲突和“继续上次”的选择锚点；它目前不登录 iCloud、不下载、不创建 NAS 目录。
+
+### 6. Instagram / 小红书单帖导入
+
+两个导入器均是独立的浏览器扩展源码：只把当前公开帖子的图片、视频和必要来源信息组织成导入计划。安装前分别进入对应目录运行 `npm test` 与 `npm run check`，再按各自 README 的浏览器开发者模式流程加载。它们不覆盖 Eagle 现有素材，也不能用于批量抓取或绕过站点权限。
 
 ## 界面示例
 

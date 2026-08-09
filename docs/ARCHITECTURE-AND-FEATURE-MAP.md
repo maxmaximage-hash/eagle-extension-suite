@@ -60,6 +60,7 @@ GPS 模块独立读取图片 EXIF 和视频位置字段，在离线数据集中�
 
 - `extensions/live-photo-manager/`：Live Photo 的配对、冲突识别、预览队列与恢复锚点。当前不封装 `.livp`、不写 Eagle Library、不直接导入正式 NAS。
 - `extensions/avatar-source-publisher/`：指定 Eagle 头像文件夹是唯一人工维护入口；它导出不含绝对路径的版本化 manifest 和内容寻址 assets。MORROW 只能通过其自己的 adapter 消费该契约，不能调用 Eagle API 或读取 `.library` 内部。
+- `extensions/instagram-post-importer/`、`extensions/xiaohongshu-post-importer/`：浏览器侧的单帖导入计划工具，与 Eagle 插件业务状态隔离；不得读取排序 sidecar 或在后台批量抓取。
 - `tools/icloud-intake-workbench/`：本地、可恢复的搬运台账。当前仅用于计划和核对，绝不静默下载、删除、移动或导入素材。
 
 ## 发布与验收门禁
