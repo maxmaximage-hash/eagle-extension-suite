@@ -13,6 +13,8 @@
   `requires-browser-validation`，由真实 Chrome 验收浏览器原生网络上下文。
 - B站/抖音视频必须同时证明为直接 HTTP(S) 完整单文件且含声音；常见 DASH/分片/`blob:`/音轨未知状态
   一律 blocked。YouTube 只支持封面，不实现第三方视频下载或官方权限绕过。
+- 实机对抗审查证明“屏幕中心卡片”不能作为平台内容所有权证据。抖音只有详情路径或数字 `modal_id`，
+  微博只有已登记的博文详情路径才可进入平台 adapter；搜索、首页、推荐与用户时间线必须 fail-closed。
 - Eagle API `success` 只记 accepted。返回 item ID 并能通过公开 `/item/info` 有界读回后才 confirmed；
   无 ID 或读回失败保持 accepted_unconfirmed。只有 confirmed 项可延时精确删除对应下载缓存。
 - accepted_unconfirmed 通过退避 alarm 或手动按钮只重新读既有 item ID，不重复调用 addFromPath。

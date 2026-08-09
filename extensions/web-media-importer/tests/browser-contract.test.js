@@ -38,6 +38,7 @@ test("browser importer is user-triggered, supports direct web media and never ed
   assert.match(source, /保存当前媒体至 Eagle/);
   assert.match(background, /selectedKind:\s*String\(info\.mediaType/);
   assert.match(content, /request\.selectedKind/);
+  assert.match(content, /searchParams\.get\("modal_id"\)/);
   assert.match(content, /attachShadow/);
   assert.match(content, /aria-live/);
   assert.match(background, /item\?\.state === "interrupted"/);

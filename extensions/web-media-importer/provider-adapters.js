@@ -19,6 +19,30 @@
     return { ...candidate, reason };
   }
 
+  function isDouyinDetailUrl(value) {
+    try {
+      const url = new URL(String(value || ""));
+      return /(^|\.)douyin\.com$/i.test(url.hostname)
+        && (/^\/(?:video|note)\/\d+(?:\/|$)/i.test(url.pathname)
+          || /^\d+$/.test(String(url.searchParams.get("modal_id") || "")));
+    } catch {
+      return false;
+    }
+  }
+
+  function isWeiboDetailUrl(value) {
+    try {
+      const url = new URL(String(value || ""));
+      if (!/(^|\.)weibo\.(?:com|cn)$/i.test(url.hostname)) return false;
+      return /^\/\d+\/[A-Za-z0-9]+(?:\/|$)/.test(url.pathname)
+        || /^\/detail\/[A-Za-z0-9]+(?:\/|$)/.test(url.pathname)
+        || /^\/tv\/show\/[A-Za-z0-9:]+(?:\/|$)/.test(url.pathname)
+        || (url.pathname === "/ttarticle/p/show" && Boolean(url.searchParams.get("id")));
+    } catch {
+      return false;
+    }
+  }
+
   function chooseOwnedContainer(model = {}) {
     const owned = (model.containers || []).filter((container) => container?.owned === true);
     if (owned.length > 1) return { ok: false, reason: "CURRENT_CONTENT_AMBIGUOUS" };
@@ -55,9 +79,15 @@
 
   const registry = {
     weibo(model) {
+      if (!isWeiboDetailUrl(model.pageUrl)) {
+        return { ok: false, reason: "CURRENT_CONTENT_NOT_PROVEN", provider: "weibo", candidates: [], blocked: [] };
+      }
       return collectContainer(model, new Set(["post-image", "post-video"]));
     },
     douyin(model) {
+      if (!isDouyinDetailUrl(model.pageUrl)) {
+        return { ok: false, reason: "CURRENT_CONTENT_NOT_PROVEN", provider: "douyin", candidates: [], blocked: [] };
+      }
       return collectContainer(model, new Set(["post-image", "post-video"]));
     },
     bilibili(model) {
@@ -124,6 +154,9 @@
 
   const originalDouyin = registry.douyin;
   registry.douyin = function douyin(model) {
+    if (!isDouyinDetailUrl(model.pageUrl)) {
+      return { ok: false, reason: "CURRENT_CONTENT_NOT_PROVEN", provider: "douyin", candidates: [], blocked: [] };
+    }
     const containerResult = originalDouyin(model);
     const structuredCandidates = [
       ...(model.structured?.images || []).map((image) => ({
@@ -159,5 +192,5 @@
     return registry[provider]({ ...model, provider });
   }
 
-  return { collect, providerFor, registry };
+  return { collect, isDouyinDetailUrl, isWeiboDetailUrl, providerFor, registry };
 });

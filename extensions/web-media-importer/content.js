@@ -89,7 +89,9 @@
   }
 
   function captureDouyinRenderData() {
-    const currentId = location.pathname.match(/\/(?:video|note)\/(\d+)/)?.[1] || "";
+    const currentId = location.pathname.match(/\/(?:video|note)\/(\d+)/)?.[1]
+      || new URL(location.href).searchParams.get("modal_id")
+      || "";
     if (!currentId) return {};
     const render = document.getElementById("RENDER_DATA");
     return EagleWebStructuredMedia.extractDouyin(render?.textContent || "", currentId);

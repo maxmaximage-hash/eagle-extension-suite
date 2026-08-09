@@ -32,6 +32,7 @@ test("Weibo keeps only the proven current post image container and removes page 
 
 test("ambiguous post ownership fails open instead of scanning the whole page", () => {
   const result = adapters.collect(model("weibo", {
+    pageUrl: "https://weibo.com/123/abc",
     containers: [
       { id: "a", owned: true, candidates: [] },
       { id: "b", owned: true, candidates: [] }
@@ -79,6 +80,58 @@ test("Douyin accepts only the current aweme progressive play address exposed in 
   assert.equal(result.ok, true);
   assert.deepEqual(result.candidates.map((entry) => entry.kind), ["image", "video"]);
   assert.equal(result.candidates[1].sourceEvidence, "provider-structured-data");
+});
+
+test("Douyin search modal is a proven current work only when modal_id is numeric", () => {
+  assert.equal(adapters.isDouyinDetailUrl("https://www.douyin.com/search/travel?modal_id=7654888554639756585"), true);
+  assert.equal(adapters.isDouyinDetailUrl("https://www.douyin.com/search/travel?modal_id=not-an-id"), false);
+  const accepted = adapters.collect(model("douyin", {
+    pageUrl: "https://www.douyin.com/search/travel?modal_id=7654888554639756585",
+    structured: { images: [{ url: "https://p3.douyinpic.com/current-modal.webp" }] }
+  }));
+  const rejected = adapters.collect(model("douyin", {
+    pageUrl: "https://www.douyin.com/search/travel?modal_id=not-an-id",
+    containers: [{ id: "centered-card", owned: true, candidates: [
+      { url: "https://p3.douyinpic.com/search-result.webp", kind: "image", role: "post-image" }
+    ] }]
+  }));
+  assert.equal(accepted.ok, true);
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.reason, "CURRENT_CONTENT_NOT_PROVEN");
+});
+
+test("Douyin search and feed pages fail closed even when one card is visually centered", () => {
+  for (const pageUrl of [
+    "https://www.douyin.com/search/%E6%97%85%E8%A1%8C",
+    "https://www.douyin.com/",
+    "https://www.douyin.com/jingxuan"
+  ]) {
+    const result = adapters.collect(model("douyin", {
+      pageUrl,
+      containers: [{ id: "centered-card", owned: true, candidates: [
+        { url: "https://p3.douyinpic.com/search-result.webp", kind: "image", role: "post-image" }
+      ] }]
+    }));
+    assert.equal(result.ok, false, pageUrl);
+    assert.equal(result.reason, "CURRENT_CONTENT_NOT_PROVEN", pageUrl);
+  }
+});
+
+test("Weibo search and timeline pages fail closed instead of treating the centered card as the current post", () => {
+  for (const pageUrl of [
+    "https://s.weibo.com/weibo?q=travel",
+    "https://weibo.com/u/123456",
+    "https://weibo.com/"
+  ]) {
+    const result = adapters.collect(model("weibo", {
+      pageUrl,
+      containers: [{ id: "centered-card", owned: true, candidates: [
+        { url: "https://wx1.sinaimg.cn/large/search-result.jpg", kind: "image", role: "post-image" }
+      ] }]
+    }));
+    assert.equal(result.ok, false, pageUrl);
+    assert.equal(result.reason, "CURRENT_CONTENT_NOT_PROVEN", pageUrl);
+  }
 });
 
 test("YouTube only exports the current video thumbnail and blocks video download", () => {
