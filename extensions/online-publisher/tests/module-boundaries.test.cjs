@@ -6,7 +6,7 @@ const test = require('node:test');
 const pluginRoot = path.resolve(__dirname, '../eagle-plugin');
 const watermark = require('../eagle-plugin/modules/watermark-editor');
 const fonts = require('../eagle-plugin/modules/font-manager');
-const sharedRoot = path.resolve(__dirname, '../../../../共享模块/packages');
+const sharedRoot = path.resolve(__dirname, '../../../modules/packages');
 
 function filesBelow(directory, relative = '') {
   return fs.readdirSync(path.join(directory, relative), { withFileTypes: true })

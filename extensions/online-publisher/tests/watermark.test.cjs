@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -7,9 +8,16 @@ const sharp = require('../eagle-plugin/node_modules/sharp');
 const { renderWatermarked, renderWatermarkLayer, renderWatermarkPreviewPayload, renderWatermarkVectorPreviewPayload, overlaysFor, positionFor, exactFontForSettings, textMark } = require('../eagle-plugin/modules/watermark-editor/renderer.js');
 
 const root = path.resolve(__dirname, '..');
-const source = path.resolve(root, '.preview-assets', 'detail-post-01.jpg');
 const logo = path.resolve(root, 'eagle-plugin', 'logo.png');
 const output = fs.mkdtempSync(path.join(os.tmpdir(), 'max-watermark-tests-'));
+const source = path.join(output, 'synthetic-source.jpg');
+
+test.before(async () => {
+  const pixels = crypto.randomBytes(1000 * 1400 * 3);
+  await sharp(pixels, { raw: { width: 1000, height: 1400, channels: 3 } })
+    .jpeg({ quality: 92 })
+    .toFile(source);
+});
 
 test.after(() => {
   fs.rmSync(output, { recursive: true, force: true });
