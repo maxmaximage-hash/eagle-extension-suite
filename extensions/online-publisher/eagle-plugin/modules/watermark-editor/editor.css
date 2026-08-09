@@ -711,4 +711,3 @@ input[type=range]::-moz-range-thumb{
 .font-option-row.active .font-favorite-toggle{color:#d1d5db!important;background:#111827!important}
 .font-option-row.active .font-favorite-toggle.is-favorite{color:#fbbf24!important}
 .font-favorite-group-label::before{content:"★";margin-right:6px;color:#f59e0b}
-
