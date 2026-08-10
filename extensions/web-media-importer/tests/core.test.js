@@ -86,9 +86,12 @@ test("redacts signed credentials before provenance is written into a shared Eagl
 
 test("legacy acceptance migrates to explicit unconfirmed state and retains failures for retry", () => {
   const initial = core.createQueue({ id: "batch-1", entries: [{ id: "a" }, { id: "b" }] });
-  const downloaded = core.applyQueueEvent(initial, { type: "downloaded", entryId: "a", path: "/tmp/a.jpg" });
+  const starting = core.applyQueueEvent(initial, { type: "download_starting", entryId: "a" });
+  const downloading = core.applyQueueEvent(starting, { type: "downloading", entryId: "a", downloadId: 1 });
+  const downloaded = core.applyQueueEvent(downloading, { type: "downloaded", entryId: "a", path: "/tmp/a.jpg" });
   const validated = core.applyQueueEvent(downloaded, { type: "validated", entryId: "a", path: "/tmp/a.jpg" });
-  const accepted = core.applyQueueEvent(validated, { type: "accepted", entryId: "a", eagleItemIds: [] });
+  const submitting = core.applyQueueEvent(validated, { type: "submitting", entryId: "a" });
+  const accepted = core.applyQueueEvent(submitting, { type: "accepted", entryId: "a", eagleItemIds: [] });
   const unconfirmed = core.applyQueueEvent(accepted, { type: "accepted_unconfirmed", entryId: "a" });
   const failed = core.applyQueueEvent(unconfirmed, { type: "failed", entryId: "b", code: "NETWORK", message: "offline" });
   const repeated = core.applyQueueEvent(failed, { type: "accepted_unconfirmed", entryId: "a" });

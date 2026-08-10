@@ -16,8 +16,9 @@
   // delayed NAS/Eagle read-back succeeds or the user reviews it.
   const TERMINAL_STATES = new Set(["confirmed", "failed", "blocked", "cancelled", "skipped"]);
   const SUMMARY_STATES = [
-    "pending", "downloading", "downloaded", "validated", "accepted", "accepted_unconfirmed",
-    "confirmed", "failed", "blocked", "cancelled", "skipped"
+    "pending", "download_starting", "download_unknown", "downloading", "downloaded", "validated",
+    "submitting", "submission_unknown", "accepted", "accepted_unconfirmed", "confirmed", "failed",
+    "blocked", "cancelled", "skipped"
   ];
   const MIME_EXTENSIONS = {
     "image/avif": "avif", "image/bmp": "bmp", "image/gif": "gif", "image/heic": "heic",
@@ -37,8 +38,8 @@
   };
 
   function cleanText(value, fallback = "") {
-    const text = String(value || "").replace(/\s+/g, " ").trim();
-    return text || fallback;
+    const text = String(value || "").replace(/\s+/g, " ").trim().slice(0, 500);
+    return text || String(fallback || "").slice(0, 500);
   }
 
   function canonicalUrl(value) {
@@ -54,7 +55,7 @@
   }
 
   function isSensitiveParam(key) {
-    return /(?:^|[-_])(?:access[-_]?token|auth|authorization|credential|expires?|key|password|policy|secret|session|signature|sig|token)(?:$|[-_])/i.test(key)
+    return /(?:^|[-_])(?:access[-_]?token|auth|authorization|code|credential|expires?|jwt|key|nonce|password|policy|sso|state|ticket|secret|session|signature|sig|token)(?:$|[-_])/i.test(key)
       || /^(?:x-amz-.+|x-goog-.+|utm_.+)$/i.test(key);
   }
 
@@ -76,18 +77,32 @@
   function extensionForUrl(value) {
     try {
       const parsed = new URL(String(value || ""));
-      const match = parsed.pathname.toLowerCase().match(/\.([a-z0-9]{2,8})$/);
-      return match ? match[1] : "";
+      const match = parsed.pathname.toLowerCase().match(/\.([a-z0-9]{2,8})(?:@[^/]*)?$/);
+      if (match && (IMAGE_EXTENSIONS.has(match[1]) || VIDEO_EXTENSIONS.has(match[1]) || STREAM_EXTENSIONS.has(match[1]))) {
+        return match[1];
+      }
+      for (const key of ["format", "fm", "ext"]) {
+        const hinted = String(parsed.searchParams.get(key) || "").toLowerCase().replace(/^\./, "");
+        if (IMAGE_EXTENSIONS.has(hinted) || VIDEO_EXTENSIONS.has(hinted) || STREAM_EXTENSIONS.has(hinted)) return hinted;
+      }
+      return "";
     } catch {
       const match = String(value || "").toLowerCase().replace(/[?#].*$/, "").match(/\.([a-z0-9]{2,8})$/);
       return match ? match[1] : "";
     }
   }
 
+  function extensionForMime(value) {
+    const mime = String(value || "").toLowerCase().split(";")[0].trim();
+    if (mime === "image/svg+xml") return "";
+    return MIME_EXTENSIONS[mime] || "";
+  }
+
   function classifyCandidate(candidate = {}) {
     if (candidate.blockedReason) return { ok: false, reason: String(candidate.blockedReason) };
     const url = String(candidate.url || "").trim();
     if (!url) return { ok: false, reason: "EMPTY_URL" };
+    if (url.length > 8192) return { ok: false, reason: "URL_TOO_LONG" };
     if (/^blob:/i.test(url)) return { ok: false, reason: "BROWSER_BLOB" };
     if (/^data:/i.test(url)) return { ok: false, reason: "DATA_URL" };
     if (!/^https?:/i.test(url)) return { ok: false, reason: "UNSUPPORTED_SCHEME" };
@@ -101,6 +116,7 @@
     const evidence = String(candidate.sourceEvidence || "");
     const extensionType = IMAGE_EXTENSIONS.has(extension) ? "image" : VIDEO_EXTENSIONS.has(extension) ? "video" : "";
     const mimeType = mimeHint.startsWith("image/") ? "image" : mimeHint.startsWith("video/") ? "video" : "";
+    if (extension === "svg" || mimeHint === "image/svg+xml") return { ok: false, reason: "ACTIVE_MEDIA_BLOCKED" };
     const provisionalType = TRUSTED_EVIDENCE.has(evidence) && ["image", "video"].includes(suppliedType)
       ? suppliedType
       : "";
@@ -112,7 +128,8 @@
       return { ok: false, reason: "UNVERIFIED_MEDIA_URL" };
     }
     if (type === "video") {
-      if (candidate.mediaCompleteness !== "single-file-complete" || candidate.audioStatus !== "present") {
+      if (candidate.mediaCompleteness !== "single-file-complete"
+        || !["present", "requires-probe"].includes(String(candidate.audioStatus || ""))) {
         return { ok: false, reason: "DASH_OR_AUDIO_UNVERIFIED" };
       }
     }
@@ -264,10 +281,14 @@
   }
 
   const ALLOWED_TRANSITIONS = {
-    pending: new Set(["downloading", "validated", "blocked", "failed", "cancelled"]),
+    pending: new Set(["download_starting", "validated", "blocked", "failed", "cancelled"]),
+    download_starting: new Set(["downloading", "download_unknown", "blocked", "failed", "cancelled"]),
+    download_unknown: new Set(),
     downloading: new Set(["downloaded", "failed", "blocked", "cancelled"]),
     downloaded: new Set(["validated", "failed", "blocked", "cancelled"]),
-    validated: new Set(["accepted", "accepted_unconfirmed", "failed", "cancelled"]),
+    validated: new Set(["submitting", "failed", "cancelled"]),
+    submitting: new Set(["accepted", "accepted_unconfirmed", "submission_unknown", "failed"]),
+    submission_unknown: new Set(),
     accepted: new Set(["confirmed", "accepted_unconfirmed", "failed"]),
     accepted_unconfirmed: new Set(["confirmed"]),
     failed: new Set(["pending", "validated", "cancelled"]),
@@ -287,6 +308,8 @@
         if (event.validatedExtension) same.validatedExtension = String(event.validatedExtension);
         if (event.actualBytes !== undefined) same.actualBytes = Math.max(0, Number(event.actualBytes) || 0);
         if (event.networkStatus) same.networkStatus = String(event.networkStatus);
+        if (event.audioStatus) same.audioStatus = String(event.audioStatus);
+        if (event.mediaCompleteness) same.mediaCompleteness = String(event.mediaCompleteness);
         if (event.confirmationAttempts !== undefined) same.confirmationAttempts = Math.max(0, Number(event.confirmationAttempts) || 0);
         if (event.eagleItemIds) same.eagleItemIds = [...new Set(event.eagleItemIds.map(String).filter(Boolean))];
         return same;
@@ -299,10 +322,12 @@
       if (event.validatedExtension) next.validatedExtension = String(event.validatedExtension);
       if (event.actualBytes !== undefined) next.actualBytes = Math.max(0, Number(event.actualBytes) || 0);
       if (event.networkStatus) next.networkStatus = String(event.networkStatus);
+      if (event.audioStatus) next.audioStatus = String(event.audioStatus);
+      if (event.mediaCompleteness) next.mediaCompleteness = String(event.mediaCompleteness);
       if (event.confirmationAttempts !== undefined) next.confirmationAttempts = Math.max(0, Number(event.confirmationAttempts) || 0);
       if (eventType === "validated") next.validatedAt = Date.now();
       if (event.eagleItemIds) next.eagleItemIds = [...new Set(event.eagleItemIds.map(String).filter(Boolean))];
-      if (["failed", "blocked", "skipped"].includes(eventType)) {
+      if (["failed", "blocked", "skipped", "download_unknown", "submission_unknown"].includes(eventType)) {
         next.error = { code: String(event.code || eventType.toUpperCase()), message: cleanText(event.message, eventType) };
       }
       return next;
@@ -321,10 +346,11 @@
     const mime = String(item.mime || "").toLowerCase().split(";")[0].trim();
     if (mime === "text/html" || mime === "application/xhtml+xml") return { ok: false, reason: "DOWNLOAD_HTML" };
     if (mime === "application/json" || mime.endsWith("+json")) return { ok: false, reason: "DOWNLOAD_JSON" };
+    if (mime === "image/svg+xml") return { ok: false, reason: "ACTIVE_MEDIA_BLOCKED" };
     const mimeType = mime.startsWith("image/") ? "image" : mime.startsWith("video/") ? "video" : "";
     if (!mimeType || mimeType !== entry.type) return { ok: false, reason: "DOWNLOAD_TYPE_MISMATCH" };
     const mimeExtension = MIME_EXTENSIONS[mime] || "";
-    const requestedExtension = String(entry.extension || "").toLowerCase();
+    const requestedExtension = String(entry.validatedExtension || entry.extension || "").toLowerCase();
     if (requestedExtension && mimeExtension) {
       const jpegPair = new Set(["jpg", "jpeg"]);
       if (requestedExtension !== mimeExtension && !(jpegPair.has(requestedExtension) && jpegPair.has(mimeExtension))) {
@@ -356,20 +382,27 @@
     if (!ipv4) return false;
     const octets = ipv4.slice(1).map(Number);
     if (octets.some((value) => value > 255)) return true;
-    const [a, b] = octets;
+    const [a, b, c] = octets;
     return a === 0 || a === 10 || a === 127 || a >= 224
       || (a === 169 && b === 254)
+      || (a === 100 && b >= 64 && b <= 127)
       || (a === 172 && b >= 16 && b <= 31)
-      || (a === 192 && b === 168);
+      || (a === 192 && b === 168)
+      || (a === 192 && b === 0 && c === 2)
+      || (a === 198 && (b === 18 || b === 19))
+      || (a === 198 && b === 51 && c === 100)
+      || (a === 203 && b === 0 && c === 113);
   }
 
   function classifyNetworkAccess(entry = {}, rawUrl = "") {
     try {
       const page = new URL(redactUrl(entry.pageUrl || ""));
       const media = new URL(String(rawUrl || ""));
-      if (page.protocol !== "https:" || !["https:", "http:"].includes(media.protocol)) {
+      if (!["https:", "http:"].includes(page.protocol) || !["https:", "http:"].includes(media.protocol)
+        || (page.protocol === "https:" && media.protocol !== "https:")) {
         return { ok: false, reason: "NETWORK_ORIGIN_NOT_ALLOWED" };
       }
+      if (isPrivateNetworkHost(media.hostname)) return { ok: false, reason: "NETWORK_ORIGIN_NOT_ALLOWED" };
       const sameSite = page.hostname === media.hostname
         || page.hostname.endsWith(`.${media.hostname}`)
         || media.hostname.endsWith(`.${page.hostname}`);
@@ -394,6 +427,8 @@
   }
 
   function recoveryAction(entry = {}, item) {
+    if (entry.state === "download_starting") return { action: "uncertain", reason: "DOWNLOAD_HANDOFF_UNKNOWN" };
+    if (entry.state === "submitting") return { action: "uncertain", reason: "EAGLE_SUBMISSION_UNKNOWN" };
     if (entry.state !== "downloading") return { action: "continue" };
     if (!item) return { action: "fail", reason: "DOWNLOAD_RECORD_MISSING" };
     if (item.state === "complete") return { action: "validate" };
@@ -403,9 +438,86 @@
     return { action: "fail", reason: "DOWNLOAD_STATE_UNKNOWN" };
   }
 
+  function inspectIsoBmffTracks(input) {
+    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
+    const state = { hasMoov: false, hasVideo: false, hasAudio: false, boxes: 0 };
+    const containers = new Set(["moov", "trak", "mdia", "minf", "stbl", "edts", "dinf"]);
+    const readType = (offset) => String.fromCharCode(...bytes.slice(offset, offset + 4));
+    const readUint32 = (offset) => new DataView(bytes.buffer, bytes.byteOffset + offset, 4).getUint32(0);
+    const scan = (start, end, depth = 0) => {
+      if (depth > 10) return;
+      for (let offset = start; offset + 8 <= end && state.boxes < 10_000;) {
+        state.boxes += 1;
+        let size = readUint32(offset);
+        const type = readType(offset + 4);
+        let header = 8;
+        if (size === 1) {
+          if (offset + 16 > end) return;
+          const high = readUint32(offset + 8);
+          const low = readUint32(offset + 12);
+          const extended = high * 2 ** 32 + low;
+          if (!Number.isSafeInteger(extended)) return;
+          size = extended;
+          header = 16;
+        } else if (size === 0) {
+          size = end - offset;
+        }
+        if (size < header || offset + size > end) return;
+        const payload = offset + header;
+        if (type === "moov") state.hasMoov = true;
+        if (type === "hdlr" && payload + 12 <= offset + size) {
+          const handler = readType(payload + 8);
+          if (handler === "vide") state.hasVideo = true;
+          if (handler === "soun") state.hasAudio = true;
+        }
+        if (containers.has(type)) scan(payload, offset + size, depth + 1);
+        offset += size;
+      }
+    };
+    scan(0, bytes.length);
+    if (!state.hasMoov) {
+      for (let index = 4; index + 4 <= bytes.length; index += 1) {
+        if (readType(index) !== "moov") continue;
+        const candidateStart = index - 4;
+        const size = readUint32(candidateStart);
+        if (size >= 8 && candidateStart + size <= bytes.length) scan(candidateStart, candidateStart + size);
+      }
+    }
+    return {
+      ok: state.hasMoov && state.hasVideo && state.hasAudio,
+      hasMoov: state.hasMoov,
+      hasVideo: state.hasVideo,
+      hasAudio: state.hasAudio,
+      reason: !state.hasMoov ? "MP4_MOOV_NOT_FOUND"
+        : !state.hasVideo ? "VIDEO_TRACK_NOT_FOUND"
+          : !state.hasAudio ? "AUDIO_TRACK_NOT_FOUND" : ""
+    };
+  }
+
+  // FLV declares the stream types in its fixed header. It is not a substitute
+  // for a byte-for-byte decode, but it is the container-level proof available
+  // before Chrome downloads the complete file. This keeps Bilibili progressive
+  // FLV downloads eligible while still refusing audio-only or video-only files.
+  function inspectFlvStreams(input) {
+    const bytes = input instanceof Uint8Array ? input : new Uint8Array(input || 0);
+    if (bytes.length < 9
+      || bytes[0] !== 0x46 || bytes[1] !== 0x4c || bytes[2] !== 0x56) {
+      return { ok: false, hasVideo: false, hasAudio: false, reason: "FLV_HEADER_NOT_FOUND" };
+    }
+    const flags = bytes[4] || 0;
+    const hasAudio = (flags & 0x04) !== 0;
+    const hasVideo = (flags & 0x01) !== 0;
+    return {
+      ok: hasVideo && hasAudio,
+      hasVideo,
+      hasAudio,
+      reason: !hasVideo ? "VIDEO_TRACK_NOT_FOUND" : !hasAudio ? "AUDIO_TRACK_NOT_FOUND" : ""
+    };
+  }
+
   function cancelQueue(queue = {}) {
     const entries = (queue.entries || []).map((entry) => {
-      if (["pending", "downloading", "downloaded", "validated"].includes(entry.state)) {
+      if (["pending", "download_starting", "downloading", "downloaded", "validated"].includes(entry.state)) {
         return { ...entry, state: "cancelled", error: null };
       }
       return entry;
@@ -437,9 +549,11 @@
 
   function toPersistentEntry(entry = {}) {
     const { url, canonicalUrl: rawCanonicalUrl, ...safe } = entry;
+    let mediaOrigin = "";
+    try { mediaOrigin = new URL(String(url || rawCanonicalUrl || "")).origin; } catch { /* empty */ }
     return {
       ...safe,
-      redactedUrl: redactUrl(url || rawCanonicalUrl || ""),
+      mediaOrigin,
       pageUrl: redactUrl(entry.pageUrl || "")
     };
   }
@@ -448,7 +562,7 @@
     IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, STREAM_EXTENSIONS, TERMINAL_STATES,
     applyQueueEvent, buildBatchPlan, buildCacheFilename, cancelQueue, canonicalUrl, classifyCandidate,
     classifyNetworkAccess,
-    createQueue, extensionForUrl, isSelectableFolder, migrateLegacyQueue, normalizeSettings, recoveryAction,
+    createQueue, extensionForMime, extensionForUrl, inspectFlvStreams, inspectIsoBmffTracks, isSelectableFolder, migrateLegacyQueue, normalizeSettings, recoveryAction,
     redactUrl, summarize, toEagleItem, toPersistentEntry, validateDownloadItem
   };
 });

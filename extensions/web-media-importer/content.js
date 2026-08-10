@@ -1,6 +1,8 @@
 (() => {
   if (globalThis.__eagleWebMediaImporterLoaded) return;
   globalThis.__eagleWebMediaImporterLoaded = true;
+  const MAX_DOM_CANDIDATES = 500;
+  const MAX_CONTENT_CONTAINERS = 100;
 
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type !== "collect-web-media") return;
@@ -9,6 +11,9 @@
 
   async function openImportPicker(request) {
     removeUi();
+    if (EagleWebMediaCore.canonicalUrl(request?.sourcePageUrl || "") !== EagleWebMediaCore.canonicalUrl(location.href)) {
+      throw new Error("网页已经切换，旧页面的媒体请求已取消；请在当前页面重新操作");
+    }
     const settingsResponse = await chrome.runtime.sendMessage({ type: "get-web-media-settings" });
     const settings = settingsResponse?.settings || {};
     const model = capturePageModel(request);
@@ -60,7 +65,8 @@
       : provider === "douyin"
         ? ["article", "[data-e2e*='feed']", "[data-e2e*='video']"]
         : ["article", "main"];
-    const elements = uniqueElements(selectors.flatMap((selector) => [...document.querySelectorAll(selector)]));
+    const elements = uniqueElements(selectors.flatMap((selector) => [...document.querySelectorAll(selector)].slice(0, MAX_CONTENT_CONTAINERS)))
+      .slice(0, MAX_CONTENT_CONTAINERS);
     const selectedContainer = selectedElement?.closest(selectors.join(","));
     const visible = elements.filter(isVisible);
     let ownedElement = selectedContainer || null;
@@ -106,9 +112,10 @@
 
   function captureContainerMedia(container, provider) {
     const entries = [];
-    container.querySelectorAll("img").forEach((image) => {
+    for (const image of container.querySelectorAll("img")) {
+      if (entries.length >= MAX_DOM_CANDIDATES) break;
       const url = image.currentSrc || image.src || image.getAttribute("data-src") || "";
-      if (!url) return;
+      if (!url) continue;
       const role = isPageChrome(image) ? "avatar" : (provider === "generic" ? "content-image" : "post-image");
       entries.push({
         url,
@@ -118,10 +125,12 @@
         sourceEvidence: "dom-media-element",
         mimeHint: image.type || ""
       });
-    });
-    container.querySelectorAll("video").forEach((video) => {
+    }
+    for (const video of container.querySelectorAll("video")) {
+      if (entries.length >= MAX_DOM_CANDIDATES) break;
       const urls = [video.currentSrc || video.src, ...[...video.querySelectorAll("source")].map((source) => source.src)];
       for (const url of urls.filter(Boolean)) {
+        if (entries.length >= MAX_DOM_CANDIDATES) break;
         entries.push({
           url,
           kind: "video",
@@ -129,17 +138,17 @@
           label: video.getAttribute("aria-label") || document.title,
           sourceEvidence: "dom-media-element",
           mediaCompleteness: directVideoCompleteness(url),
-          audioStatus: audioProof(video)
+          audioStatus: audioProof(video) === "present" ? "present" : "requires-probe"
         });
       }
-      if (video.poster) entries.push({
+      if (video.poster && entries.length < MAX_DOM_CANDIDATES) entries.push({
         url: video.poster,
         kind: "image",
         role: provider === "generic" ? "content-image" : "post-image",
         label: `${document.title}-封面`,
         sourceEvidence: "dom-media-element"
       });
-    });
+    }
     return entries;
   }
 
@@ -154,7 +163,7 @@
       label: document.title,
       sourceEvidence: "user-selected-media",
       mediaCompleteness: kind === "video" ? directVideoCompleteness(request.sourceUrl) : "",
-      audioStatus: kind === "video" ? audioProof(element) : ""
+      audioStatus: kind === "video" ? (audioProof(element) === "present" ? "present" : "requires-probe") : ""
     };
   }
 
@@ -278,10 +287,15 @@
 
   async function beginImport(plan, folder, panel) {
     panel.querySelectorAll("button,input").forEach((element) => { element.disabled = true; });
-    const result = await chrome.runtime.sendMessage({ type: "import-web-media", plan, folderId: folder.id });
-    removeUi();
-    if (!result?.ok) throw new Error(result?.error || "导入任务创建失败");
-    showToast(`已创建 ${result.summary?.pending || plan.ready.length} 项可恢复任务；可在扩展弹窗查看进度`, "success");
+    try {
+      const result = await chrome.runtime.sendMessage({ type: "import-web-media", plan, folderId: folder.id });
+      if (!result?.ok) throw new Error(result?.error || "导入任务创建失败");
+      removeUi();
+      showToast(`已创建 ${result.summary?.pending || plan.ready.length} 项可恢复任务；可在扩展弹窗查看进度`, "success");
+    } catch (error) {
+      panel.querySelectorAll("button,input").forEach((element) => { element.disabled = false; });
+      showToast(String(error?.message || "导入任务创建失败"), "error");
+    }
   }
 
   function flattenFolders(folders, depth = 0, parent = "") {
@@ -310,6 +324,7 @@
       DASH_OR_AUDIO_UNVERIFIED: "视频可能分轨或无法确认声音，已阻止导入",
       YOUTUBE_OFFICIAL_DOWNLOAD_ONLY: "YouTube 视频只允许官方下载流程，本插件仅保存封面",
       DATA_URL: "页面内嵌数据不是独立媒体文件",
+      ACTIVE_MEDIA_BLOCKED: "可执行 SVG 等主动内容已被安全阻止",
       UNVERIFIED_MEDIA_URL: "媒体地址真实性无法在下载前证明"
     }[reason] || "媒体地址不可用";
   }

@@ -1,5 +1,21 @@
 # 任务
 
+## 2026-08-10：2.2.0 事务与媒体真实性对抗审查
+
+- [x] Chrome 下载与 Eagle `addFromPath` 前均先持久化交接状态；worker 在这两个窗口重建分别进入
+  `download_unknown` / `submission_unknown`，永不自动重复下载或重复提交。
+- [x] 下载完成后再次校验最终地址；跨站、私网、协议降级或非法跳转精确删除下载缓存并阻止提交。
+- [x] Eagle `confirmed` 除同 ID、未删除外，还必须属于用户选定的普通文件夹；未证实项保持
+  `accepted_unconfirmed`，只读回既有 ID。
+- [x] 取消、历史批次淘汰和队列并发均精确清理自己的下载缓存与 session 凭据；取消覆盖下载 ID 未返回、
+  下载校验和 Eagle 提交前的三个竞态窗口，不能让取消后的项目继续进入 Eagle。
+- [x] SVG 主动内容、私网 IPv4/IPv6、异常长 URL、HTML/JSON 伪媒体、扩展名冲突和未验证格式永久拒绝。
+- [x] 视频只允许可验证的渐进完整单文件：MP4/MOV/M4V 解析 ISO-BMFF 的 `moov/trak/hdlr` 音视频轨；
+  B站渐进 FLV 读取容器双流标志。HLS/DASH/blob/DRM、分轨或无法证明双流的容器保持阻止。
+- [x] 51/51 自动回归、六个运行脚本语法检查及 `git diff --check` 通过。
+- [ ] 2.2.0 尚未重新加载到真实 Chrome；真实 B站/抖音/微博的下载前探测、Chrome 实际下载和 Eagle
+  accepted/confirmed/UI 可见仍必须在用户明确批准后分层验证，不能由源码门禁替代。
+
 ## 2026-08-09：2.0.0 对抗审查候选
 
 - [x] 用 `generic/weibo/bilibili/douyin/youtube` provider registry 取代整页 `img/video/a` 扫描。

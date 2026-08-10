@@ -9,9 +9,11 @@ const CREDENTIAL_KEY = "eagle.webMediaImporter.credentials.v2";
 const MENU_PAGE = "save-current-page-media-to-eagle";
 const MENU_MEDIA = "save-current-media-to-eagle";
 const CLEANUP_DELAY_MINUTES = 24 * 60;
+const MEDIA_PROBE_BYTES = 2 * 1024 * 1024;
 const processingBatches = new Set();
 const processingDownloads = new Set();
 let storageLock = Promise.resolve();
+let credentialLock = Promise.resolve();
 
 chrome.runtime.onInstalled.addListener(() => {
   installMenus();
@@ -77,14 +79,15 @@ function installMenus() {
 
 async function openCollector(tab, payload) {
   if (!tab?.id || !/^https?:/i.test(String(tab.url || ""))) throw codedError("TAB_UNSUPPORTED", "请先打开一个普通网页");
+  const request = { type: "collect-web-media", sourcePageUrl: String(tab.url || ""), ...payload };
   try {
-    await chrome.tabs.sendMessage(tab.id, { type: "collect-web-media", ...payload });
+    await chrome.tabs.sendMessage(tab.id, request);
   } catch {
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ["core.js", "structured-media.js", "provider-adapters.js", "content.js"]
     });
-    await chrome.tabs.sendMessage(tab.id, { type: "collect-web-media", ...payload });
+    await chrome.tabs.sendMessage(tab.id, request);
   }
 }
 
@@ -95,14 +98,27 @@ async function openCollectorFromMessage(message) {
 }
 
 async function eagleRequest(path, options = {}) {
-  const response = await fetch(`${EAGLE_API}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) }
-  });
-  if (!response.ok) throw codedError("EAGLE_HTTP_ERROR", `Eagle API ${response.status}`);
+  const response = await fetchWithTimeout(`${EAGLE_API}${path}`, {
+    ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) }
+  }, 20_000);
+  if (!response.ok) {
+    const error = codedError("EAGLE_HTTP_ERROR", `Eagle API ${response.status}`);
+    error.httpStatus = response.status;
+    throw error;
+  }
   const result = await response.json();
   if (result?.status !== "success") throw codedError("EAGLE_REJECTED", result?.message || "Eagle 拒绝了请求");
   return result;
+}
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15_000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function getEagleFolders() {
@@ -147,10 +163,20 @@ async function replaceQueue(queue) {
     const queues = await readQueues();
     const merged = [queue, ...queues.filter((entry) => entry?.id !== queue.id)];
     const active = merged.filter((entry) => entry.entries?.some((item) => !EagleWebMediaCore.TERMINAL_STATES.has(item.state)));
-    const terminal = merged.filter((entry) => !active.includes(entry)).slice(0, 20);
+    const allTerminal = merged.filter((entry) => !active.includes(entry));
+    const terminal = allTerminal.slice(0, 20);
+    const evicted = allTerminal.slice(20);
     await chrome.storage.local.set({ [QUEUE_KEY]: [...active, ...terminal] });
+    await Promise.all(evicted.map(cleanupEvictedQueue));
     return queue;
   });
+}
+
+async function cleanupEvictedQueue(queue) {
+  for (const entry of queue?.entries || []) {
+    await clearCredential(entry.requestRef);
+    if (Number.isFinite(Number(entry.downloadId))) await removeInvalidDownload(entry.downloadId);
+  }
 }
 
 async function updateQueue(batchId, updater) {
@@ -177,8 +203,10 @@ async function readCredentials() {
 }
 
 async function storeCredentials(values) {
-  const current = await readCredentials();
-  await chrome.storage.session.set({ [CREDENTIAL_KEY]: { ...current, ...values } });
+  return withCredentialLock(async () => {
+    const current = await readCredentials();
+    await chrome.storage.session.set({ [CREDENTIAL_KEY]: { ...current, ...values } });
+  });
 }
 
 async function readCredential(ref) {
@@ -186,9 +214,17 @@ async function readCredential(ref) {
 }
 
 async function clearCredential(ref) {
-  const current = await readCredentials();
-  delete current[String(ref || "")];
-  await chrome.storage.session.set({ [CREDENTIAL_KEY]: current });
+  return withCredentialLock(async () => {
+    const current = await readCredentials();
+    delete current[String(ref || "")];
+    await chrome.storage.session.set({ [CREDENTIAL_KEY]: current });
+  });
+}
+
+function withCredentialLock(task) {
+  const run = credentialLock.then(task, task);
+  credentialLock = run.catch(() => {});
+  return run;
 }
 
 async function importPlan(plan, folderId) {
@@ -224,7 +260,12 @@ async function importPlan(plan, folderId) {
   const queue = EagleWebMediaCore.createQueue({
     id: batchId, folderId: String(folderId), entries, limits: validated.limits
   });
-  await replaceQueue(queue);
+  try {
+    await replaceQueue(queue);
+  } catch (error) {
+    await Promise.all(Object.keys(credentials).map((ref) => clearCredential(ref)));
+    throw error;
+  }
   processNextEntry(batchId).catch(() => {});
   return { batchId, summary: queue.summary, entries: queue.entries };
 }
@@ -282,26 +323,167 @@ async function startDownload(queue, entry) {
       type: "blocked", code: network.reason,
       message: "媒体地址不属于当前站点或已登记的平台 CDN"
     });
+    await clearCredential(entry.requestRef);
     return scheduleNext(queue.id);
   }
-  await transition(queue.id, entry.id, {
-    type: "downloading",
+  const prepared = await prepareDownloadEntry(entry, rawUrl);
+  if (!prepared.ok) {
+    await transition(queue.id, entry.id, {
+      type: "blocked", code: prepared.reason, message: prepared.message
+    });
+    await clearCredential(entry.requestRef);
+    return scheduleNext(queue.id);
+  }
+  entry = prepared.entry;
+  const starting = await transition(queue.id, entry.id, {
+    type: "download_starting",
+    validatedExtension: entry.extension,
+    audioStatus: entry.audioStatus,
+    mediaCompleteness: entry.mediaCompleteness,
     networkStatus: network.requiresBrowserValidation ? "requires-browser-validation" : "browser-managed"
   });
+  if (starting.cancelled) {
+    await clearCredential(entry.requestRef);
+    await transition(queue.id, entry.id, { type: "cancelled" });
+    return;
+  }
+  let downloadId;
   try {
-    const downloadId = await chrome.downloads.download({
+    downloadId = await chrome.downloads.download({
       url: rawUrl,
       filename: `${CACHE_DIR}/${EagleWebMediaCore.buildCacheFilename(entry)}`,
       conflictAction: "uniquify",
       saveAs: false
     });
-    await transition(queue.id, entry.id, { type: "downloading", downloadId });
+    const linked = await transition(queue.id, entry.id, { type: "downloading", downloadId });
+    const linkedEntry = linked.entries.find((item) => item.id === entry.id);
+    if (linked.cancelled) {
+      await chrome.downloads.cancel(downloadId).catch(() => {});
+      await removeInvalidDownload(downloadId);
+      await clearCredential(entry.requestRef);
+      await transition(queue.id, entry.id, { type: "cancelled", downloadId });
+      return;
+    }
     const [item] = await chrome.downloads.search({ id: downloadId });
     if (item?.state === "complete" || item?.state === "interrupted") await handleDownloadChange(downloadId);
   } catch (error) {
-    await failEntry(queue.id, entry.id, errorCode(error), formatError(error));
+    const current = (await readQueues()).find((item) => item?.id === queue.id)?.entries?.find((item) => item.id === entry.id);
+    if (Number.isFinite(Number(downloadId)) && current?.state === "download_starting") {
+      await transition(queue.id, entry.id, {
+        type: "download_unknown", code: "DOWNLOAD_HANDOFF_UNKNOWN",
+        message: "Chrome 可能已经接收下载请求，但扩展未取得下载编号；为避免重复下载，已停止自动重试"
+      });
+      await clearCredential(entry.requestRef);
+    } else {
+      await failEntry(queue.id, entry.id, errorCode(error), formatError(error));
+    }
     scheduleNext(queue.id);
   }
+}
+
+async function prepareDownloadEntry(entry, rawUrl) {
+  // An explicit image with a normal file suffix may proceed without a HEAD
+  // round-trip. Its final origin and true MIME are still checked immediately
+  // after the Chrome download. Videos never take this shortcut because their
+  // container must prove both tracks before a full download begins.
+  if (entry.type === "image" && entry.extension && entry.sourceEvidence === "user-selected-media") return { ok: true, entry };
+  try {
+    const response = await fetchWithTimeout(rawUrl, {
+      method: "HEAD", credentials: "omit", cache: "no-store", redirect: "follow"
+    }, 10_000);
+    if (!response.ok) throw new Error(`HEAD ${response.status}`);
+    const finalNetwork = EagleWebMediaCore.classifyNetworkAccess(entry, response.url || rawUrl);
+    if (!finalNetwork.ok) {
+      return { ok: false, reason: "DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED", message: "媒体预检发生了未授权的跨站或私网跳转" };
+    }
+    const extension = EagleWebMediaCore.extensionForMime(response.headers.get("content-type"));
+    if (!extension) {
+      return { ok: false, reason: "MEDIA_TYPE_PREFLIGHT_FAILED", message: "无法在下载前确认文件格式，已停止以避免生成无法识别的 .bin 文件" };
+    }
+    const expectedType = EagleWebMediaCore.IMAGE_EXTENSIONS.has(extension) ? "image"
+      : EagleWebMediaCore.VIDEO_EXTENSIONS.has(extension) ? "video" : "";
+    if (expectedType !== entry.type) {
+      return { ok: false, reason: "DOWNLOAD_TYPE_MISMATCH", message: "媒体预检的真实类型与页面声明不一致" };
+    }
+    const contentLength = Number(response.headers.get("content-length") || 0);
+    if (contentLength > Number(entry.maxBytes || Infinity)) {
+      return { ok: false, reason: "ITEM_SIZE_LIMIT", message: "媒体预检显示文件超过单项安全上限" };
+    }
+    let preparedEntry = { ...entry, extension, mimeHint: response.headers.get("content-type") || entry.mimeHint };
+    if (entry.type === "video") {
+      const probe = await probeVideoTracks(rawUrl, preparedEntry, contentLength);
+      if (!probe.ok) return probe;
+      preparedEntry = { ...preparedEntry, audioStatus: "present", mediaCompleteness: "single-file-complete" };
+    }
+    return { ok: true, entry: preparedEntry };
+  } catch (error) {
+    return { ok: false, reason: "MEDIA_TYPE_PREFLIGHT_FAILED", message: "站点不允许安全确认该直链的文件格式；未开始下载" };
+  }
+}
+
+async function probeVideoTracks(rawUrl, entry, contentLength) {
+  const extension = String(entry.extension || "").toLowerCase();
+  if (!["mp4", "mov", "m4v", "flv"].includes(extension)) {
+    return { ok: false, reason: "VIDEO_CONTAINER_UNVERIFIED", message: "当前视频容器无法可靠验证音轨，已停止下载" };
+  }
+  try {
+    const headBytes = await fetchMediaRange(rawUrl, entry, 0, MEDIA_PROBE_BYTES - 1);
+    let inspection = extension === "flv"
+      ? EagleWebMediaCore.inspectFlvStreams(headBytes)
+      : EagleWebMediaCore.inspectIsoBmffTracks(headBytes);
+    if (extension !== "flv" && !inspection.ok && !inspection.hasMoov && contentLength > MEDIA_PROBE_BYTES) {
+      const start = Math.max(0, contentLength - MEDIA_PROBE_BYTES);
+      const tailBytes = await fetchMediaRange(rawUrl, entry, start, contentLength - 1);
+      inspection = EagleWebMediaCore.inspectIsoBmffTracks(tailBytes);
+    }
+    if (!inspection.ok) {
+      return {
+        ok: false, reason: inspection.reason || "VIDEO_TRACKS_UNVERIFIED",
+        message: inspection.reason === "AUDIO_TRACK_NOT_FOUND"
+          ? "视频容器中没有可证明的音轨，已停止下载"
+          : "无法同时证明视频轨和音轨，已停止下载"
+      };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "VIDEO_TRACKS_UNVERIFIED", message: "站点不允许安全读取视频轨道信息，已停止下载" };
+  }
+}
+
+async function fetchMediaRange(rawUrl, entry, start, end) {
+  const response = await fetchWithTimeout(rawUrl, {
+    method: "GET", credentials: "omit", cache: "no-store", redirect: "follow",
+    headers: { Range: `bytes=${start}-${end}` }
+  }, 15_000);
+  if (!response.ok) throw new Error(`RANGE ${response.status}`);
+  if (!EagleWebMediaCore.classifyNetworkAccess(entry, response.url || rawUrl).ok) {
+    throw new Error("range-final-origin-not-allowed");
+  }
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > MEDIA_PROBE_BYTES) throw new Error("range-response-too-large");
+    return bytes;
+  }
+  const chunks = [];
+  let total = 0;
+  while (total <= MEDIA_PROBE_BYTES) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MEDIA_PROBE_BYTES) {
+      await reader.cancel();
+      throw new Error("range-response-too-large");
+    }
+    chunks.push(value);
+  }
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return combined;
 }
 
 async function handleDownloadChange(downloadId) {
@@ -323,6 +505,7 @@ async function handleDownloadChange(downloadId) {
       type: "downloaded", downloadId, path: item.filename
     });
     const updatedEntry = updated.entries.find((entry) => entry.id === located.entry.id);
+    if (updated.cancelled || updatedEntry?.state !== "downloaded") return;
     return validateCompletedDownload(updated, updatedEntry);
   } finally {
     processingDownloads.delete(Number(downloadId));
@@ -336,6 +519,16 @@ async function validateCompletedDownload(queue, entry) {
     await transition(queue.id, entry.id, {
       type: "blocked", code: validation.reason,
       message: validationMessage(validation.reason)
+    });
+    await removeInvalidDownload(entry.downloadId);
+    await clearCredential(entry.requestRef);
+    return scheduleNext(queue.id);
+  }
+  const finalNetwork = EagleWebMediaCore.classifyNetworkAccess(entry, item?.finalUrl || item?.url || "");
+  if (!finalNetwork.ok) {
+    await transition(queue.id, entry.id, {
+      type: "blocked", code: "DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED",
+      message: "下载最终地址发生了未授权的跨站或私网跳转"
     });
     await removeInvalidDownload(entry.downloadId);
     await clearCredential(entry.requestRef);
@@ -359,15 +552,24 @@ async function validateCompletedDownload(queue, entry) {
     validatedExtension: validation.extension, actualBytes: validation.size
   });
   const validatedEntry = updated.entries.find((itemEntry) => itemEntry.id === entry.id);
+  if (updated.cancelled || validatedEntry?.state !== "validated") return;
   return acceptValidatedEntry(updated, validatedEntry);
 }
 
 async function acceptValidatedEntry(queue, entry) {
   try {
     await assertOrdinaryFolder(queue.folderId);
+  } catch (error) {
+    await failEntry(queue.id, entry.id, errorCode(error), formatError(error));
+    return scheduleNext(queue.id);
+  }
+  const submitting = await transition(queue.id, entry.id, { type: "submitting" });
+  const submittingEntry = submitting.entries.find((item) => item.id === entry.id);
+  if (submitting.cancelled || submittingEntry?.state !== "submitting") return;
+  try {
     const result = await eagleRequest("/item/addFromPath", {
       method: "POST",
-      body: JSON.stringify({ ...EagleWebMediaCore.toEagleItem(entry, entry.path), folderId: queue.folderId })
+      body: JSON.stringify({ ...EagleWebMediaCore.toEagleItem(submittingEntry, submittingEntry.path), folderId: queue.folderId })
     });
     const eagleItemIds = extractEagleItemIds(result);
     const accepted = await transition(queue.id, entry.id, { type: "accepted", eagleItemIds });
@@ -379,9 +581,23 @@ async function acceptValidatedEntry(queue, entry) {
     }
     return confirmAcceptedEntry(accepted, acceptedEntry);
   } catch (error) {
-    await failEntry(queue.id, entry.id, errorCode(error), formatError(error));
+    if (isDefinitiveEagleRejection(error)) {
+      await failEntry(queue.id, entry.id, errorCode(error), formatError(error));
+    } else {
+      await transition(queue.id, entry.id, {
+        type: "submission_unknown", code: "EAGLE_SUBMISSION_UNKNOWN",
+        message: "Eagle 可能已经接收该文件，但扩展未取得可靠结果；为避免重复素材，已禁止自动重试"
+      });
+      await clearCredential(entry.requestRef);
+    }
     return scheduleNext(queue.id);
   }
+}
+
+function isDefinitiveEagleRejection(error) {
+  if (String(error?.code || "") === "EAGLE_REJECTED") return true;
+  const status = Number(error?.httpStatus);
+  return String(error?.code || "") === "EAGLE_HTTP_ERROR" && status >= 400 && status < 500;
 }
 
 async function confirmAcceptedEntry(queue, entry) {
@@ -390,7 +606,7 @@ async function confirmAcceptedEntry(queue, entry) {
     await transition(queue.id, entry.id, { type: "accepted_unconfirmed" });
     return scheduleNext(queue.id);
   }
-  const confirmed = await confirmEagleItems(ids);
+  const confirmed = await confirmEagleItems(ids, queue.folderId);
   if (!confirmed) {
     const attempts = Math.max(0, Number(entry.confirmationAttempts) || 0) + 1;
     await transition(queue.id, entry.id, { type: "accepted_unconfirmed", confirmationAttempts: attempts });
@@ -415,7 +631,7 @@ async function confirmUnconfirmedEntry(batchId, entryId) {
   if (!entry || entry.state !== "accepted_unconfirmed") return false;
   const ids = Array.isArray(entry.eagleItemIds) ? entry.eagleItemIds : [];
   if (!ids.length) return false;
-  if (await confirmEagleItems(ids)) {
+  if (await confirmEagleItems(ids, queue.folderId)) {
     await transition(batchId, entryId, { type: "confirmed", eagleItemIds: ids });
     scheduleCleanup(batchId, entryId, entry.downloadId);
     return true;
@@ -437,15 +653,17 @@ async function recheckUnconfirmedBatch(batchId) {
   return { batchId: queue.id, confirmed, summary: updated.summary };
 }
 
-async function confirmEagleItems(ids) {
+async function confirmEagleItems(ids, folderId) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const results = await Promise.all(ids.map(async (id) => {
       try {
         const result = await eagleRequest(`/item/info?id=${encodeURIComponent(id)}`);
         const item = result?.data;
+        const folders = Array.isArray(item?.folders) ? item.folders.map(String) : [];
         return String(item?.id || "") === String(id)
           && item?.isDeleted !== true
-          && item?.deleted !== true;
+          && item?.deleted !== true
+          && folders.includes(String(folderId || ""));
       } catch {
         return false;
       }
@@ -490,7 +708,7 @@ async function retryBatch(batchId) {
     ...queue,
     cancelled: false,
     entries: queue.entries.map((entry) => {
-      if (!entry.error || !["failed", "blocked"].includes(entry.state)) return entry;
+      if (!entry.error || entry.state !== "failed") return entry;
       if (entry.validatedAt && entry.path && entry.downloadId) {
         retryable += 1;
         return { ...entry, state: "validated", error: null };
@@ -516,6 +734,11 @@ async function cancelBatch(batchId) {
   }
   const next = EagleWebMediaCore.cancelQueue(queue);
   await replaceQueue(next);
+  for (const entry of next.entries) {
+    if (entry.state !== "cancelled") continue;
+    await clearCredential(entry.requestRef);
+    if (Number.isFinite(Number(entry.downloadId))) await removeInvalidDownload(entry.downloadId);
+  }
   return { batchId: next.id, summary: next.summary };
 }
 
@@ -523,6 +746,18 @@ async function recoverQueues() {
   const queues = await readQueues();
   for (const queue of queues) {
     for (const entry of queue.entries || []) {
+      const uncertain = EagleWebMediaCore.recoveryAction(entry);
+      if (uncertain.action === "uncertain") {
+        const type = entry.state === "submitting" ? "submission_unknown" : "download_unknown";
+        await transition(queue.id, entry.id, {
+          type, code: uncertain.reason,
+          message: entry.state === "submitting"
+            ? "后台在 Eagle 提交过程中重建；为避免重复素材，已停止自动重试"
+            : "后台在 Chrome 下载交接过程中重建；为避免重复下载，已停止自动重试"
+        });
+        await clearCredential(entry.requestRef);
+        continue;
+      }
       if (entry.state === "accepted_unconfirmed" && (entry.eagleItemIds || []).length) {
         scheduleConfirmation(queue.id, entry.id, Math.max(1, Number(entry.confirmationAttempts) || 1));
       }
@@ -582,6 +817,8 @@ function validationMessage(code) {
     DOWNLOAD_DANGEROUS: "Chrome 将该下载标记为危险文件",
     DOWNLOAD_TYPE_MISMATCH: "下载文件的真实类型与候选媒体不符",
     DOWNLOAD_EXTENSION_MISMATCH: "下载文件的真实格式与扩展名不符",
+    ACTIVE_MEDIA_BLOCKED: "可执行 SVG 等主动内容已被安全阻止",
+    DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED: "下载最终地址发生未授权跳转",
     ITEM_SIZE_LIMIT: "单个文件超过安全上限"
   }[code] || "下载文件未通过真实性校验";
 }
@@ -594,11 +831,13 @@ function codedError(code, message) {
 
 function errorCode(error) {
   if (error?.code) return String(error.code);
+  if (error?.name === "AbortError") return "EAGLE_TIMEOUT";
   if (error instanceof TypeError && /fetch/i.test(String(error.message))) return "EAGLE_UNAVAILABLE";
   return "IMPORT_FAILED";
 }
 
 function formatError(error) {
+  if (error?.name === "AbortError") return "Eagle 响应超时，请稍后重试";
   if (error instanceof TypeError && /fetch/i.test(String(error.message))) {
     return "无法连接 Eagle，请先打开 Eagle 和目标资源库";
   }

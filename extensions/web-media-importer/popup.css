@@ -235,6 +235,13 @@ details > summary {
 .queue strong { font-size: 12px; }
 .queue span { color: var(--subtle); font-size: 11px; }
 
+.queue .queue-warning {
+  margin: 7px 0 0;
+  color: #f0b35b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .queue button {
   width: auto;
   min-height: 28px;

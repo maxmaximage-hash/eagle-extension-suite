@@ -1,4 +1,4 @@
-# 网页媒体保存至 Eagle 2.0
+# 网页媒体保存至 Eagle 2.2.0
 
 这是一个独立 Chrome MV3 扩展。它不是“全网页破解器”：用户明确触发后，先识别当前帖子/当前内容，
 再下载归属明确的公开媒体；下载完成后验证真实文件，最后通过 Eagle 公开本地 API 交给普通文件夹。
@@ -20,7 +20,7 @@
 
 1. 默认每批最多 25 项、单项 1 GiB、整批 2 GiB；可在扩展弹窗调整。
 2. 用户选择 Eagle 普通文件夹并勾选确认项目数/估计大小，任务才建立。
-3. 每个文件独立持久化：pending、downloading、downloaded、validated、accepted、confirmed。
+3. 每个文件独立持久化：pending、download_starting、downloading、downloaded、validated、submitting、accepted、confirmed；关键交接中断会明确标为“需核对”，不会自动重复。
 4. Chrome 下载后检查真实 MIME、大小、最终 URL、危险状态、类型与扩展名；HTML/JSON/空文件拒绝。
 5. Eagle `success` 只是 accepted；返回 ID 且公开 API 读回才 confirmed。
 6. 只有 confirmed 缓存会在 24 小时后按精确 downloadId 清理；accepted_unconfirmed 不清理。
@@ -58,6 +58,13 @@ npm run package:stable
 4. 点击扩展的“保存当前帖子/内容”，或在目标媒体上右键。
 5. 检查数量、估计大小、阻止/遗漏提示，选择普通 Eagle 文件夹并确认。
 6. popup 中区分“API 已读回、待确认、失败/阻止”；不能把 accepted_unconfirmed 当作已完成。
+
+`2.2.0` 在 2.1 的交互基线上补齐关键交接事务：Chrome 尚未返回下载 ID、Eagle 尚未返回接收结果时发生
+后台重建，一律进入“需核对”且禁止自动重试，避免重复下载或重复素材。最终下载地址会重新执行来源门禁；
+扩展名未知时先用无凭据 HEAD 验证 MIME 再命名，不能证明格式就不生成 `.bin`；取消和历史淘汰会精确清理
+自身临时下载与会话凭据。取消在下载编号尚未返回、下载完成校验或 Eagle 提交前发生时都会阻止后续提交。
+Eagle 的 confirmed 还必须证明 item ID 未删除且属于用户选择的普通文件夹。视频必须先证明为完整单文件：
+MP4/MOV/M4V 检查 ISO-BMFF 音视频轨，B站可用的渐进 FLV 检查容器音视频流标志；无法证明的一律不下载。
 
 `2.1.0` 在 `2.0.1` 平台门禁基础上重新设计扩展卡片说明、图标和弹窗：明确“大多数普通网页图片可右键保存”，
 将“扫描当前帖子/页面”作为多媒体入口，并用人话说明 YouTube 封面、受保护流媒体、临时链接与站点限制。

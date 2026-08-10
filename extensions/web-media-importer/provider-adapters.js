@@ -112,7 +112,7 @@
           label: model.pageTitle,
           sourceEvidence: "provider-structured-data",
           mediaCompleteness: "single-file-complete",
-          audioStatus: "present"
+          audioStatus: "requires-probe"
         });
       }
       if (model.structured?.hasDash || (model.meta?.video && !(model.structured?.progressiveVideos || []).length)) {
@@ -173,7 +173,7 @@
         label: model.pageTitle,
         sourceEvidence: "provider-structured-data",
         mediaCompleteness: "single-file-complete",
-        audioStatus: "present"
+        audioStatus: "requires-probe"
       }))
     ];
     if (!structuredCandidates.length) return containerResult;

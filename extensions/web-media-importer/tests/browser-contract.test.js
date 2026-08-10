@@ -15,7 +15,7 @@ test("browser importer is user-triggered, supports direct web media and never ed
   const source = `${background}\n${content}`;
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "2.1.0");
+  assert.equal(manifest.version, "2.2.0");
   assert.match(manifest.description, /网页图片/);
   assert.deepEqual(Object.keys(manifest.icons).sort(), ["16", "32", "48", "128"].sort());
   assert.equal(manifest.action.default_icon["32"], "icons/icon-32.png");
@@ -45,6 +45,7 @@ test("browser importer is user-triggered, supports direct web media and never ed
   assert.match(source, /保存当前帖子\/内容至 Eagle/);
   assert.match(source, /保存当前媒体至 Eagle/);
   assert.match(background, /selectedKind:\s*String\(info\.mediaType/);
+  assert.match(background, /sourcePageUrl:\s*String\(tab\.url/);
   assert.match(content, /request\.selectedKind/);
   assert.match(content, /searchParams\.get\("modal_id"\)/);
   assert.match(content, /attachShadow/);

@@ -65,7 +65,7 @@ test("Bilibili accepts page-exposed progressive durl but still reports DASH", ()
     }
   }));
   assert.equal(result.candidates.filter((entry) => entry.kind === "video").length, 1);
-  assert.equal(result.candidates.find((entry) => entry.kind === "video").audioStatus, "present");
+  assert.equal(result.candidates.find((entry) => entry.kind === "video").audioStatus, "requires-probe");
   assert.equal(result.blocked[0].reason, "DASH_OR_AUDIO_UNVERIFIED");
 });
 
@@ -80,6 +80,7 @@ test("Douyin accepts only the current aweme progressive play address exposed in 
   assert.equal(result.ok, true);
   assert.deepEqual(result.candidates.map((entry) => entry.kind), ["image", "video"]);
   assert.equal(result.candidates[1].sourceEvidence, "provider-structured-data");
+  assert.equal(result.candidates[1].audioStatus, "requires-probe");
 });
 
 test("Douyin search modal is a proven current work only when modal_id is numeric", () => {

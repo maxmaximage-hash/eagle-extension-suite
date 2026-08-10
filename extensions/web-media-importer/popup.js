@@ -67,9 +67,10 @@ async function refreshQueues() {
     row.className = "queue";
     const summary = queue.summary || {};
     row.innerHTML = `<strong></strong><span></span>`;
-    row.querySelector("strong").textContent = `API 已读回 ${summary.confirmed || 0} · 待确认 ${summary.accepted_unconfirmed || 0} · 失败/阻止 ${(summary.failed || 0) + (summary.blocked || 0)}`;
+    const uncertain = Number(summary.download_unknown || 0) + Number(summary.submission_unknown || 0);
+    row.querySelector("strong").textContent = `API 已读回 ${summary.confirmed || 0} · 待确认 ${summary.accepted_unconfirmed || 0} · 需核对 ${uncertain} · 失败/阻止 ${(summary.failed || 0) + (summary.blocked || 0)}`;
     row.querySelector("span").textContent = new Date(queue.updatedAt || queue.createdAt || Date.now()).toLocaleString();
-    if (Number(summary.failed || 0) + Number(summary.blocked || 0) > 0) {
+    if (Number(summary.failed || 0) > 0) {
       const retry = document.createElement("button");
       retry.type = "button";
       retry.textContent = "重试失败项";
@@ -95,7 +96,15 @@ async function refreshQueues() {
       });
       row.append(recheck);
     }
-    const active = Number(summary.pending || 0) + Number(summary.downloading || 0) + Number(summary.downloaded || 0) + Number(summary.validated || 0);
+    if (uncertain > 0) {
+      const warning = document.createElement("p");
+      warning.className = "queue-warning";
+      warning.textContent = "浏览器曾在关键交接点中断。为避免重复下载或重复导入，这些项目不会自动重试。";
+      row.append(warning);
+    }
+    const active = Number(summary.pending || 0) + Number(summary.download_starting || 0)
+      + Number(summary.downloading || 0) + Number(summary.downloaded || 0)
+      + Number(summary.validated || 0) + Number(summary.submitting || 0);
     if (active > 0) {
       const cancel = document.createElement("button");
       cancel.type = "button";
