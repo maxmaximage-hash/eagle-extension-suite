@@ -43,6 +43,10 @@ test("MV3 background uses durable per-item processing and restart recovery", () 
   assert.match(source, /inspectFlvStreams/);
   assert.match(source, /method:\s*"HEAD"/);
   assert.match(source, /credentials:\s*"omit"/);
+  assert.match(source, /fetchPreflightResponse/);
+  assert.match(source, /Range:\s*"bytes=0-0"/);
+  assert.match(source, /async function fetchMediaRange[\s\S]*?const controller = new AbortController\(\)/);
+  assert.match(source, /async function fetchMediaRange[\s\S]*?signal:\s*controller\.signal/);
   assert.match(source, /DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED/);
   assert.match(source, /cleanupEvictedQueue/);
   assert.match(source, /credentialLock/);
@@ -51,6 +55,9 @@ test("MV3 background uses durable per-item processing and restart recovery", () 
   const recheckEnd = source.indexOf("async function recheckUnconfirmedBatch", recheckStart);
   assert.ok(recheckStart >= 0 && recheckEnd > recheckStart);
   assert.doesNotMatch(source.slice(recheckStart, recheckEnd), /addFromPath/);
+  const downloadCatch = source.slice(source.indexOf("let downloadId;"), source.indexOf("async function prepareDownloadEntry"));
+  assert.match(downloadCatch, /current\?\.state === "download_starting"/);
+  assert.match(downloadCatch, /type:\s*"download_unknown"/);
 });
 
 test("download is validated before Eagle acceptance and cleanup only follows confirmation", () => {
@@ -76,8 +83,8 @@ test("runtime package includes provider adapters and version 2 candidate", () =>
   const manifest = JSON.parse(read("manifest.json"));
   const packageJson = JSON.parse(read("package.json"));
   const packageScript = read("scripts/package-stable.sh");
-  assert.equal(manifest.version, "2.2.0");
-  assert.equal(packageJson.version, "2.2.0");
+  assert.equal(manifest.version, "2.3.0");
+  assert.equal(packageJson.version, "2.3.0");
   assert.match(JSON.stringify(manifest.content_scripts), /structured-media\.js/);
   assert.match(JSON.stringify(manifest.content_scripts), /provider-adapters\.js/);
   assert.match(packageScript, /provider-adapters\.js/);

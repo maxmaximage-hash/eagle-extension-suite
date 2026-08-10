@@ -1,7 +1,7 @@
 {
   "name": "eagle-web-media-importer",
   "private": true,
-  "version": "2.2.0",
+  "version": "2.3.0",
   "scripts": {
     "test": "node --test tests/*.test.js",
     "check": "node --check core.js && node --check structured-media.js && node --check provider-adapters.js && node --check background.js && node --check content.js && node --check popup.js",

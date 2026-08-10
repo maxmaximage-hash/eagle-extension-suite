@@ -41,15 +41,24 @@
     for (const text of scriptTexts) {
       if (!String(text || "").includes("__playinfo__")) continue;
       const playInfo = parseAssignedObject(text, "__playinfo__");
-      if (!playInfo) return {};
+      if (!playInfo) continue;
       const data = playInfo?.data || playInfo?.result || {};
       const durl = Array.isArray(data.durl) ? data.durl : [];
-      const progressiveVideos = durl.flatMap((item) => {
+      // A Bilibili durl array is one progressively delivered work.  More than
+      // one entry means the work is split into sequential segments, not that
+      // it contains several independently importable videos.  Importing the
+      // entries individually would create corrupt partial clips in Eagle.
+      const hasSegmentedDurl = durl.length > 1;
+      const progressiveVideos = hasSegmentedDurl ? [] : durl.flatMap((item) => {
         const urls = [item?.url, ...(Array.isArray(item?.backup_url) ? item.backup_url : [])];
         const url = urls.find((value) => /^https?:/i.test(String(value || "")));
         return url ? [{ url, estimatedBytes: Math.max(0, Number(item?.size) || 0) }] : [];
       });
-      return { progressiveVideos, hasDash: Boolean(data.dash) };
+      const hasDash = Boolean(data.dash);
+      // Pages can contain an earlier bootstrap/stale assignment as well as the
+      // actual payload. Empty objects are not media evidence, so keep looking.
+      if (!progressiveVideos.length && !hasDash && !hasSegmentedDurl) continue;
+      return { progressiveVideos, hasDash, hasSegmentedDurl };
     }
     return {};
   }
@@ -88,13 +97,17 @@
   function findObjectById(root, expectedId) {
     const queue = [root];
     const seen = new Set();
-    for (let visited = 0; queue.length && visited < MAX_VISITED_NODES; visited += 1) {
-      const value = queue.shift();
+    for (let head = 0, visited = 0; head < queue.length && visited < MAX_VISITED_NODES; head += 1, visited += 1) {
+      const value = queue[head];
       if (!value || typeof value !== "object" || seen.has(value)) continue;
       seen.add(value);
       const id = String(value.aweme_id || value.awemeId || value.id_str || "");
       if (id === expectedId && (value.video || value.images || value.image_post_info)) return value;
-      for (const child of Array.isArray(value) ? value : Object.values(value)) {
+      let inspected = 0;
+      for (const key in value) {
+        if (!Object.hasOwn(value, key) || inspected >= MAX_VISITED_NODES) continue;
+        inspected += 1;
+        const child = value[key];
         if (child && typeof child === "object") queue.push(child);
       }
     }

@@ -10,6 +10,30 @@ test("extracts only Bilibili progressive durl and reports DASH without executing
   assert.equal(global.window, undefined);
 });
 
+test("a malformed playinfo marker does not hide a later valid Bilibili payload", () => {
+  const result = structured.extractBilibili([
+    "const note = '__playinfo__={not-json}';",
+    'window.__playinfo__={"data":{"durl":[{"url":"https://upos.example/video.mp4","size":12}]}};'
+  ]);
+  assert.deepEqual(result.progressiveVideos, [{ url: "https://upos.example/video.mp4", estimatedBytes: 12 }]);
+});
+
+test("an empty earlier playinfo object does not hide a later Bilibili media payload", () => {
+  const result = structured.extractBilibili([
+    'window.__playinfo__={"data":{}};',
+    'window.__playinfo__={"data":{"durl":[{"url":"https://upos.example/video.mp4","size":21}]}};'
+  ]);
+  assert.deepEqual(result.progressiveVideos, [{ url: "https://upos.example/video.mp4", estimatedBytes: 21 }]);
+});
+
+test("Bilibili multi-segment durl is never represented as several complete videos", () => {
+  const result = structured.extractBilibili([
+    'window.__playinfo__={"data":{"durl":[{"url":"https://upos.example/part-1.flv","size":10},{"url":"https://upos.example/part-2.flv","size":20}]}};'
+  ]);
+  assert.deepEqual(result.progressiveVideos, []);
+  assert.equal(result.hasSegmentedDurl, true);
+});
+
 test("extracts only the Douyin aweme matching the current URL id", () => {
   const render = encodeURIComponent(JSON.stringify({ app: {
     feed: [

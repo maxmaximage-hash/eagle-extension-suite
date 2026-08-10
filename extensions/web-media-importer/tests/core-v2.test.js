@@ -47,6 +47,19 @@ test("explicit stream and split-track evidence is blocked before download", () =
   }
 });
 
+test("a direct trusted video without a filename suffix reaches MIME and container probing", () => {
+  const classified = core.classifyCandidate({
+    url: "https://media.example/download?id=42",
+    kind: "video",
+    sourceEvidence: "user-selected-media",
+    mediaCompleteness: "requires-probe",
+    audioStatus: "requires-probe"
+  });
+  assert.equal(classified.ok, true);
+  assert.equal(classified.type, "video");
+  assert.equal(classified.extension, "");
+});
+
 test("active SVG and disguised executable media are blocked", () => {
   for (const candidate of [
     { url: "https://cdn.example/payload.svg", kind: "image" },

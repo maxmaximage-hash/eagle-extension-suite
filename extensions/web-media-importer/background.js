@@ -368,7 +368,7 @@ async function startDownload(queue, entry) {
     if (item?.state === "complete" || item?.state === "interrupted") await handleDownloadChange(downloadId);
   } catch (error) {
     const current = (await readQueues()).find((item) => item?.id === queue.id)?.entries?.find((item) => item.id === entry.id);
-    if (Number.isFinite(Number(downloadId)) && current?.state === "download_starting") {
+    if (current?.state === "download_starting") {
       await transition(queue.id, entry.id, {
         type: "download_unknown", code: "DOWNLOAD_HANDOFF_UNKNOWN",
         message: "Chrome 可能已经接收下载请求，但扩展未取得下载编号；为避免重复下载，已停止自动重试"
@@ -388,10 +388,7 @@ async function prepareDownloadEntry(entry, rawUrl) {
   // container must prove both tracks before a full download begins.
   if (entry.type === "image" && entry.extension && entry.sourceEvidence === "user-selected-media") return { ok: true, entry };
   try {
-    const response = await fetchWithTimeout(rawUrl, {
-      method: "HEAD", credentials: "omit", cache: "no-store", redirect: "follow"
-    }, 10_000);
-    if (!response.ok) throw new Error(`HEAD ${response.status}`);
+    const response = await fetchPreflightResponse(rawUrl);
     const finalNetwork = EagleWebMediaCore.classifyNetworkAccess(entry, response.url || rawUrl);
     if (!finalNetwork.ok) {
       return { ok: false, reason: "DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED", message: "媒体预检发生了未授权的跨站或私网跳转" };
@@ -405,7 +402,7 @@ async function prepareDownloadEntry(entry, rawUrl) {
     if (expectedType !== entry.type) {
       return { ok: false, reason: "DOWNLOAD_TYPE_MISMATCH", message: "媒体预检的真实类型与页面声明不一致" };
     }
-    const contentLength = Number(response.headers.get("content-length") || 0);
+    const contentLength = preflightContentLength(response);
     if (contentLength > Number(entry.maxBytes || Infinity)) {
       return { ok: false, reason: "ITEM_SIZE_LIMIT", message: "媒体预检显示文件超过单项安全上限" };
     }
@@ -419,6 +416,34 @@ async function prepareDownloadEntry(entry, rawUrl) {
   } catch (error) {
     return { ok: false, reason: "MEDIA_TYPE_PREFLIGHT_FAILED", message: "站点不允许安全确认该直链的文件格式；未开始下载" };
   }
+}
+
+async function fetchPreflightResponse(rawUrl) {
+  try {
+    const response = await fetchWithTimeout(rawUrl, {
+      method: "HEAD", credentials: "omit", cache: "no-store", redirect: "follow"
+    }, 10_000);
+    if (response.ok) return response;
+  } catch {
+    // Some media CDNs intentionally reject HEAD while still serving a normal
+    // public GET. The bounded range fallback below can still establish the
+    // MIME and final origin without downloading the media file.
+  }
+  const response = await fetchWithTimeout(rawUrl, {
+    method: "GET", credentials: "omit", cache: "no-store", redirect: "follow",
+    headers: { Range: "bytes=0-0" }
+  }, 10_000);
+  if (!response.ok) throw new Error(`PREFLIGHT ${response.status}`);
+  if (response.body) await response.body.cancel().catch(() => {});
+  return response;
+}
+
+function preflightContentLength(response) {
+  const direct = Number(response?.headers?.get("content-length") || 0);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const range = String(response?.headers?.get("content-range") || "");
+  const total = Number(range.match(/\/(\d+)$/)?.[1] || 0);
+  return Number.isFinite(total) && total > 0 ? total : 0;
 }
 
 async function probeVideoTracks(rawUrl, entry, contentLength) {
@@ -451,39 +476,45 @@ async function probeVideoTracks(rawUrl, entry, contentLength) {
 }
 
 async function fetchMediaRange(rawUrl, entry, start, end) {
-  const response = await fetchWithTimeout(rawUrl, {
-    method: "GET", credentials: "omit", cache: "no-store", redirect: "follow",
-    headers: { Range: `bytes=${start}-${end}` }
-  }, 15_000);
-  if (!response.ok) throw new Error(`RANGE ${response.status}`);
-  if (!EagleWebMediaCore.classifyNetworkAccess(entry, response.url || rawUrl).ok) {
-    throw new Error("range-final-origin-not-allowed");
-  }
-  const reader = response.body?.getReader();
-  if (!reader) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > MEDIA_PROBE_BYTES) throw new Error("range-response-too-large");
-    return bytes;
-  }
-  const chunks = [];
-  let total = 0;
-  while (total <= MEDIA_PROBE_BYTES) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > MEDIA_PROBE_BYTES) {
-      await reader.cancel();
-      throw new Error("range-response-too-large");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const response = await fetch(rawUrl, {
+      method: "GET", credentials: "omit", cache: "no-store", redirect: "follow",
+      headers: { Range: `bytes=${start}-${end}` }, signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`RANGE ${response.status}`);
+    if (!EagleWebMediaCore.classifyNetworkAccess(entry, response.url || rawUrl).ok) {
+      throw new Error("range-final-origin-not-allowed");
     }
-    chunks.push(value);
+    const reader = response.body?.getReader();
+    if (!reader) {
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.byteLength > MEDIA_PROBE_BYTES) throw new Error("range-response-too-large");
+      return bytes;
+    }
+    const chunks = [];
+    let total = 0;
+    while (total <= MEDIA_PROBE_BYTES) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MEDIA_PROBE_BYTES) {
+        await reader.cancel();
+        throw new Error("range-response-too-large");
+      }
+      chunks.push(value);
+    }
+    const combined = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return combined;
+  } finally {
+    clearTimeout(timer);
   }
-  const combined = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return combined;
 }
 
 async function handleDownloadChange(downloadId) {

@@ -60,7 +60,8 @@
       if (/^blob:/i.test(String(candidate.url || ""))) {
         rejected.push(blocked(candidate, "BROWSER_BLOB"));
       } else if (candidate.kind === "video" && (
-        candidate.mediaCompleteness !== "single-file-complete" || candidate.audioStatus !== "present"
+        !["single-file-complete", "requires-probe"].includes(String(candidate.mediaCompleteness || ""))
+        || !["present", "requires-probe"].includes(String(candidate.audioStatus || ""))
       )) {
         rejected.push(blocked(candidate, "DASH_OR_AUDIO_UNVERIFIED"));
       } else {
@@ -114,6 +115,9 @@
           mediaCompleteness: "single-file-complete",
           audioStatus: "requires-probe"
         });
+      }
+      if (model.structured?.hasSegmentedDurl) {
+        rejected.push(blocked({ url: "", kind: "video", role: "post-video" }, "DASH_OR_AUDIO_UNVERIFIED"));
       }
       if (model.structured?.hasDash || (model.meta?.video && !(model.structured?.progressiveVideos || []).length)) {
         rejected.push(blocked({ url: model.meta?.video || "", kind: "video", role: "post-video" }, "DASH_OR_AUDIO_UNVERIFIED"));

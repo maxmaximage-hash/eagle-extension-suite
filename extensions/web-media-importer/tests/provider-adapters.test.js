@@ -69,6 +69,15 @@ test("Bilibili accepts page-exposed progressive durl but still reports DASH", ()
   assert.equal(result.blocked[0].reason, "DASH_OR_AUDIO_UNVERIFIED");
 });
 
+test("Bilibili blocks multi-segment durl instead of importing partial clips", () => {
+  const result = adapters.collect(model("bilibili", {
+    pageUrl: "https://www.bilibili.com/video/BV1x",
+    structured: { progressiveVideos: [], hasSegmentedDurl: true }
+  }));
+  assert.equal(result.ok, false);
+  assert.equal(result.blocked[0].reason, "DASH_OR_AUDIO_UNVERIFIED");
+});
+
 test("Douyin accepts only the current aweme progressive play address exposed in page data", () => {
   const result = adapters.collect(model("douyin", {
     pageUrl: "https://www.douyin.com/video/123",
@@ -173,4 +182,18 @@ test("generic page mode requires a single proven content container", () => {
   const result = adapters.collect(model("generic", { containers: [] }));
   assert.equal(result.ok, false);
   assert.equal(result.reason, "CURRENT_CONTENT_NOT_PROVEN");
+});
+
+test("a direct video from one proven container proceeds to later container probing", () => {
+  const result = adapters.collect(model("generic", {
+    containers: [{ id: "current", owned: true, candidates: [{
+      url: "https://media.example/download?id=42",
+      kind: "video",
+      role: "content-video",
+      mediaCompleteness: "requires-probe",
+      audioStatus: "requires-probe"
+    }] }]
+  }));
+  assert.equal(result.ok, true);
+  assert.equal(result.candidates[0].audioStatus, "requires-probe");
 });

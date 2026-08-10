@@ -128,7 +128,7 @@
       return { ok: false, reason: "UNVERIFIED_MEDIA_URL" };
     }
     if (type === "video") {
-      if (candidate.mediaCompleteness !== "single-file-complete"
+      if (!["single-file-complete", "requires-probe"].includes(String(candidate.mediaCompleteness || ""))
         || !["present", "requires-probe"].includes(String(candidate.audioStatus || ""))) {
         return { ok: false, reason: "DASH_OR_AUDIO_UNVERIFIED" };
       }

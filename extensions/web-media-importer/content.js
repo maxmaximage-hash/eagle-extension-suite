@@ -169,7 +169,10 @@
 
   function directVideoCompleteness(url) {
     const extension = EagleWebMediaCore.extensionForUrl(url);
-    return EagleWebMediaCore.VIDEO_EXTENSIONS.has(extension) ? "single-file-complete" : "unknown";
+    // A file suffix is only a hint. The background will verify the real MIME
+    // and container before Chrome downloads a complete video, so a direct
+    // media element without a suffix may still enter that safe probe path.
+    return EagleWebMediaCore.STREAM_EXTENSIONS.has(extension) ? "unknown" : "requires-probe";
   }
 
   function audioProof(video) {

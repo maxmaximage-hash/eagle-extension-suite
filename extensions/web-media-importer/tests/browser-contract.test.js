@@ -15,7 +15,7 @@ test("browser importer is user-triggered, supports direct web media and never ed
   const source = `${background}\n${content}`;
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "2.2.0");
+  assert.equal(manifest.version, "2.3.0");
   assert.match(manifest.description, /网页图片/);
   assert.deepEqual(Object.keys(manifest.icons).sort(), ["16", "32", "48", "128"].sort());
   assert.equal(manifest.action.default_icon["32"], "icons/icon-32.png");
@@ -70,6 +70,13 @@ test("release package excludes tests, project records and generated state", () =
   assert.match(packageScript, /touch\s+-t\s+202608090000/);
   assert.doesNotMatch(packageScript, /tests\//);
   assert.doesNotMatch(packageScript, /PROJECT\.md|TASKS\.md|DECISIONS\.md/);
+});
+
+test("release packaging preserves prior version archives for rollback", () => {
+  const packageScript = read("scripts/package-stable.sh");
+  assert.doesNotMatch(packageScript, /find "?\$release_dir"? -mindepth 1 -delete/);
+  assert.match(packageScript, /mktemp -d/);
+  assert.match(packageScript, /trap .*stage_root/);
 });
 
 test("right-clicking one media item cannot widen into every image in its article or main container", () => {
