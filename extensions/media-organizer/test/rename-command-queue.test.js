@@ -89,6 +89,15 @@ async function main() {
   assert.strictEqual(retry.accepted, true);
   await queue.idle();
 
+  const deferred = queue.enqueue(base({
+    commandId: "a-deferred",
+    signature: "sig-deferred"
+  }), { defer: true });
+  assert.strictEqual(deferred.accepted, true);
+  assert.strictEqual(queue.cancelAll("library-changed"), 1);
+  assert.strictEqual(queue.status("a-deferred").state, "cancelled");
+  assert.strictEqual(queue.hasSignature("folder-a", "sig-deferred"), false);
+
   assert.throws(
     () => queue.enqueue({
       collectionId: "folder-a",

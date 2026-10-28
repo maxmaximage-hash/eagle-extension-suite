@@ -22,6 +22,8 @@
 /PROJECT_MANAGER.md
 
 # Media organizer runtime state, real-library recovery records and generated releases.
+# Per-Library/team sort state contains this Mac's absolute paths and Eagle IDs;
+# it must remain local and must never be copied between computers through GitHub.
 /extensions/media-organizer/backups/
 /extensions/media-organizer/recovery/
 /extensions/media-organizer/releases/
@@ -32,7 +34,7 @@
 /extensions/media-organizer/media-location-cache.json
 /extensions/media-organizer/media-time-cache.json
 /extensions/media-organizer/rename-batch-backup.json
-/extensions/media-organizer/defaults/sort-state/
+/extensions/media-organizer/defaults/
 
 # Local samples, generated package artifacts and deployment content.
 /extensions/instagram-post-importer/releases/

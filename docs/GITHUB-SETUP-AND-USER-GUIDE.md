@@ -1,6 +1,6 @@
 # Eagle Extension Suite 团队安装、配置与使用指南
 
-更新时间：2026-08-09。面向从 GitHub 获取本仓库、希望在自己的 Mac 上使用 Eagle 扩展的团队成员。
+更新时间：2026-10-29。面向从 GitHub 获取本仓库、希望在自己的 Mac 上使用 Eagle 扩展的团队成员。
 
 ## 你将获得什么
 
@@ -11,6 +11,7 @@
 | Live Photo 管家 | 需要安全检查 JPG/HEIC + MOV 配对的成员 | 否 |
 | 头像共享源 | 维护指定 Eagle 头像文件夹的管理员 | 否；消费者只读取共享源 |
 | Instagram / 小红书导入器 | 需要将单条公开帖子整理为 Eagle 导入计划的成员 | 否 |
+| Eagle 工作台 | 需要查看每个扩展的产品版本、基本功能和版本修复记录的成员 | 否 |
 | iCloud 搬运台账 | 管理 iCloud 素材批次的成员 | 否；当前不执行下载 |
 
 ## 开始前的三件事
@@ -36,7 +37,7 @@
 
 ## 安装媒体智能整理
 
-该插件的版本为 `2.5.22-qa.71`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥；安装器只验证桥是否已存在，**不会**安装或修改桥，更不会修改 `app.asar`。
+该插件当前源码版本为 `2.5.22-qa.94`，用户界面产品版本为 `2.5`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥；安装器只验证桥是否已存在，**不会**安装或修改桥，更不会修改 `app.asar`。
 
 ```bash
 git clone https://github.com/maxmaximage-hash/eagle-extension-suite.git
@@ -44,16 +45,23 @@ cd eagle-extension-suite/extensions/media-organizer
 npm ci
 npm test
 zsh scripts/build-github-release.sh
-zsh releases/install-媒体智能整理-v2.5.22-qa.71.sh --check
+zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --check
 ```
 
 预检输出“兼容性检查通过”后，确认 Eagle 仍然完全退出，再显式安装：
 
 ```bash
-zsh releases/install-媒体智能整理-v2.5.22-qa.71.sh --install-plugin
+zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --install-plugin
 ```
 
 安装器会拒绝以下情况：宿主版本/审计指纹不匹配、发行包哈希不匹配、Eagle 正在运行、或发现同一插件 ID 的第二份来源。它会为被替换的旧插件创建本机回滚点，但不会读取或修改当前 Library。
+
+### 安装 Eagle 工作台
+
+工作台是只读汇总面板，不接管排序、改名、标签、导入或发布。源码目录运行
+`npm test && npm run package` 后，将生成的 `eagle-workbench-1.1.eagleplugin` 拖入 Eagle
+安装。打开后每张卡片先显示基本功能，再显示当前版本日志；它不显示无效的入口按钮或
+“已安装登记”标签。
 
 ### 排序怎样同步给团队
 

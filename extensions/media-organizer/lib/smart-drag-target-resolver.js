@@ -74,33 +74,51 @@ function createSmartDragTargetResolver(options = {}) {
     return elementId.startsWith("box-") ? elementId.slice(4) : "";
   }
 
+  // The host may recycle the virtual grid element while a drag is in
+  // progress.  DOM identity is therefore only a diagnostic hint; the stable
+  // semantic key (normally the grid id) is what keeps one drag session alive.
+  function gridKey(grid) {
+    return String(
+      grid?.getAttribute?.("data-grid-id") ||
+      grid?.getAttribute?.("data-grid") ||
+      grid?.id ||
+      ""
+    );
+  }
+
   function resolve(event = {}, context = {}) {
     const candidates = uniqueElements([
-      ...eventPath(event),
-      ...pointPath(event)
+      // During native drag, the browser may keep event.target/composedPath
+      // bound to the source card even after the pointer is over a different
+      // card. The current point is the authoritative drop target; eventPath
+      // remains a fallback for hosts that do not expose point hit-testing.
+      ...pointPath(event),
+      ...eventPath(event)
     ]);
     const startGridIdentity = context.startGridIdentity || null;
+    const startGridKey = String(context.startGridKey || "");
+    const matchesStartGrid = (candidateGrid) =>
+      !startGridIdentity && !startGridKey ||
+      candidateGrid === startGridIdentity ||
+      Boolean(startGridKey) && gridKey(candidateGrid) === startGridKey;
     const cardCandidates = uniqueElements(
       candidates.map((element) => closest(element, cardSelector))
     ).map((card) => ({
       card,
       grid: closest(card, gridSelector)
-    })).filter((entry) => entry.grid);
+    })).filter((entry) => entry.grid && matchesStartGrid(entry.grid));
     const targetEntry = (
-      startGridIdentity
-        ? cardCandidates.find((entry) => entry.grid === startGridIdentity)
-        : cardCandidates[0]
+      cardCandidates[0]
     ) || null;
     const grid = targetEntry?.grid || candidates
       .map((element) => closest(element, gridSelector))
-      .find((candidateGrid) =>
-        !startGridIdentity || candidateGrid === startGridIdentity
-      ) || null;
+      .find(matchesStartGrid) || null;
     if (!grid) {
-      if (startGridIdentity && context.allowUnknownSurface === true) {
+      if ((startGridIdentity || startGridKey) && context.allowUnknownSurface === true) {
         return {
           insideGrid: undefined,
           gridIdentity: null,
+          gridKey: startGridKey,
           targetId: "",
           insertAfter: false,
           targetBox: null,
@@ -111,6 +129,7 @@ function createSmartDragTargetResolver(options = {}) {
       return {
         insideGrid: false,
         gridIdentity: null,
+        gridKey: "",
         targetId: "",
         insertAfter: false,
         targetBox: null,
@@ -124,6 +143,7 @@ function createSmartDragTargetResolver(options = {}) {
       return {
         insideGrid: true,
         gridIdentity: grid,
+        gridKey: gridKey(grid),
         targetId: "",
         insertAfter: false,
         targetBox: null,
@@ -141,6 +161,7 @@ function createSmartDragTargetResolver(options = {}) {
       return {
         insideGrid: true,
         gridIdentity: grid,
+        gridKey: gridKey(grid),
         targetId: "",
         insertAfter: false,
         targetBox,
@@ -167,6 +188,7 @@ function createSmartDragTargetResolver(options = {}) {
     return {
       insideGrid: true,
       gridIdentity: grid,
+      gridKey: gridKey(grid),
       targetId,
       insertAfter,
       targetBox,

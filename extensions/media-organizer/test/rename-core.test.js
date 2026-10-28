@@ -15,6 +15,13 @@ const sortRuntime = createMediaSortRuntime({
 
 assert.strictEqual(runtime.sceneNameFromFolder("22-海上甬定"), "海上甬定");
 assert.strictEqual(runtime.sceneNameFromFolder(" 9–杭州 "), "杭州");
+// Regression: the live currentFolder name is the scene source even when the
+// collection wrapper has no name (as happens on routed ordinary folders).
+const routedFolderPreview = runtime.buildPlan([
+  { id: "routed-1", name: "1-旧场景1", ext: "jpg" }
+], { folderName: "5-空合里" });
+assert.strictEqual(routedFolderPreview.sceneName, "空合里");
+assert.strictEqual(routedFolderPreview.entries[0].newName, "1-空合里1");
 assert.strictEqual(runtime.groupFromName("1-旧名字71"), "1");
 assert.strictEqual(runtime.groupFromName("2-环境5"), "2");
 assert.strictEqual(runtime.groupFromName("3-说明"), null);

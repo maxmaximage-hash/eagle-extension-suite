@@ -16,6 +16,7 @@ function createNormalOrderStabilityGate() {
   let expectedIds = [];
   let pendingKey = "";
   let reconciledKey = "";
+  let failedKey = "";
 
   function request({ key, expectedVisibleIds, observedVisibleIds } = {}) {
     const normalizedKey = String(key || "");
@@ -30,6 +31,9 @@ function createNormalOrderStabilityGate() {
     }
     if (pendingKey === normalizedKey) {
       return Object.freeze({ action: "skip", reason: "presentation-pending" });
+    }
+    if (failedKey === normalizedKey) {
+      return Object.freeze({ action: "fail-open", reason: "presentation-failed" });
     }
     if (settledKey !== normalizedKey || !sameIds(expectedIds, expected)) {
       pendingKey = normalizedKey;
@@ -53,8 +57,10 @@ function createNormalOrderStabilityGate() {
     const wasReconciliation = settledKey === normalizedKey && !sameIds(expectedIds, []);
     if (pendingKey === normalizedKey) pendingKey = "";
     if (!ok || !normalizedKey || !expected.length) {
+      if (normalizedKey) failedKey = normalizedKey;
       return Object.freeze({ ok: false, reason: String(reason || "presentation-failed") });
     }
+    failedKey = "";
     if (wasReconciliation) reconciledKey = normalizedKey;
     if (settledKey !== normalizedKey) reconciledKey = "";
     settledKey = normalizedKey;
@@ -67,6 +73,7 @@ function createNormalOrderStabilityGate() {
     expectedIds = [];
     pendingKey = "";
     reconciledKey = "";
+    failedKey = "";
   }
 
   return Object.freeze({ request, complete, reset });

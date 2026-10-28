@@ -59,6 +59,30 @@ function createSortingSystemRuntime(options = {}) {
     return sortRuntime.applyManualOrder(source, order);
   }
 
+  // Eagle virtualizes smart grids: the rendered window is commonly only a
+  // prefix (or a recycled slice) of the complete smart-query source.  A
+  // successful manual overlay can therefore leave the host array in its old
+  // order while the DOM already exposes the new order for the visible subset.
+  // Reconcile that partial visible order into the complete source without
+  // inventing an order for cards outside the current window.
+  function partialRenderedOrder(items, renderedIds) {
+    const source = uniqueItems(items);
+    const rendered = uniqueIds(renderedIds);
+    if (!source.length || !rendered.length || rendered.length >= source.length) {
+      return null;
+    }
+    const sourceIds = new Set(source.map(idOf));
+    if (rendered.some((id) => !sourceIds.has(id))) return null;
+    const renderedSet = new Set(rendered);
+    let renderedIndex = 0;
+    return source.map((item) => {
+      const id = idOf(item);
+      if (!renderedSet.has(id)) return item;
+      const nextId = rendered[renderedIndex++];
+      return source.find((candidate) => idOf(candidate) === nextId) || item;
+    });
+  }
+
   function resolveOrder(input = {}) {
     const collection = input.collection || {};
     const contextId = String(input.contextId || collection.key || "");
@@ -115,7 +139,8 @@ function createSortingSystemRuntime(options = {}) {
         : sourceItems.slice();
     const manualOrder = uniqueIds(input.manualOrder);
     const renderedItems = input.preferRendered === true
-      ? exactOrder(sourceItems, input.renderedIds)
+      ? exactOrder(sourceItems, input.renderedIds) ||
+        partialRenderedOrder(sourceItems, input.renderedIds)
       : null;
 
     let authority = sortResult?.authority ||
@@ -268,6 +293,7 @@ function createSortingSystemRuntime(options = {}) {
     buildRenamePlan,
     createCurrentFolderRenameRequest,
     exactOrder,
+    partialRenderedOrder,
     fingerprintIds,
     guard,
     resolveOrder,

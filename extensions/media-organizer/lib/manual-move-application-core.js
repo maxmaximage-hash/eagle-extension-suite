@@ -55,6 +55,14 @@ function createManualMoveApplicationRuntime(options = {}) {
       left.every((id, index) => id === right[index]);
   }
 
+  function snapshotState(state) {
+    try {
+      return JSON.parse(JSON.stringify(state || {}));
+    } catch {
+      return state && typeof state === "object" ? { ...state } : {};
+    }
+  }
+
   function emit(stage, payload = {}) {
     try {
       diagnose(stage, payload);
@@ -88,6 +96,7 @@ function createManualMoveApplicationRuntime(options = {}) {
   async function apply(input = {}) {
     const command = input.command;
     const collection = input.collection || {};
+    const rollbackState = snapshotState(input.state || {});
     const receivedPayload = {
       collectionId: String(command?.collection?.id || ""),
       selectedCount: Array.isArray(command?.selectedIds)
@@ -190,6 +199,20 @@ function createManualMoveApplicationRuntime(options = {}) {
       expected: summarizeIds(expectedVisibleIds),
       actual: summarizeIds(actualVisibleIds)
     });
+    if (!visible) {
+      // Persistence and presentation are one transaction.  A presenter can
+      // fail after the new manual state was written (for example when Eagle's
+      // virtual window has not repainted yet). Restore the exact prior state
+      // before returning so a failed drag never leaves a durable overlay that
+      // the visible grid did not accept.
+      try {
+        await persist(rollbackState, {
+          collection,
+          command,
+          rollback: true
+        });
+      } catch {}
+    }
     return {
       ok: visible,
       reason: visible ? "" : "visible-order-mismatch",

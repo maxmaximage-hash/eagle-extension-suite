@@ -1,0 +1,10 @@
+{
+  "name": "eagle-workbench",
+  "version": "1.1",
+  "private": true,
+  "description": "Read-only Eagle extension version overview",
+  "scripts": {
+    "test": "node test/workbench.test.cjs",
+    "package": "rm -f eagle-workbench-1.1.eagleplugin && zip -qr eagle-workbench-1.1.eagleplugin manifest.json index.html app.js registry.js styles.css logo.svg"
+  }
+}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Eagle 工作台</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="./logo.svg" alt="Eagle 工作台" />
+        <div><h1>Eagle 工作台</h1><p>快速查看各扩展的基本功能、版本和修复记录</p></div>
+      </div>
+      <div class="version"><span>工作台</span><strong id="workbenchVersion">1.1</strong></div>
+    </header>
+    <main>
+      <section class="summary" aria-label="工作台说明">
+        <div><h2>扩展版本总览</h2><p>每张卡片先说明基本功能，再列出当前版本的重要修复和变化。</p></div>
+        <div class="legend"><span class="dot neutral"></span>仅用于查看版本信息，不会改变素材</div>
+      </section>
+      <section id="moduleGroups" class="groups" aria-live="polite"></section>
+      <p id="message" class="message" role="status"></p>
+    </main>
+    <script src="./registry.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

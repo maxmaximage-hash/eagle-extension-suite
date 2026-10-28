@@ -27,4 +27,26 @@ assert.deepStrictEqual(gate.request({ key: "plan-c", expectedVisibleIds: ["x"], 
   { action: "fail-open", reason: "visible-window-unprovable" },
   "R85: partial or unprovable windows must never be written");
 
+const failedGate = createNormalOrderStabilityGate();
+assert.deepStrictEqual(failedGate.request(planA), { action: "present", reason: "initial" });
+assert.deepStrictEqual(
+  failedGate.complete({
+    key: "plan-a",
+    expectedVisibleIds: ["a", "b"],
+    ok: false,
+    reason: "visible-order-mismatch"
+  }),
+  { ok: false, reason: "visible-order-mismatch" }
+);
+assert.deepStrictEqual(
+  failedGate.request(planA),
+  { action: "fail-open", reason: "presentation-failed" },
+  "R89: a failed normal presentation must latch fail-open for that plan instead of restarting on every host callback"
+);
+assert.deepStrictEqual(
+  failedGate.request({ key: "plan-d", expectedVisibleIds: ["a", "b"], observedVisibleIds: ["b", "a"] }),
+  { action: "present", reason: "initial" },
+  "R89: changing the authoritative plan must clear the failed-plan latch"
+);
+
 console.log("normal order stability core tests passed");
