@@ -20,9 +20,15 @@ Eagle 的公开插件 API 不允许插件窗口访问主窗口 DOM。本机安�
 
 ## 安全安装原则
 
-交接包中的 `install-compatible-bridge.sh` 默认只检查。只有宿主版本为 4.0.0、
-当前 `app.asar` 恰好等于上述原始哈希、桥接载荷也等于已审计哈希，并且 Eagle
-已经退出时，显式传入 `--install` 才会安装。未知版本、未知哈希一律拒绝。
+仓库不上传 Eagle 主程序二进制，也不把当前电脑的 `app.asar` 直接复制到另一台电脑。
+目标电脑先在本目录执行 `npm ci`，再用 `rebuild-compatible-bridge.js --check` 验证本机
+Eagle 4.0.0 的原始 `app.asar` 指纹；通过后，完全退出 Eagle，再执行 `--install`。脚本
+只对两个已审计的 Eagle 文件做确定性源码插入，重建后会解包复核桥接标记，并保留经过
+哈希验证的原始备份和 `bridge-evidence.json`。未知版本、未知哈希、Eagle 正在运行或
+结构与审计基线不一致时一律拒绝。
+
+已存在旧版精确桥接哈希时，脚本会报告“无需重建”；现有 `install-compatible-bridge.sh`
+仍只用于带有已审计桥接载荷的历史交接包，不是新电脑的首选入口。
 
 安装前会在 Eagle Application Support 的备份目录留下经过哈希验证的原始副本。
 `restore-compatible-bridge.sh --restore` 仅在当前文件仍是已知桥接版本时回退，

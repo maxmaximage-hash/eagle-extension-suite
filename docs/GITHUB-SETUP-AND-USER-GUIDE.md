@@ -29,7 +29,8 @@
 先只读执行预检：确认 Eagle 已退出、版本为 4.0.0、同 ID 插件来源只有一个、
 没有修改 app.asar/.library/NAS 素材的动作。通过后先运行各扩展测试，
 再构建干净发布包。只有预检、测试和包校验全部通过，才安装插件。
-若宿主通信桥哈希不匹配，立即停止并报告，不得改 app.asar 或绕过检查。
+若宿主版本或原始 `app.asar` 指纹不匹配，立即停止并报告；只有通过仓库桥接脚本的精确
+版本/指纹检查，才允许在 Eagle 完全退出后重建桥接，不得绕过检查硬覆盖。
 安装后只读打开目标 Library 做冒烟检查；不拖动、不改名、不导入、不删除。
 ```
 
@@ -37,7 +38,7 @@
 
 ## 安装媒体智能整理
 
-该插件当前源码版本为 `2.5.22-qa.94`，用户界面产品版本为 `2.5`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥；安装器只验证桥是否已存在，**不会**安装或修改桥，更不会修改 `app.asar`。
+该插件当前源码版本为 `2.5.22-qa.94`，用户界面产品版本为 `2.5`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥。仓库不上传 Eagle 主程序二进制；目标电脑使用 `bridge/rebuild-compatible-bridge.js` 从本机原始 `app.asar` 重建两个固定桥接入口，脚本会先备份并验证原始文件。
 
 ```bash
 git clone https://github.com/maxmaximage-hash/eagle-extension-suite.git
@@ -45,10 +46,22 @@ cd eagle-extension-suite/extensions/media-organizer
 npm ci
 npm test
 zsh scripts/build-github-release.sh
+cd bridge
+npm ci
+node rebuild-compatible-bridge.js --check
+cd ..
 zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --check
 ```
 
-预检输出“兼容性检查通过”后，确认 Eagle 仍然完全退出，再显式安装：
+桥接检查通过后，完全退出 Eagle，再运行：
+
+```bash
+cd bridge
+node rebuild-compatible-bridge.js --install
+cd ..
+```
+
+随后确认插件预检通过，再安装插件：
 
 ```bash
 zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --install-plugin

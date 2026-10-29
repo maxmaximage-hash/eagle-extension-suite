@@ -21,6 +21,10 @@ cd extensions/media-organizer
 npm ci
 npm test
 zsh scripts/build-github-release.sh
+cd bridge
+npm ci
+node rebuild-compatible-bridge.js --check
+cd ..
 zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --check
 cd ../..
 
@@ -62,7 +66,16 @@ cd ../..
 
 ## 3. 安装 Eagle 扩展
 
-完全退出 Eagle 后，在媒体智能整理目录执行：
+先完全退出 Eagle，在媒体整理桥接目录执行一次本机桥接重建：
+
+```zsh
+cd extensions/media-organizer/bridge
+node rebuild-compatible-bridge.js --install
+cd ..
+```
+
+桥接脚本只接受 Eagle `4.0.0` 原始指纹，自动备份原始 `app.asar`，重建后验证两个
+排序桥接入口，并写入本机 `bridge-evidence.json`。随后在媒体智能整理目录执行：
 
 ```zsh
 cd extensions/media-organizer

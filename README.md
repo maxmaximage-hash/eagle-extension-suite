@@ -4,6 +4,10 @@
 
 当前源码基线：`媒体智能整理 2.5.22-qa.94 / API148`、`MAX Publisher 1.2.7`、`Eagle 工作台 1.1`。这份仓库只包含源码、测试、说明和界面示例，绝不包含 Eagle `.library`、NAS 素材、运行缓存、恢复资料、`app.asar`、密钥或发布后的用户状态。
 
+排序主网格所需的 Eagle 通信桥不再依赖“复制另一台电脑的 app.asar”：目标电脑必须按
+`docs/CROSS-COMPUTER-HANDOFF.md` 使用仓库内的重建脚本，在本机 Eagle 4.0.0 原始宿主上
+通过精确指纹检查后生成桥接。这样同步的是可审计的补丁和安装流程，而不是第三方主程序二进制。
+
 ## 从这里开始
 
 - [团队安装、配置与使用指南](docs/GITHUB-SETUP-AND-USER-GUIDE.md)：给团队成员和 Codex 的完整操作入口。

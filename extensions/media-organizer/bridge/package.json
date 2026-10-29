@@ -1,0 +1,9 @@
+{
+  "name": "eagle-photo-taken-sort-compatible-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Rebuild the audited Eagle 4.0.0 build 23 sorting bridge from the local host app.asar",
+  "dependencies": {
+    "@electron/asar": "3.2.13"
+  }
+}
