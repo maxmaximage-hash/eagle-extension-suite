@@ -179,6 +179,18 @@ const {
 const { verifySmartProjection } = require(
   path.join(initialPluginPath, "lib", "smart-projection-proof-core.js")
 );
+const {
+  canSkipLifecycleRestore,
+  canPreserveManualOwnerOnContextEnter
+} = require(
+  path.join(initialPluginPath, "lib", "smart-manual-owner-core.js")
+);
+const {
+  createSmartHostOrderPlans,
+  canUseReadOnlyManualOverlay
+} = require(
+  path.join(initialPluginPath, "lib", "smart-host-order-ownership-core.js")
+);
 
 // PHOTO_TAKEN is the legacy custom key and remains the persisted multi-level
 // mode for existing folders. The single taken-time mode has its own key.
@@ -307,6 +319,32 @@ let folderTagPendingContext = null;
 let folderTagUiActive = false;
 let currentGeoScanContextId = "";
 let activeLocationTag = "";
+
+// All delayed work that can outlive a Library route is cancelled through this
+// single boundary. Generation changes make already-running async scans stale;
+// clearing timers prevents late callbacks from presenting into the new scope.
+function stopRuntimeActivity(reason) {
+  clearInterval(monitorTimer);
+  monitorTimer = null;
+  clearInterval(geoPollTimer);
+  geoPollTimer = null;
+  clearTimeout(serviceStartTimer);
+  serviceStartTimer = null;
+  clearTimeout(folderTagRefreshTimer);
+  folderTagRefreshTimer = null;
+  clearTimeout(folderTagInputTimer);
+  folderTagInputTimer = null;
+  renameCommandQueue.cancelAll(reason || "stopped");
+  folderTagRefreshRequest += 1;
+  folderTagRefreshQueued = false;
+  scanGeneration += 1;
+  scanInProgress = null;
+  pendingSmartScanIdentity = "";
+  currentGeoScanContextId = "";
+  folderTagContextKey = "";
+  return String(reason || "stopped");
+}
+
 let reviewEntries = [];
 let reviewSelection = new Set();
 let reviewSource = null;
@@ -937,7 +975,7 @@ function injectionSource(teamStateSelection = null) {
   return `(() => {
     const SORT_KEY = ${JSON.stringify(SORT_KEY)};
     const TAKEN_SORT_KEY = ${JSON.stringify(TAKEN_SORT_KEY)};
-const API_VERSION = 148;
+const API_VERSION = 150;
     const AUTO_RENAME_QUIET_MS = 400;
     const META_KEY = ${JSON.stringify(META_KEY)};
     const RENAME_CANCEL_REQUEST = ${JSON.stringify(renameCancelRequest)};
@@ -1421,13 +1459,21 @@ const API_VERSION = 148;
       if (!angularRef || typeof angularRef.element !== "function") return false;
       const hash = String(window.location.hash || "");
       const routeMatch = hash.match(/[?&](?:folder|smartFolder)=([^&]+)/);
+      const viewMatch = hash.match(/[?&]view=([^&]+)/i);
+      let routeView = "";
+      try {
+        routeView = decodeURIComponent(String(viewMatch?.[1] || "")).toLowerCase();
+      } catch {
+        routeView = String(viewMatch?.[1] || "").toLowerCase();
+      }
+      const isGlobalRoute = routeView === "all" || routeView === "global";
       let routeId = "";
       try {
         routeId = decodeURIComponent(String(routeMatch?.[1] || ""));
       } catch {
         routeId = String(routeMatch?.[1] || "");
       }
-      if (!routeId) return false;
+      if (!routeId && !isGlobalRoute) return false;
       const roots = [
         document.querySelector("#box-list"),
         document.querySelector("#layout-panel"),
@@ -1451,7 +1497,17 @@ const API_VERSION = 148;
           inspected += 1;
           const folderId = String(candidate.currentFolder?.id || "");
           const smartFolderId = String(candidate.currentSmartFolder?.id || "");
-          if (folderId === routeId || smartFolderId === routeId) {
+          if (isGlobalRoute && !folderId && !smartFolderId) {
+            const dataCount = Math.max(
+              Array.isArray(candidate.raw) ? candidate.raw.length : 0,
+              Array.isArray(candidate.allData) ? candidate.allData.length : 0,
+              Array.isArray(candidate.filtereds) ? candidate.filtereds.length : 0
+            );
+            const score = dataCount > 0 ? 10 + Math.min(dataCount, 100000) / 100000 : 0;
+            if (score > 0 && (!winner || score > winner.score)) {
+              winner = { scope: candidate, score, kind: "global" };
+            }
+          } else if (folderId === routeId || smartFolderId === routeId) {
             const score =
               (Array.isArray(candidate.allData) ? 4 : 0) +
               (Array.isArray(candidate.filtereds) ? 2 : 0) +
@@ -1473,8 +1529,8 @@ const API_VERSION = 148;
         }
       }
       if (!winner) {
-        if (api.hostScopeDiagnosticRoute !== routeId) {
-          api.hostScopeDiagnosticRoute = routeId;
+        if (api.hostScopeDiagnosticRoute !== (routeId || "global")) {
+          api.hostScopeDiagnosticRoute = routeId || "global";
           const signatures = Array.from(seen).slice(0, 16).map((scope) =>
             Object.keys(scope || {})
               .filter((key) => /(?:folder|view|data|list|item)/i.test(key))
@@ -1511,6 +1567,9 @@ const API_VERSION = 148;
     const collectionRuntime = createCollectionRuntime();
     ${selectSmartQuerySource.toString()}
     ${createSmartCollectionHostSnapshotAdapter.toString()}
+    ${createSmartHostOrderPlans.toString()}
+    ${canSkipLifecycleRestore.toString()}
+    ${canPreserveManualOwnerOnContextEnter.toString()}
     const smartCollectionHostSnapshotAdapter =
       createSmartCollectionHostSnapshotAdapter();
     ${createRenameRuntime.toString()}
@@ -1535,6 +1594,7 @@ const API_VERSION = 148;
     ${commitHostOrder.toString()}
     ${verifyHostOrder.toString()}
     ${rollbackHostOrder.toString()}
+    ${canUseReadOnlyManualOverlay.toString()}
     ${presentOrderTransaction.toString()}
     ${createNormalOrderStabilityGate.toString()}
     ${commitPresentedManualStateTransaction.toString()}
@@ -1571,6 +1631,13 @@ const API_VERSION = 148;
     let smartCollectionObserver = null;
     let smartCollectionObserverTarget = null;
     let smartHostObservationQueued = false;
+    let smartManualPresentationActive = false;
+    // A successful manual smart move owns the current overlay revision until
+    // Eagle acknowledges the same member set and visible window. Without this
+    // fence the mutation observer immediately starts a lifecycle restore for
+    // the just-committed revision and may rewrite/roll back allData/filtereds
+    // while the user starts the next drag.
+    let smartManualPresentationOwnership = null;
     let smartHostQuerySource = null;
     let smartHostQueryKey = "";
     let smartHostQueryEpoch = 0;
@@ -5165,7 +5232,7 @@ const API_VERSION = 148;
       const orderSnapshot = resolveCurrentOrderSnapshot({ preferRendered: true });
       const items = orderSnapshot.finalItems;
       const plan = sortingSystemRuntime.buildRenamePlan(orderSnapshot, {
-        folderName: collection.name
+        folderName: bodyScope.currentFolder.name
       });
       plan.collectionKind = collection.kind;
       plan.targetKind = "direct-media";
@@ -5193,7 +5260,7 @@ const API_VERSION = 148;
         authority: "manual"
       };
       const plan = sortingSystemRuntime.buildRenamePlan(orderSnapshot, {
-        folderName: collection.name
+        folderName: bodyScope.currentFolder.name
       });
       const limitedPlan = renameRuntime.limitPlanToOrdinalChanges(
         plan,
@@ -6297,7 +6364,9 @@ const API_VERSION = 148;
             moveVisible: () => moveNormalVisibleOrder(nextItems),
             rollbackVisible: () => restoreGridVisibleOrder(originalVisibleIds),
             readVisibleIds: renderedCardIds,
-            expectedVisibleIds
+            expectedVisibleIds,
+            verifyVisible: ({ desiredIds, visibleIds }) =>
+              verifySmartVisibleWindow({ desiredIds, visibleIds }).ok
           });
         } catch (error) {
           presentation = {
@@ -6586,6 +6655,28 @@ const API_VERSION = 148;
       };
     }
 
+    // Pointer/native drag events arrive at frame rate.  The full host input
+    // context above intentionally resolves the current order for UI guards,
+    // but doing that for every move scans the entire rendered smart folder
+    // (and forces getBoundingClientRect on every card).  Smart drag only needs
+    // the identity/permission tuple here; the actual order is resolved once
+    // when a valid MoveCommand is submitted on pointerup/dragend.
+    function hostInputDragContext(overrides = {}) {
+      const collection = currentCollection();
+      const locked = folderLocked();
+      return {
+        libraryId: currentLibraryId(),
+        collectionId: collection.key,
+        collectionKind: collection.kind,
+        targetKind: "direct-media",
+        manualAllowed:
+          collection.kind === "smart" && manualEnabled() && !locked,
+        locked,
+        preview: false,
+        ...overrides
+      };
+    }
+
     const smartDragTargetResolver = createSmartDragTargetResolver({
       elementsFromPoint: (clientX, clientY) =>
         Array.from(document.elementsFromPoint?.(clientX, clientY) || [])
@@ -6595,6 +6686,7 @@ const API_VERSION = 148;
       return smartDragTargetResolver.resolve(event, {
         selectedIds,
         startGridIdentity: options.startGridIdentity,
+        startGridKey: options.startGridKey,
         allowUnknownSurface: options.allowUnknownSurface === true
       });
     }
@@ -6627,10 +6719,39 @@ const API_VERSION = 148;
       const context = input.context ||
         smartCollectionLifecycleController?.snapshot?.();
       if (!context || context.kind !== "smart") return false;
-      return (await smartCollectionPresenter?.present({
-        ...input,
-        context
-      })) === true;
+      smartManualPresentationActive = true;
+      try {
+        const presented = (await smartCollectionPresenter?.present({
+          ...input,
+          owner: "manual",
+          // Keep the manual DOM move, then wait for Eagle's virtual window to
+          // settle before the application runtime accepts the transaction.
+          awaitVisibleProof: true,
+          context
+        })) === true;
+        if (presented) {
+          let memberFingerprint = "";
+          try {
+            memberFingerprint = String(
+              smartCollectionHostSnapshotAdapter.snapshot()?.memberFingerprint || ""
+            );
+          } catch {}
+          smartManualPresentationOwnership = {
+            libraryId: currentLibraryId(),
+            // Lifecycle snapshots identify a smart folder by its raw folder
+            // id; currentContextId() includes the library/context prefix and
+            // can therefore make an immediately-following owner fence miss.
+            collectionId: String(currentCollection().id || ""),
+            overlayRevision: Math.max(0, Number(api.manual.revision) || 0),
+            queryKey: smartHostQueryKey,
+            memberFingerprint,
+            visibleProof: true
+          };
+        }
+        return presented;
+      } finally {
+        smartManualPresentationActive = false;
+      }
     }
 
     function moveSmartElementsBefore(sourceIds, targetId, insertAfter) {
@@ -6665,8 +6786,16 @@ const API_VERSION = 148;
       readVisibleIds: renderedCardIds,
       readVisibleWindow: () => {
         const visibleIds = renderedCardIds();
-        const dataIds = Array.isArray(bodyScope.allData)
-          ? bodyScope.allData.map((item) => String(item?.id || "")).filter(Boolean)
+        // Smart grids must prove their virtual window against the array that
+        // Eagle exposed as the current smart-query source. allData is often
+        // the complete Library while the filtered/current-view source owns
+        // the smart result; using allData falsely marks a valid smart window
+        // as non-contiguous and aborts the drag before MoveCommand commits.
+        const hostSource = Array.isArray(smartHostQuerySource)
+          ? smartHostQuerySource
+          : smartCollectionHostSnapshotAdapter.snapshot().members;
+        const dataIds = Array.isArray(hostSource)
+          ? hostSource.map((item) => String(item?.id || "")).filter(Boolean)
           : [];
         const firstId = visibleIds[0] || "";
         const candidateOffset = firstId ? dataIds.indexOf(firstId) : 0;
@@ -6684,25 +6813,99 @@ const API_VERSION = 148;
         moveSmartElementsBefore([sourceId], targetId, insertAfter),
       moveItemsBefore: moveSmartElementsBefore,
       commitDataOrder: (nextItems, input = {}) => {
-        const arrays = [{ target: bodyScope.allData, items: nextItems }];
-        if (
-          Array.isArray(bodyScope.filtereds) &&
-          bodyScope.filtereds !== bodyScope.allData
-        ) {
-          const filteredCount = bodyScope.filtereds.length;
-          const filteredItems = filteredCount === bodyScope.allData.length
-            ? nextItems
-            : nextItems.slice(0, filteredCount);
-          arrays.push({
-            target: bodyScope.filtereds,
-            items: filteredItems
+        recordMoveDiagnostic("SMART_HOST_ORDER_ENTER", {});
+        let hostSnapshot;
+        try {
+          hostSnapshot = smartCollectionHostSnapshotAdapter.snapshot();
+        } catch (error) {
+          recordMoveDiagnostic("SMART_HOST_ORDER_ERROR", {
+            phase: "snapshot",
+            reason: String(error?.message || error || "unknown")
           });
+          return { ok: false, reason: "smart-host-source-unowned" };
         }
-        return commitHostOrder({ nextItems, arrays });
+        const arrays = createSmartHostOrderPlans({
+          sourceReference: smartHostQuerySource,
+          sourceItems: hostSnapshot.members,
+          allData: bodyScope.allData,
+          filtereds: bodyScope.filtereds,
+          nextItems
+        });
+        const arrayInfo = (value) => {
+          try {
+            if (!Array.isArray(value)) {
+              return { length: 0, frozen: false, readable: false };
+            }
+            return {
+              length: value.length,
+              frozen: Object.isFrozen(value),
+              readable: true
+            };
+          } catch {
+            return { length: 0, frozen: false, readable: false };
+          }
+        };
+        const sourceInfo = arrayInfo(smartHostQuerySource);
+        const allDataInfo = arrayInfo(bodyScope.allData);
+        const filteredsInfo = arrayInfo(bodyScope.filtereds);
+        recordMoveDiagnostic("SMART_HOST_ORDER_PLAN", {
+          sourceLength: sourceInfo.length,
+          sourceFrozen: sourceInfo.frozen,
+          sourceReadable: sourceInfo.readable,
+          snapshotLength: hostSnapshot.members.length,
+          allDataLength: allDataInfo.length,
+          allDataFrozen: allDataInfo.frozen,
+          allDataReadable: allDataInfo.readable,
+          filteredsLength: filteredsInfo.length,
+          filteredsFrozen: filteredsInfo.frozen,
+          filteredsReadable: filteredsInfo.readable,
+          planCount: arrays.length
+        });
+        if (!arrays.length) {
+          // Eagle may expose the verified smart-query result through a
+          // read-only/revoked projection. The manual overlay is the durable
+          // owner in that case; visible proof below is the only legal commit
+          // confirmation. Never splice the host query arrays or fall back to
+          // the full Library buffer.
+          const manualOverlay = input.restore !== true &&
+            (input.owner === "manual" || input.owner == null);
+          // A lifecycle restore may also encounter a ready, equal-cardinality
+          // smart projection whose item proxies are temporarily unreadable.
+          // It must not mutate Eagle's arrays; the presenter will establish
+          // the durable order through its rendered-window proof instead.
+          const lifecycleOverlay = input.restore === true &&
+            hostSnapshot.phase === "ready" &&
+            hostSnapshot.members.length > 0 &&
+            hostSnapshot.members.length === nextItems.length;
+          if (
+            manualOverlay ||
+            lifecycleOverlay ||
+            (hostSnapshot.phase === "ready" &&
+              orderSameMembers(hostSnapshot.members, nextItems))
+          ) {
+            recordMoveDiagnostic("SMART_HOST_ORDER_READ_ONLY", {
+              memberCount: hostSnapshot.members.length,
+              owner: String(input.owner || (input.restore === true ? "lifecycle" : "manual"))
+            });
+            return { ok: true, readOnly: true, transaction: null };
+          }
+          return { ok: false, reason: "smart-host-source-unowned" };
+        }
+        const result = commitHostOrder({ nextItems, arrays });
+        recordMoveDiagnostic("SMART_HOST_ORDER_COMMIT", {
+          ok: result?.ok === true,
+          reason: String(result?.reason || ""),
+          planCount: arrays.length
+        });
+        return result;
       },
-      rollbackDataOrder: (transaction) => rollbackHostOrder(transaction),
-      readDataOrderIds: () => Array.isArray(bodyScope.allData)
-        ? bodyScope.allData.map((item) => String(item?.id || "")).filter(Boolean)
+      rollbackDataOrder: (transaction) => transaction
+        ? rollbackHostOrder(transaction)
+        : true,
+      readDataOrderIds: () => Array.isArray(smartHostQuerySource)
+        ? smartHostQuerySource.map((item) => String(item?.id || "")).filter(Boolean)
+        : Array.isArray(bodyScope.allData)
+          ? bodyScope.allData.map((item) => String(item?.id || "")).filter(Boolean)
         : [],
       waitForVisibleOrder: async (expectedIds, context, proof = {}) => {
         const expected = Array.isArray(expectedIds)
@@ -6712,7 +6915,14 @@ const API_VERSION = 148;
           ? proof.desiredIds.map((id) => String(id || "")).filter(Boolean)
           : expected;
         let lastMismatch = "";
-        for (let attempt = 0; attempt < 40; attempt += 1) {
+        let provenStreak = 0;
+        // Eagle repaints its virtual grid in more than one frame. Require two
+        // consecutive proven windows so a single stale DOM sample cannot close
+        // the move transaction while AX/paint is still catching up.
+        for (let attempt = 0; attempt < 80; attempt += 1) {
+          if (typeof proof.isCurrent === "function" && !proof.isCurrent()) {
+            return false;
+          }
           const current = smartCollectionLifecycleController?.snapshot?.();
           if (
             !current ||
@@ -6731,12 +6941,33 @@ const API_VERSION = 148;
           const projected = Array.isArray(bodyScope.filtereds)
             ? bodyScope.filtereds.map((item) => String(item?.id || "")).filter(Boolean)
             : [];
-          const projectionProof = verifySmartProjection({
-            desiredIds: desired,
-            projectedIds: projected,
-            renderedIds: actual
-          });
-          if (projectionProof.ok === true) {
+          const projectionProof =
+            (proof.owner === "manual" || proof.owner === "lifecycle") &&
+            proof.dataOrderReadOnly === true
+              ? {
+                ok: true,
+                projectedCount: projected.length,
+                renderedCount: actual.length,
+                reason: proof.owner === "manual"
+                  ? "manual-overlay-visible-proof"
+                  : "lifecycle-overlay-visible-proof"
+              }
+              : verifySmartProjection({
+                desiredIds: desired,
+                projectedIds: projected,
+                renderedIds: actual
+              });
+          // Projection state alone is not a visible success signal. Eagle's
+          // virtual grid may still show a stale/recycled window while the
+          // backing projection already has the desired order. Require both
+          // the authoritative projection and the currently rendered cards to
+          // form a proven contiguous window before completing the drag.
+          if (projectionProof.ok === true && visibleProof.ok === true) {
+            provenStreak += 1;
+          } else {
+            provenStreak = 0;
+          }
+          if (provenStreak >= 2) {
             recordMoveDiagnostic("SMART_PRESENTER_PROJECTION_PROOF", {
               projectedCount: projectionProof.projectedCount,
               renderedCount: projectionProof.renderedCount,
@@ -6749,7 +6980,7 @@ const API_VERSION = 148;
           // Diagnostic evidence only: preserve structural disagreement without
           // emitting filenames, paths, or media metadata.
           const mismatchReason = String(projectionProof.reason || visibleProof.reason || "unknown");
-          if (attempt === 0 || mismatchReason !== lastMismatch || attempt === 39) {
+          if (attempt === 0 || mismatchReason !== lastMismatch || attempt === 79) {
             const mismatch = describeSmartVisibleWindowMismatch({
               desiredIds: desired,
               visibleIds: actual
@@ -6767,7 +6998,7 @@ const API_VERSION = 148;
             });
             lastMismatch = mismatchReason;
           }
-          await new Promise((resolve) => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 75));
         }
         return false;
       },
@@ -6822,6 +7053,7 @@ const API_VERSION = 148;
             presentationStage = "present-verified-start";
             const proof = await smartCollectionPresenter.presentVerified({
               context: request.context,
+              owner: "lifecycle",
               restore: true,
               nextItems
             });
@@ -6911,6 +7143,13 @@ const API_VERSION = 148;
       ) {
         return current;
       }
+      if (!canPreserveManualOwnerOnContextEnter({
+        owner: smartManualPresentationOwnership,
+        libraryId,
+        collectionId: collection.id
+      })) {
+        smartManualPresentationOwnership = null;
+      }
       api.smartEmptyObservation = { key: "", count: 0 };
       smartObservationGeneration += 1;
       clearTimeout(smartHostStabilityTimer);
@@ -6945,6 +7184,9 @@ const API_VERSION = 148;
     }
 
     async function observeSmartCollectionHost() {
+      if (smartManualPresentationActive) {
+        return { ok: false, reason: "manual-presentation-active" };
+      }
       const collection = currentCollection();
       const lifecycle = beginSmartCollectionLifecycle();
       if (!lifecycle || collection.kind !== "smart") {
@@ -7068,6 +7310,50 @@ const API_VERSION = 148;
           terminalEvidence
         }
       });
+      // Manual presentation is the owner of the latest overlay revision. If
+      // the same smart query/member set is already visibly in that order,
+      // lifecycle must not start a second restore transaction against the
+      // same host arrays. A route/query/revision change clears the fence.
+      const manualOwner = smartManualPresentationOwnership;
+      if (manualOwner) {
+        const ownerMatches =
+          manualOwner.libraryId === currentLibraryId() &&
+          manualOwner.collectionId === String(collection.id || "") &&
+          manualOwner.overlayRevision === Math.max(0, Number(api.manual.revision) || 0) &&
+          (!manualOwner.memberFingerprint ||
+            !hostSnapshot.memberFingerprint ||
+            manualOwner.memberFingerprint === hostSnapshot.memberFingerprint);
+        if (!ownerMatches) {
+          smartManualPresentationOwnership = null;
+        } else if (sourceItems.length > 0) {
+          const desiredItems = orderCoordinator.applyManualOverlay(
+            sourceItems,
+            activeManualOverlay()
+          );
+          const visibleProof = verifySmartVisibleWindow({
+            desiredIds: desiredItems.map((item) => String(item?.id || "")),
+            visibleIds
+          });
+          const provenOwner = canSkipLifecycleRestore({
+            owner: manualOwner,
+            libraryId: currentLibraryId(),
+            collectionId: collection.id,
+            overlayRevision: api.manual.revision,
+            memberFingerprint: hostSnapshot.memberFingerprint
+          });
+          if (visibleProof.ok === true || provenOwner) {
+            recordMoveDiagnostic("SMART_LIFECYCLE_SKIP_MANUAL_OWNER", {
+              collectionId: String(collection.id || ""),
+              overlayRevision: manualOwner.overlayRevision,
+              visibleCount: visibleIds.length,
+              reason: provenOwner
+                ? "manual-presentation-proof"
+                : "visible-overlay-proof"
+            });
+            return { ok: true, reason: "manual-owner-stable", state: lifecycle.state };
+          }
+        }
+      }
       const readinessReason = !sourceIsSmartQuery
         ? "no-smart-query-source"
         : !visibleConsistent
@@ -7272,15 +7558,17 @@ const API_VERSION = 148;
       const selectedIds = snapshot.session?.selectedIds || [];
       const target = resolveSmartDragTarget(event, selectedIds, {
         startGridIdentity: snapshot.session?.startGridIdentity,
+        startGridKey: snapshot.session?.startGridKey,
         allowUnknownSurface: true
       });
-      const result = api.hostInputAdapter[method](hostInputContext({
+      const result = api.hostInputAdapter[method](hostInputDragContext({
         sourceId: options.sourceId,
         clientX: event.clientX,
         clientY: event.clientY,
         insideWindow: options.insideWindow,
         insideGrid: target.insideGrid,
         gridIdentity: target.gridIdentity,
+        gridKey: target.gridKey,
         targetId: target.targetId,
         insertAfter: target.insertAfter
       }));
@@ -7355,10 +7643,20 @@ const API_VERSION = 148;
         event.target?.closest?.(".box");
       const sourceId = smartSource?.targetId ||
         sourceBox?.getAttribute("data-box-id");
+      const dragAllowed = smartCollection
+        ? currentCollection().kind === "smart" &&
+          manualEnabled() &&
+          !folderLocked() &&
+          sortingSystemRuntime.guard("manual-drag", {
+            collection: currentCollection(),
+            locked: false,
+            targetCount: 1
+          }).allowed
+        : canHandleManualDrag();
       if (
-        !canHandleManualDrag() ||
+        !dragAllowed ||
         !sourceId ||
-        sourceBox.classList.contains("pinned")
+        sourceBox?.classList?.contains("pinned")
       ) {
         return;
       }
@@ -7501,7 +7799,7 @@ const API_VERSION = 148;
       const sourceBox = source.targetBox;
       const sourceId = source.targetId;
       if (!sourceId || sourceBox.classList.contains("pinned")) return;
-      api.hostInputAdapter.pointerDown(hostInputContext({
+      api.hostInputAdapter.pointerDown(hostInputDragContext({
         pointerId: event.pointerId,
         button: event.button,
         isPrimary: event.isPrimary,
@@ -7509,23 +7807,28 @@ const API_VERSION = 148;
         selectedIds: selectedIdsForDrag(sourceId),
         clientX: event.clientX,
         clientY: event.clientY,
-        startGridIdentity: source.gridIdentity
+        startGridIdentity: source.gridIdentity,
+        startGridKey: source.gridKey
       }));
       };
       const pointerMoveHandler = (event) => {
       const snapshot = api.hostInputAdapter.snapshot();
-      if (!snapshot.active) return;
+      if (!snapshot.active || snapshot.session?.nativeDragActive) return;
       const target = resolveSmartDragTarget(
         event,
         snapshot.session?.selectedIds || [],
-        { startGridIdentity: snapshot.session?.startGridIdentity }
+        {
+          startGridIdentity: snapshot.session?.startGridIdentity,
+          startGridKey: snapshot.session?.startGridKey
+        }
       );
-      const result = api.hostInputAdapter.pointerMove(hostInputContext({
+      const result = api.hostInputAdapter.pointerMove(hostInputDragContext({
         pointerId: event.pointerId,
         clientX: event.clientX,
         clientY: event.clientY,
         insideGrid: target.insideGrid,
         gridIdentity: target.gridIdentity,
+        gridKey: target.gridKey,
         targetId: target.targetId,
         insertAfter: target.insertAfter
       }));
@@ -7542,15 +7845,19 @@ const API_VERSION = 148;
       const target = resolveSmartDragTarget(
         event,
         snapshot.session?.selectedIds || [],
-        { startGridIdentity: snapshot.session?.startGridIdentity }
+        {
+          startGridIdentity: snapshot.session?.startGridIdentity,
+          startGridKey: snapshot.session?.startGridKey
+        }
       );
-      const result = api.hostInputAdapter.pointerUp(hostInputContext({
+      const result = api.hostInputAdapter.pointerUp(hostInputDragContext({
         pointerId: event.pointerId,
         clientX: event.clientX,
         clientY: event.clientY,
         insideWindow: true,
         insideGrid: target.insideGrid,
         gridIdentity: target.gridIdentity,
+        gridKey: target.gridKey,
         targetId: target.targetId,
         insertAfter: target.insertAfter
       }));
@@ -11169,6 +11476,7 @@ eagle.onPluginCreate((plugin) => {
 
 eagle.onLibraryChanged((libraryPath) => {
   if (!runtimeInstanceAllowed) return;
+  stopRuntimeActivity("library-changed");
   ensureSortingModuleFacade().disable("library-changed").catch((error) => {
     console.warn("[photo-taken-sort] Unable to stop sorting module", error);
   });

@@ -238,6 +238,47 @@ async function run() {
   );
   assert.strictEqual(unprovedCommitCalls, 0);
 
+  // R109: after a successful read-only manual overlay, Eagle's host array can
+  // still advertise the previous order while the rendered cards are already
+  // in the durable overlay order. A following manual drag must not reject
+  // that stale initial projection before its own rendered proof runs.
+  let manualWindowVisible = ["b", "a"];
+  let manualWindowCommitted = false;
+  const manualStaleWindow = createSmartCollectionPresenter({
+    currentContext: () => active,
+    readVisibleIds: () => manualWindowVisible.slice(),
+    readVisibleWindow: () => ({
+      offset: 0,
+      count: 2,
+      ids: manualWindowVisible.slice(),
+      proven: false
+    }),
+    moveItemsBefore() {
+      manualWindowVisible = ["a", "b"];
+      return true;
+    },
+    commitDataOrder() {
+      manualWindowCommitted = true;
+      return { ok: true, readOnly: true, transaction: null };
+    },
+    waitForVisibleOrder: async (expectedIds) =>
+      JSON.stringify(manualWindowVisible) === JSON.stringify(expectedIds)
+  });
+  assert.deepStrictEqual(
+    await manualStaleWindow.presentVerified({
+      owner: "manual",
+      context: active,
+      selectedIds: ["b"],
+      targetId: "a",
+      nextItems: [{ id: "a" }, { id: "b" }],
+      expectedVisibleIds: ["a", "b"],
+      awaitVisibleProof: true
+    }),
+    { ok: true, dataOrderVerified: true, visibleOrderVerified: true },
+    "R109: consecutive manual overlays may start from a stale host projection"
+  );
+  assert.strictEqual(manualWindowCommitted, true);
+
   const reentrantStages = [];
   let reentrantResult = null;
   let reentrantPresenter;
@@ -270,6 +311,67 @@ async function run() {
     "R68: synchronous host re-entry must not start a second presentation transaction"
   );
   assert.ok(reentrantStages.includes("reentrant-rejected"));
+
+  // R90: a manual drag must be able to supersede a lifecycle restore waiting
+  // for a recycled virtual window. The stale lifecycle result must not roll
+  // back the newer manual host-array commit or leave the presenter occupied.
+  let ownerVisible = ["a", "b", "c"];
+  let ownerData = ["a", "b", "c"];
+  let releaseLifecycleWait;
+  let ownerWaitCalls = 0;
+  const ownershipPresenter = createSmartCollectionPresenter({
+    currentContext: () => active,
+    readVisibleIds: () => ownerVisible.slice(),
+    readDataOrderIds: () => ownerData.slice(),
+    moveItemsBefore(ids, targetId, insertAfter) {
+      assert.deepStrictEqual(ids, ["a"]);
+      assert.strictEqual(targetId, "c");
+      const from = ownerVisible.indexOf("a");
+      ownerVisible.splice(from, 1);
+      const target = ownerVisible.indexOf("c");
+      ownerVisible.splice(target + (insertAfter ? 1 : 0), 0, "a");
+      return true;
+    },
+    commitDataOrder(nextItems) {
+      const previous = ownerData.slice();
+      ownerData = nextItems.map((item) => item.id);
+      return { ok: true, transaction: previous };
+    },
+    waitForVisibleOrder: async (_expected, _context, proof) => {
+      ownerWaitCalls += 1;
+      if (ownerWaitCalls === 1) {
+        await new Promise((resolve) => { releaseLifecycleWait = resolve; });
+        return false;
+      }
+      return proof.isCurrent?.() !== false;
+    }
+  });
+  active = { token: 11, libraryId: "library", collectionId: "smart-owner", kind: "smart" };
+  const lifecyclePromise = ownershipPresenter.presentVerified({
+    owner: "lifecycle",
+    context: active,
+    restore: true,
+    nextItems: [{ id: "a" }, { id: "b" }, { id: "c" }]
+  });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.strictEqual(typeof releaseLifecycleWait, "function");
+  const ownerManualResult = await ownershipPresenter.presentVerified({
+    owner: "manual",
+    context: active,
+    selectedIds: ["a"],
+    targetId: "c",
+    insertAfter: false,
+    nextItems: [{ id: "b" }, { id: "a" }, { id: "c" }]
+  });
+  assert.strictEqual(ownerManualResult.ok, true);
+  releaseLifecycleWait();
+  const lifecycleResult = await lifecyclePromise;
+  assert.deepStrictEqual(
+    lifecycleResult,
+    { ok: false, reason: "presentation-superseded", failOpen: true },
+    "R90: a late lifecycle restore must not undo the newer manual transaction"
+  );
+  assert.deepStrictEqual(ownerData, ["b", "a", "c"]);
 
   hostDataIds = ["a", "b", "c"];
   visibleIds = ["a", "b", "c"];
@@ -324,6 +426,167 @@ async function run() {
   assert.strictEqual(reversed.visibleRolledBack, true);
   assert.deepStrictEqual(hostDataIds, ["a", "b", "c"], "verification failure must roll back host data as well as DOM");
 
+  // Manual DOM moves must commit the host projection before the asynchronous
+  // visible proof reads it; a failed proof rolls back both sides.
+  let manualVisible = ["a", "b", "c"];
+  let manualHost = ["a", "b", "c"];
+  const manualStages = [];
+  const manualPresenter = createSmartCollectionPresenter({
+    currentContext: () => active,
+    readVisibleIds: () => manualVisible.slice(),
+    readDataOrderIds: () => manualHost.slice(),
+    moveItemsBefore(ids, target) {
+      manualStages.push("move");
+      manualVisible = ["b", "a", "c"];
+      return true;
+    },
+    commitDataOrder(nextItems) {
+      manualStages.push("commit");
+      const previous = manualHost.slice();
+      manualHost = nextItems.map((item) => item.id);
+      return { ok: true, transaction: previous };
+    },
+    rollbackDataOrder(previous) {
+      manualStages.push("rollback-data");
+      manualHost = previous.slice();
+      return true;
+    },
+    waitForVisibleOrder: async () => {
+      manualStages.push("wait");
+      assert.deepStrictEqual(manualHost, ["b", "a", "c"]);
+      return false;
+    }
+  });
+  const manualResult = await manualPresenter.presentVerified({
+    context: active,
+    selectedIds: ["a"],
+    targetId: "c",
+    nextItems: [{ id: "b" }, { id: "a" }, { id: "c" }],
+    expectedVisibleIds: ["b", "a", "c"],
+    awaitVisibleProof: true
+  });
+  assert.strictEqual(manualResult.ok, false);
+  assert.deepStrictEqual(manualStages, ["move", "commit", "wait", "rollback-data"]);
+  assert.deepStrictEqual(manualHost, ["a", "b", "c"]);
+
+  // R96: Eagle's native drag may already have moved the DOM by the time the
+  // extension's moveItemsBefore observer returns false. The presenter must
+  // continue through the host commit and visible proof instead of restoring
+  // the native result immediately.
+  let nativeAppliedVisible = ["a", "b", "c"];
+  let nativeAppliedHost = ["a", "b", "c"];
+  let nativeAppliedWaitCalls = 0;
+  const nativeAppliedPresenter = createSmartCollectionPresenter({
+    currentContext: () => active,
+    readVisibleIds: () => nativeAppliedVisible.slice(),
+    readDataOrderIds: () => nativeAppliedHost.slice(),
+    moveItemsBefore() {
+      nativeAppliedVisible = ["b", "a", "c"];
+      return false;
+    },
+    commitDataOrder(nextItems) {
+      const previous = nativeAppliedHost.slice();
+      nativeAppliedHost = nextItems.map((item) => item.id);
+      return { ok: true, transaction: previous };
+    },
+    waitForVisibleOrder: async (expectedIds) => {
+      nativeAppliedWaitCalls += 1;
+      return JSON.stringify(nativeAppliedVisible) === JSON.stringify(expectedIds);
+    }
+  });
+  const nativeAppliedResult = await nativeAppliedPresenter.presentVerified({
+    context: active,
+    selectedIds: ["a"],
+    targetId: "c",
+    nextItems: [{ id: "b" }, { id: "a" }, { id: "c" }],
+    expectedVisibleIds: ["b", "a", "c"],
+    awaitVisibleProof: true
+  });
+  assert.deepStrictEqual(
+    nativeAppliedResult,
+    { ok: true, dataOrderVerified: true, visibleOrderVerified: true },
+    "R96: a native drag that already applied must be accepted when visible proof succeeds"
+  );
+  assert.strictEqual(nativeAppliedWaitCalls, 1);
+  assert.deepStrictEqual(nativeAppliedHost, ["b", "a", "c"]);
+
+  // R103: Eagle can expose the verified smart-query source as a read-only
+  // projection. A native drag may already have changed the visible cards, so
+  // the presenter must accept an overlay-only commit and rely on visible
+  // proof; it must not require an impossible array splice/data-order proof.
+  let readOnlyVisible = ["b", "a", "c"];
+  const readOnlyPresenter = createSmartCollectionPresenter({
+    currentContext: () => active,
+    readVisibleIds: () => readOnlyVisible.slice(),
+    readDataOrderIds: () => ["a", "b", "c"],
+    moveItemsBefore() {
+      return false;
+    },
+    commitDataOrder() {
+      return { ok: true, readOnly: true, transaction: null };
+    },
+    rollbackDataOrder() {
+      return true;
+    },
+    waitForVisibleOrder: async (expectedIds) =>
+      JSON.stringify(readOnlyVisible) === JSON.stringify(expectedIds)
+  });
+  const readOnlyResult = await readOnlyPresenter.presentVerified({
+    context: active,
+    selectedIds: ["a"],
+    targetId: "c",
+    nextItems: [{ id: "b" }, { id: "a" }, { id: "c" }],
+    expectedVisibleIds: ["b", "a", "c"],
+    awaitVisibleProof: true
+  });
+  assert.deepStrictEqual(
+    readOnlyResult,
+    { ok: true, dataOrderVerified: true, visibleOrderVerified: true },
+    "R103: read-only smart host projections accept native visible proof"
+  );
+
+  // R97: when moveItemsBefore returns false and the native host did not move,
+  // the same transactional path must wait for proof, then roll back both the
+  // host data and visible order after the proof fails.
+  let nativeNotAppliedVisible = ["a", "b", "c"];
+  let nativeNotAppliedHost = ["a", "b", "c"];
+  let nativeNotAppliedWaitCalls = 0;
+  let nativeNotAppliedRollbackCalls = 0;
+  const nativeNotAppliedPresenter = createSmartCollectionPresenter({
+    currentContext: () => active,
+    readVisibleIds: () => nativeNotAppliedVisible.slice(),
+    readDataOrderIds: () => nativeNotAppliedHost.slice(),
+    moveItemsBefore: () => false,
+    commitDataOrder(nextItems) {
+      const previous = nativeNotAppliedHost.slice();
+      nativeNotAppliedHost = nextItems.map((item) => item.id);
+      return { ok: true, transaction: previous };
+    },
+    rollbackDataOrder(previous) {
+      nativeNotAppliedRollbackCalls += 1;
+      nativeNotAppliedHost = previous.slice();
+      return true;
+    },
+    waitForVisibleOrder: async () => {
+      nativeNotAppliedWaitCalls += 1;
+      return false;
+    }
+  });
+  const nativeNotAppliedResult = await nativeNotAppliedPresenter.presentVerified({
+    context: active,
+    selectedIds: ["a"],
+    targetId: "c",
+    nextItems: [{ id: "b" }, { id: "a" }, { id: "c" }],
+    expectedVisibleIds: ["b", "a", "c"],
+    awaitVisibleProof: true
+  });
+  assert.strictEqual(nativeNotAppliedResult.ok, false);
+  assert.strictEqual(nativeNotAppliedResult.reason, "visible-order-mismatch");
+  assert.strictEqual(nativeNotAppliedWaitCalls, 1);
+  assert.strictEqual(nativeNotAppliedRollbackCalls, 1);
+  assert.deepStrictEqual(nativeNotAppliedHost, ["a", "b", "c"]);
+  assert.deepStrictEqual(nativeNotAppliedVisible, ["a", "b", "c"]);
+
   const pluginSource = fs.readFileSync(
     path.join(__dirname, "..", "plugin.js"),
     "utf8"
@@ -351,6 +614,24 @@ async function run() {
     pluginSource.match(/present: async \(request\) => \{([\s\S]*?)\n        \},\n        requireReadyProofs/)[1],
     /nextItems\s*\.slice\(0,\s*visibleIds\.length\)/,
     "R66: lifecycle presentation must not assume every virtualized window starts at offset zero"
+  );
+  const presenterSource = fs.readFileSync(
+    path.join(__dirname, "..", "lib", "smart-collection-presenter.js"),
+    "utf8"
+  );
+  const manualMoveBranch = presenterSource.match(
+    /if \(moveItemsBefore\) \{([\s\S]*?)\n        \} else \{/
+  );
+  assert.ok(manualMoveBranch, "manual smart move branch should remain explicit");
+  assert.match(
+    manualMoveBranch[1],
+    /const moveResult = moveItemsBefore\([\s\S]*?if \(moveResult === false\)/,
+    "R96: a false native move result must enter proof-based reconciliation"
+  );
+  assert.doesNotMatch(
+    manualMoveBranch[1],
+    /moveResult === false[\s\S]*?restoreVisibleOrder\(originalVisibleIds\)[\s\S]*?return/,
+    "R96: an unconfirmed native move must not immediately restore and abort"
   );
 
   console.log("smart collection presenter tests passed");

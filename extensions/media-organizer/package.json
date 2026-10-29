@@ -1,6 +1,6 @@
 {
   "name": "eagle-photo-taken-sort",
-  "version": "2.5.22-qa.71",
+  "version": "2.5.22-qa.94",
   "private": true,
   "description": "Organizes Eagle media with multi-level sorting, continuous renaming, and offline GPS location tags.",
   "main": "plugin.js",

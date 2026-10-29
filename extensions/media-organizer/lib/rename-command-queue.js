@@ -210,6 +210,16 @@ function createRenameCommandQueue({
     return true;
   }
 
+  function cancelAll(reason = "cancelled") {
+    let count = 0;
+    for (const record of Array.from(records.values())) {
+      if (record.state === "queued" && cancel(record.commandId, reason)) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
   function status(commandId) {
     const record = records.get(String(commandId || ""));
     return record ? {
@@ -241,6 +251,7 @@ function createRenameCommandQueue({
     enqueue,
     start,
     cancel,
+    cancelAll,
     status,
     isBusy,
     idle,

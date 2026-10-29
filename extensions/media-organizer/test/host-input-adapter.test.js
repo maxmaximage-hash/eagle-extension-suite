@@ -374,6 +374,57 @@ for (const cancellation of [
   assert.deepStrictEqual(moveInputs, []);
 }
 
+// Virtualized smart grids may replace the DOM element during a drag.  A
+// stable semantic key keeps the session alive while still rejecting a
+// different grid key.
+{
+  const { adapter, moveInputs } = createHarness();
+  const firstGrid = {};
+  const replacementGrid = {};
+  adapter.pointerDown({
+    ...smartContext(),
+    pointerId: 26,
+    button: 0,
+    isPrimary: true,
+    sourceId: "item-A",
+    selectedIds: ["item-A"],
+    clientX: 10,
+    clientY: 10,
+    startGridIdentity: firstGrid,
+    startGridKey: "box-list"
+  });
+  adapter.nativeDragStart({
+    ...smartContext(),
+    sourceId: "item-A",
+    clientX: 10,
+    clientY: 10,
+    insideGrid: true,
+    gridIdentity: firstGrid,
+    gridKey: "box-list"
+  });
+  assert.strictEqual(adapter.nativeDrag({
+    ...smartContext(),
+    clientX: 50,
+    clientY: 10,
+    insideGrid: true,
+    gridIdentity: replacementGrid,
+    gridKey: "box-list",
+    targetId: "item-B"
+  }).ok, true);
+  const result = adapter.nativeDragEnd({
+    ...smartContext(),
+    clientX: 50,
+    clientY: 10,
+    insideWindow: true,
+    insideGrid: true,
+    gridIdentity: replacementGrid,
+    gridKey: "box-list",
+    targetId: "item-B"
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(moveInputs.length, 1);
+}
+
 // qa.17 real sequence: an invalid pointerup target defers to the last valid
 // same-grid native drag observation.
 {
@@ -555,6 +606,25 @@ for (const cancellation of [
     "no-session"
   );
   assert.strictEqual(moveInputs.length, 1);
+}
+
+// A mismatched pointerup/move indicates the browser lost the original drag
+// session. It must release ownership so the next drag can start immediately.
+{
+  const { adapter } = createHarness();
+  const context = smartContext();
+  adapter.pointerDown({
+    ...context, pointerId: 41, button: 0, isPrimary: true,
+    sourceId: "item-A", selectedIds: ["item-A"], clientX: 10, clientY: 10
+  });
+  assert.strictEqual(adapter.pointerUp({
+    ...context, pointerId: 99, insideWindow: true, insideGrid: true
+  }).reason, "pointer-mismatch");
+  assert.strictEqual(adapter.snapshot().active, false);
+  assert.strictEqual(adapter.pointerDown({
+    ...context, pointerId: 42, button: 0, isPrimary: true,
+    sourceId: "item-A", selectedIds: ["item-A"], clientX: 10, clientY: 10
+  }).ok, true);
 }
 
 console.log("host input adapter tests passed");

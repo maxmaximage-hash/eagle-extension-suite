@@ -46,7 +46,8 @@ function createSmartCollectionLifecycleController(options = {}) {
     snapshotFingerprint: "",
     metadataReady: false,
     dataOrderVerified: false,
-    visibleOrderVerified: false
+    visibleOrderVerified: false,
+    overlayRevision: 0
   };
 
   function itemFingerprint(items) {
@@ -124,7 +125,8 @@ function createSmartCollectionLifecycleController(options = {}) {
       snapshotFingerprint: "",
       metadataReady: false,
       dataOrderVerified: false,
-      visibleOrderVerified: false
+      visibleOrderVerified: false,
+      overlayRevision: 0
     };
     emit("context-enter");
     return publicSnapshot();
@@ -140,6 +142,7 @@ function createSmartCollectionLifecycleController(options = {}) {
     const items = Array.isArray(input.items) ? input.items.slice() : [];
     const queryComplete = input.queryComplete === true;
     const stable = input.stable === true;
+    const overlayRevision = Math.max(0, Number(input.overlayRevision) || 0);
     const sourceIdentity = String(input.sourceIdentity || "");
     const queryEpoch = String(input.queryEpoch || "");
     const snapshotFingerprint = String(
@@ -171,6 +174,33 @@ function createSmartCollectionLifecycleController(options = {}) {
       session.state = STATES.LOADING;
       emit("query-epoch-enter", { sourceIdentity, queryEpoch });
     }
+
+    // A manual smart-folder move owns the host arrays for its overlay
+    // revision. If an automatic lifecycle presentation is still awaiting
+    // Eagle's virtual-window repaint when that revision advances, invalidate
+    // the old token before it can commit or roll back allData/filtereds. The
+    // next observation gets a fresh token and may present the newer plan;
+    // the late result sees a stale token and is discarded.
+    if (
+      !sourceChanged &&
+      session.inFlightSignature &&
+      overlayRevision !== session.overlayRevision
+    ) {
+      generation += 1;
+      session.token = generation;
+      session.generation = generation;
+      session.signature = "";
+      session.inFlightSignature = "";
+      session.failedSignature = "";
+      session.state = STATES.LOADING;
+      session.dataOrderVerified = false;
+      session.visibleOrderVerified = false;
+      emit("overlay-revision-enter", {
+        fromRevision: session.overlayRevision,
+        toRevision: overlayRevision
+      });
+    }
+    session.overlayRevision = overlayRevision;
     if (!sourceRejected && sourceIdentity) {
       session.sourceIdentity = sourceIdentity;
       session.queryEpoch = queryEpoch;
@@ -198,7 +228,7 @@ function createSmartCollectionLifecycleController(options = {}) {
 
     const signature =
       itemFingerprint(items) + ":" +
-      String(input.overlayRevision || 0) + ":" +
+      String(overlayRevision) + ":" +
       String(input.viewFingerprint || "");
     if (requireReadyProofs && (!metadataReady || !snapshotFingerprint)) {
       session.state = STATES.STABILIZING;

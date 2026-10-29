@@ -106,6 +106,17 @@ assert.strictEqual(runtime.scopedItems({
   allData: normalRouteResults,
   raw: wholeLibrary
 }), normalRouteResults, "R79: a route-owned normal folder must use only its current-view array");
+assert.deepStrictEqual(
+  runtime.scopedItems({
+    currentFolder: { id: "normal-route" },
+    currentSmartFolder: { id: "stale-smart" },
+    locationHash: "#!?view=folder&folder=normal-route",
+    allData: smartResults,
+    raw: wholeLibrary
+  }),
+  [],
+  "R13/R38: a normal-folder route must not consume the previous smart-folder projection during transition"
+);
 assert.deepStrictEqual(runtime.scopedItems({
   currentSmartFolder: { id: "empty-smart" },
   allData: [],
@@ -132,12 +143,32 @@ assert.deepStrictEqual(
   ["added-3", "added-1", "added-2"],
   "R52: native added-date order must remain byte-for-byte positional input"
 );
+const staleSmartProjection = wholeLibrary.slice(0, 554);
+assert.strictEqual(
+  runtime.scopedItems({
+    currentSmartFolder: { id: "stale-smart" },
+    locationHash: "#!?view=all",
+    allData: staleSmartProjection,
+    raw: wholeLibrary
+  }).length,
+  24185,
+  "global route must restore the complete raw library after a stale smart projection"
+);
+assert.strictEqual(
+  runtime.scopedItems({
+    locationHash: "#!?view=smartfolder&smartfolder=smart-route",
+    allData: staleSmartProjection,
+    raw: wholeLibrary
+  }).length,
+  554,
+  "smart route must keep its projected result even when raw is larger"
+);
 assert.deepStrictEqual(runtime.scopedItems({
   currentFolder: { id: "stale-normal" },
   locationHash: "#!?view=all",
   allData: [],
   raw: wholeLibrary
-}), [], "R52: an empty all view must not fall through to raw or scan the whole library");
+}), wholeLibrary, "R52: a stale empty all view must recover from the complete raw library");
 assert.deepStrictEqual(runtime.scopedItems({
   view: "unknown",
   currentFolder: { id: "stale-normal" },

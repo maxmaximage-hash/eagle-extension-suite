@@ -56,6 +56,9 @@ function createHostInputAdapter(options = {}) {
   }
 
   function sameGrid(input = {}) {
+    if (session?.startGridKey && input.gridKey) {
+      return String(input.gridKey) === session.startGridKey;
+    }
     return (
       !session?.startGridIdentity ||
       !input.gridIdentity ||
@@ -220,6 +223,7 @@ function createHostInputAdapter(options = {}) {
       selectedIds,
       startGridIdentity:
         input.startGridIdentity || input.gridIdentity || null,
+      startGridKey: String(input.startGridKey || input.gridKey || ""),
       startX: input.clientX,
       startY: input.clientY,
       lastX: input.clientX,
@@ -243,7 +247,10 @@ function createHostInputAdapter(options = {}) {
   function pointerMove(input = {}) {
     if (!session) return { ok: false, reason: "no-session" };
     if (input.pointerId !== session.pointerId) {
-      return { ok: false, reason: "pointer-mismatch" };
+      // A lost pointerup must not strand the previous session and reject all
+      // subsequent drags. Eagle can recycle pointer IDs after a cancelled
+      // virtual-grid drag, so clear ownership at the boundary.
+      return cancel("pointer-mismatch");
     }
     if (!sameContext(input)) return cancel("context-invalid");
     if (!sameGrid(input)) return cancel("grid-mismatch");
@@ -263,7 +270,7 @@ function createHostInputAdapter(options = {}) {
   function pointerUp(input = {}) {
     if (!session) return { ok: false, reason: "no-session" };
     if (input.pointerId !== session.pointerId) {
-      return { ok: false, reason: "pointer-mismatch" };
+      return cancel("pointer-mismatch");
     }
     if (session.nativeDragActive) {
       if (input.insideWindow !== true) return cancel("window-outside");
@@ -366,6 +373,7 @@ function createHostInputAdapter(options = {}) {
             sourceId: session.sourceId,
             selectedIds: session.selectedIds.slice(),
             startGridIdentity: session.startGridIdentity,
+            startGridKey: session.startGridKey,
             crossedThreshold: session.crossedThreshold,
             nativeDragActive: session.nativeDragActive,
             lastInsideGrid: session.lastInsideGrid,

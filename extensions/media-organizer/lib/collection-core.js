@@ -28,8 +28,13 @@ function createCollectionRuntime() {
   }
 
   function smartFolderFromContext(context = {}) {
+    const route = routedView(context);
+    // An explicit non-smart route owns the transition frame. Eagle may retain
+    // the previous currentSmartFolder object while navigating to 全部 or a
+    // normal folder; never let that stale object override the route.
+    if (route && route !== "smartfolder") return null;
     if (context.currentSmartFolder?.id) return context.currentSmartFolder;
-    if (routedView(context) !== "smartfolder") return null;
+    if (route !== "smartfolder") return null;
     const hash = String(context.locationHash || "");
     const match = hash.match(/[?&]smartfolder=([^&]+)/);
     if (!match?.[1]) return null;
@@ -88,10 +93,31 @@ function createCollectionRuntime() {
     // complete library, so a collection must not fall through to raw merely
     // because its current result is empty.
     if (smartFolderFromContext(context)?.id) return allData || filtered || [];
-    if (routedView(context) === "global") return allData || filtered || raw;
+    if (routedView(context) === "global") {
+      // During a smart → 全部 transition Eagle can retain the previous
+      // smart projection in allData/filtereds for one or more frames.  The
+      // raw library is the only complete source in that case.  Treat a
+      // smaller array whose ids are all present in raw as a stale projection;
+      // keep Eagle's native array when it is already complete (or when raw is
+      // unavailable), so native order is preserved in the normal case.
+      const candidate = allData || filtered;
+      if (candidate && raw.length > candidate.length) {
+        const rawIds = new Set(raw.map((item) => String(item?.id || "")));
+        const isRawSubset = candidate.every((item) => rawIds.has(String(item?.id || "")));
+        if (isRawSubset) return raw;
+      }
+      return candidate || raw;
+    }
     if (routedView(context) === "unknown") return allData || filtered || [];
     const normalFolder = normalFolderFromContext(context);
     if (normalFolder?.id) {
+      // During smart → normal navigation Eagle can leave the previous smart
+      // record attached while its current-view array is still that projection.
+      // Do not expose that array as normal-folder contents; wait for the
+      // normal route's own folder snapshot instead.
+      if (routedView(context) === "folder" && context.currentSmartFolder?.id) {
+        return [];
+      }
       if (allData) return allData;
       if (filtered) return filtered;
       const folderId = String(normalFolder.id);

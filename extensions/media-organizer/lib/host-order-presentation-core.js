@@ -70,7 +70,8 @@ function presentOrderTransaction({
   moveVisible = () => true,
   rollbackVisible = () => true,
   readVisibleIds = () => [],
-  expectedVisibleIds = []
+  expectedVisibleIds = [],
+  verifyVisible = null
 } = {}) {
   const desired = Array.isArray(nextItems) ? nextItems.slice() : null;
   if (!desired) return Object.freeze({ ok: false, reason: "next-items-required" });
@@ -97,8 +98,19 @@ function presentOrderTransaction({
   }
   const expected = idsOf(expectedVisibleIds);
   const actual = idsOf(readVisibleIds());
-  const visibleVerified = sameIds(actual, expected);
   const desiredIds = idsOf(desired);
+  let visibleVerified = sameIds(actual, expected);
+  if (typeof verifyVisible === "function") {
+    try {
+      visibleVerified = verifyVisible({
+        desiredIds,
+        expectedVisibleIds: expected,
+        visibleIds: actual
+      }) === true;
+    } catch {
+      visibleVerified = false;
+    }
+  }
   const dataVerified = verifyHostOrder(commit.transaction);
   if (!visibleVerified || !dataVerified) {
     const dataRolledBack = rollbackHostOrder(commit.transaction);

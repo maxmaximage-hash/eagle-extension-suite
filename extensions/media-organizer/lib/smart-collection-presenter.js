@@ -34,7 +34,8 @@ function createSmartCollectionPresenter(options = {}) {
   const diagnose = typeof options.diagnose === "function"
     ? options.diagnose
     : () => {};
-  let activePresentationKey = "";
+  let activePresentation = null;
+  let presentationSequence = 0;
 
   function emit(stage, payload = {}) {
     try { diagnose(stage, payload); } catch {}
@@ -102,12 +103,33 @@ function createSmartCollectionPresenter(options = {}) {
     const context = input.context || {};
     if (!contextMatches(context)) return Object.freeze({ ok: false, reason: "stale-context" });
     const key = presentationKey(context);
-    if (activePresentationKey) {
-      emit("reentrant-rejected", { key, activePresentationKey });
-      return Object.freeze({ ok: false, reason: "presentation-reentrant", failOpen: true });
+    const owner = String(input.owner || "lifecycle");
+    if (activePresentation) {
+      // Manual drag owns the latest visible state and may supersede an
+      // automatic lifecycle restore waiting on a virtual-window repaint.
+      if (owner === "manual" && activePresentation.owner !== "manual") {
+        emit("presentation-superseded", {
+          key,
+          activePresentationKey: activePresentation.key,
+          activeOwner: activePresentation.owner,
+          owner
+        });
+        activePresentation = null;
+      } else {
+        emit("reentrant-rejected", {
+          key,
+          activePresentationKey: activePresentation.key,
+          activeOwner: activePresentation.owner,
+          owner
+        });
+        return Object.freeze({ ok: false, reason: "presentation-reentrant", failOpen: true });
+      }
     }
-    activePresentationKey = key;
-    emit("presentation-start", { key });
+    const sequence = ++presentationSequence;
+    activePresentation = { key, owner, sequence };
+    const isCurrentPresentation = () =>
+      activePresentation?.sequence === sequence;
+    emit("presentation-start", { key, owner });
     try {
     const desiredIds = idsOf(input.nextItems);
     if (desiredIds.length === 0) {
@@ -132,10 +154,19 @@ function createSmartCollectionPresenter(options = {}) {
       count: visibleWindow.count,
       proven: visibleWindow.proven
     });
-    if (readVisibleWindow && visibleWindow.proven !== true) {
+    // A prior read-only manual overlay intentionally leaves Eagle's host
+    // query array in its old order while the visible DOM carries the durable
+    // overlay. The next manual drag must be allowed to proceed from that
+    // rendered window; its post-commit visible proof remains authoritative.
+    if (
+      readVisibleWindow &&
+      visibleWindow.proven !== true &&
+      owner !== "manual"
+    ) {
       return Object.freeze({ ok: false, reason: "visible-window-unproved" });
     }
 
+    let dataOrderReadOnly = false;
     if (input.restore === true && commitDataOrder && waitForVisibleOrder) {
       let dataTransaction = null;
       let dataCommitted = false;
@@ -146,16 +177,22 @@ function createSmartCollectionPresenter(options = {}) {
           visibleWindow
         });
         dataCommitted = commitResult === true || commitResult?.ok === true;
+        dataOrderReadOnly = commitResult?.readOnly === true;
         dataTransaction = commitResult?.transaction || null;
         emit("commit-result", { ok: dataCommitted });
       } catch {}
       if (!dataCommitted) {
         return Object.freeze({ ok: false, reason: "data-commit-failed" });
       }
-      const dataOrderVerified = readDataOrderIds
+      const dataOrderVerified = dataOrderReadOnly
+        ? true
+        : readDataOrderIds
         ? sameIds(idsOf(readDataOrderIds()), desiredIds)
         : true;
       emit("data-verify", { ok: dataOrderVerified });
+      if (!isCurrentPresentation()) {
+        return Object.freeze({ ok: false, reason: "presentation-superseded", failOpen: true });
+      }
       const expectedVisibleIds = idsOf(input.expectedVisibleIds).length > 0
         ? idsOf(input.expectedVisibleIds)
         : desiredIds.slice(
@@ -178,7 +215,10 @@ function createSmartCollectionPresenter(options = {}) {
           {
             desiredIds: desiredIds.slice(),
             expectedVisibleIds: expectedVisibleIds.slice(),
-            initialVisibleWindow: { ...visibleWindow }
+            initialVisibleWindow: { ...visibleWindow },
+            owner,
+            dataOrderReadOnly,
+            isCurrent: isCurrentPresentation
           }
         ) === true;
         emit("visible-verify-result", { ok: visibleOrderVerified });
@@ -186,9 +226,13 @@ function createSmartCollectionPresenter(options = {}) {
       if (
         dataOrderVerified &&
         visibleOrderVerified &&
-        contextMatches(context)
+        contextMatches(context) &&
+        isCurrentPresentation()
       ) {
         return Object.freeze({ ok: true, dataOrderVerified, visibleOrderVerified });
+      }
+      if (!isCurrentPresentation()) {
+        return Object.freeze({ ok: false, reason: "presentation-superseded", failOpen: true });
       }
       let dataRolledBack = false;
       if (rollbackDataOrder) {
@@ -205,7 +249,8 @@ function createSmartCollectionPresenter(options = {}) {
         try {
           visibleRolledBack = await waitForVisibleOrder(
             originalVisibleIds,
-            context
+            context,
+            { isCurrent: isCurrentPresentation }
           ) === true;
         } catch {}
       }
@@ -252,13 +297,20 @@ function createSmartCollectionPresenter(options = {}) {
           return Object.freeze({ ok: false, reason: "move-input-invalid" });
         }
         if (moveItemsBefore) {
-          if (moveItemsBefore(
+          const moveResult = moveItemsBefore(
             selectedIds,
             targetId,
             input.insertAfter === true
-          ) === false) {
-            restoreVisibleOrder(originalVisibleIds);
-            return Object.freeze({ ok: false, reason: "visible-move-failed" });
+          );
+          if (moveResult === false) {
+            // Eagle's native drag observer can report false after the host
+            // has already moved the DOM. Keep the transaction alive so the
+            // authoritative visible proof decides whether the native move
+            // landed. If it did not, the proof-failure path below rolls back
+            // both host data and the visible order.
+            emit("native-move-unconfirmed", {
+              selectedCount: selectedIds.length
+            });
           }
         } else {
           for (const sourceId of selectedIds) {
@@ -287,6 +339,7 @@ function createSmartCollectionPresenter(options = {}) {
       try {
         const commitResult = await commitDataOrder(input.nextItems, input);
         dataCommitted = commitResult === true || commitResult?.ok === true;
+        dataOrderReadOnly = commitResult?.readOnly === true;
         dataTransaction = commitResult?.transaction || null;
       } catch {
         dataCommitted = false;
@@ -295,16 +348,58 @@ function createSmartCollectionPresenter(options = {}) {
         restoreVisibleOrder(originalVisibleIds);
         return Object.freeze({ ok: false, reason: "data-commit-failed" });
       }
+      if (!isCurrentPresentation()) {
+        return Object.freeze({ ok: false, reason: "presentation-superseded", failOpen: true });
+      }
     }
     const visibleSet = new Set(originalVisibleIds);
     const expectedVisibleIds = desiredIds.filter((id) => visibleSet.has(id));
+    if (input.awaitVisibleProof === true && waitForVisibleOrder) {
+      let settled = false;
+      try {
+        settled = await waitForVisibleOrder(
+          expectedVisibleIds,
+          context,
+          {
+            desiredIds: desiredIds.slice(),
+            expectedVisibleIds: expectedVisibleIds.slice(),
+            initialVisibleWindow: { offset: 0, count: originalVisibleIds.length, ids: originalVisibleIds.slice(), proven: true },
+            owner,
+            dataOrderReadOnly,
+            isCurrent: isCurrentPresentation
+          }
+        ) === true;
+      } catch {}
+      if (!settled || !contextMatches(context) || !isCurrentPresentation()) {
+        if (!isCurrentPresentation()) {
+          return Object.freeze({ ok: false, reason: "presentation-superseded", failOpen: true });
+        }
+        let dataRolledBack = !commitDataOrder;
+        if (commitDataOrder && rollbackDataOrder) {
+          try { dataRolledBack = await rollbackDataOrder(dataTransaction, input) !== false; } catch {}
+        }
+        const visibleRolledBack = restoreVisibleOrder(originalVisibleIds);
+        return Object.freeze({
+          ok: false,
+          reason: !settled ? "visible-order-mismatch" : "stale-context",
+          dataRolledBack,
+          visibleRolledBack,
+          failOpen: true
+        });
+      }
+    }
     const actualVisibleIds = idsOf(readVisibleIds())
       .filter((id) => visibleSet.has(id));
     const visibleOrderVerified = sameIds(actualVisibleIds, expectedVisibleIds);
-    const dataOrderVerified = readDataOrderIds
+    const dataOrderVerified = dataOrderReadOnly
+      ? true
+      : readDataOrderIds
       ? sameIds(idsOf(readDataOrderIds()), desiredIds)
       : dataCommitted;
-    if (!visibleOrderVerified || !dataOrderVerified || !contextMatches(context)) {
+    if (!visibleOrderVerified || !dataOrderVerified || !contextMatches(context) || !isCurrentPresentation()) {
+      if (!isCurrentPresentation()) {
+        return Object.freeze({ ok: false, reason: "presentation-superseded", failOpen: true });
+      }
       let dataRolledBack = !commitDataOrder;
       if (commitDataOrder && rollbackDataOrder) {
         try { dataRolledBack = await rollbackDataOrder(dataTransaction, input) !== false; } catch {}
@@ -329,8 +424,8 @@ function createSmartCollectionPresenter(options = {}) {
     } catch {}
     return Object.freeze({ ok: true, dataOrderVerified, visibleOrderVerified });
     } finally {
-      if (activePresentationKey === key) activePresentationKey = "";
-      emit("presentation-end", { key });
+      if (activePresentation?.sequence === sequence) activePresentation = null;
+      emit("presentation-end", { key, owner });
     }
   }
 

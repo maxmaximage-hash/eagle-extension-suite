@@ -32,7 +32,17 @@ assert.strictEqual(manifest.main.serviceMode, true);
 assert.strictEqual(manifest.main.keepAlive, true);
 assert.strictEqual(manifest.main.childWindow, true);
 assert.strictEqual(manifest.main.frame, true);
-assert.match(source, /const API_VERSION = 148/);
+assert.match(
+  source,
+  /function stopRuntimeActivity\(reason\)/,
+  "runtime cleanup must have one cancellation contract"
+);
+assert.match(
+  source,
+  /stopRuntimeActivity\("library-changed"\)/,
+  "library changes must cancel all delayed runtime work"
+);
+assert.match(source, /const API_VERSION = 150/);
 assert.match(
   source,
   /function diagnoseNormalOrderPresentation\(stage, payload = \{\}\)/,
@@ -114,15 +124,78 @@ assert.match(source, /allData: bodyScope\.allData/);
 assert.match(source, /smartQueryEvidence/);
 assert.doesNotMatch(source, /filteredSource !== bodyScope\.allData/);
 assert.match(source, /hostSource\.sourceIdentity/);
+const smartCommitSource = source.match(
+  /commitDataOrder: \(nextItems, input = \{\}\) => \{([\s\S]*?)\n      \},\n      rollbackDataOrder:/
+);
+assert.ok(smartCommitSource, "smart drag must expose one host-order commit boundary");
 assert.match(
   source,
-  /nextItems\.slice\(0, filteredCount\)/,
-  "R66: Eagle filtereds remains a zero-based pagination prefix even when the DOM virtual window has a non-zero scroll offset"
+  /const arrays = createSmartHostOrderPlans\(\{[\s\S]*?sourceReference: smartHostQuerySource,[\s\S]*?sourceItems: hostSnapshot\.members,[\s\S]*?allData: bodyScope\.allData,[\s\S]*?filtereds: bodyScope\.filtereds,[\s\S]*?nextItems[\s\S]*?\}\);/,
+  "R91: smart drag must derive explicit host-order plans from the owned query source"
+);
+assert.match(
+  smartCommitSource[1],
+  /const manualOverlay = input\.restore !== true[\s\S]*?input\.owner === "manual"/,
+  "R104: a manual smart drag may await visible proof while Eagle refreshes its host snapshot"
+);
+assert.match(
+  smartCommitSource[1],
+  /owner: String\(input\.owner \|\|[\s\S]*?\)/,
+  "R104: read-only host commits must record their manual owner"
+);
+assert.doesNotMatch(
+  smartCommitSource[1],
+  /bodyScope\.allData\.(?:splice|push|unshift|pop|shift|sort|reverse)\s*\(/,
+  "R91: smart drag must not mutate the full-library array directly"
+);
+assert.doesNotMatch(
+  smartCommitSource[1],
+  /bodyScope\.allData\s*=/,
+  "R91: smart drag must not replace Eagle's full-library reference"
+);
+const smartVisibleWindowSource = source.match(
+  /readVisibleWindow: \(\) => \{([\s\S]*?)\n      \},\n      moveBefore:/
+);
+assert.ok(
+  smartVisibleWindowSource,
+  "R98: smart presenter must have an explicit visible-window authority"
+);
+assert.match(
+  smartVisibleWindowSource[1],
+  /smartHostQuerySource/,
+  "R98: smart visible-window proof must use the owned smart-query source"
+);
+assert.doesNotMatch(
+  smartVisibleWindowSource[1],
+  /Array\.isArray\(bodyScope\.allData\)/,
+  "R98: smart visible-window proof must not infer contiguity from full-library allData"
+);
+assert.match(
+  source,
+  /proof\.owner === "manual"[\s\S]*?proof\.dataOrderReadOnly === true[\s\S]*?manual-overlay-visible-proof/s,
+  "R105: manual read-only overlays must use async visible proof without stale paged projection"
+);
+assert.match(
+  source,
+  /canSkipLifecycleRestore/,
+  "R106: a proven manual overlay must fence duplicate lifecycle restores"
+);
+assert.match(source, /memberFingerprint[\s\S]*?visibleProof: true/s);
+assert.match(
+  source,
+  /collectionId: String\(currentCollection\(\)\.id \|\| ""\)/,
+  "R107: manual owner identity must use the raw smart collection id used by lifecycle snapshots"
+);
+assert.match(
+  source,
+  /return \{ ok: false, reason: "smart-host-source-unowned" \};/,
+  "R91: smart drag must fail open when Eagle's current source array is not owned"
 );
 assert.match(source, /const AUTO_RENAME_QUIET_MS = 400/);
 assert.match(source, /lib", "host-input-adapter\.js"/);
 assert.match(source, /const HOST_INPUT_ADAPTER_SOURCE/);
 assert.match(source, /startGridIdentity: source\.gridIdentity/);
+assert.match(source, /startGridKey: snapshot\.session\?\.startGridKey/);
 assert.match(source, /allowUnknownSurface: true/);
 assert.match(source, /previousApi\.integrationResult/);
 assert.match(source, /reused: true/);
@@ -568,6 +641,20 @@ assert.doesNotMatch(
   /performManualDrop|persistCurrentManualOrder|resetManualState/
 );
 assert.match(source, /function dropHelperAtPoint\(clientX, clientY\)/);
+assert.match(
+  source,
+  /function hostInputDragContext\(overrides = \{\}\)/,
+  "smart drag move events must use a lightweight context and avoid full order resolution"
+);
+const hostInputDragContextSource = source.match(
+  /function hostInputDragContext\(overrides = \{\}\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(hostInputDragContextSource, "lightweight smart drag context should exist");
+assert.doesNotMatch(
+  hostInputDragContextSource[1],
+  /currentLevelAvailability|currentRenameItems|renderedCardIds|resolveCurrentOrderSnapshot/,
+  "pointer/native drag context must not scan the rendered grid on every event"
+);
 assert.doesNotMatch(source, /const mouseDownHandler = \(event\) =>/);
 assert.doesNotMatch(source, /const mouseMoveHandler = \(event\) =>/);
 assert.doesNotMatch(source, /const mouseUpHandler = \(event\) =>/);
@@ -607,6 +694,20 @@ assert.match(
   smartRenamePlanGuard[1],
   /collection\.kind === "smart"[\s\S]*?smart-collection-rename-disabled/,
   "smart collections must not generate auto-number plans"
+);
+assert.match(
+  smartRenamePlanGuard[1],
+  /sortingSystemRuntime\.buildRenamePlan\(orderSnapshot, \{\s*folderName: bodyScope\.currentFolder\.name/s,
+  "normal media rename must derive the scene name from Eagle's live currentFolder"
+);
+const manualDropRenameSource = source.match(
+  /function buildManualDropRenamePlan\(nextItems, previousItemsOverride = null\) \{([\s\S]*?)\n    \}\n\n    function shouldRouteRenameToTree/
+);
+assert.ok(manualDropRenameSource, "manual drop rename plan builder should be present");
+assert.match(
+  manualDropRenameSource[1],
+  /sortingSystemRuntime\.buildRenamePlan\(orderSnapshot, \{\s*folderName: bodyScope\.currentFolder\.name/s,
+  "manual drop rename must preserve the current folder scene name"
 );
 assert.match(collectionSettingsRendererSource, /renameSection\?\.remove\?\.\(\)/);
 assert.match(
@@ -808,6 +909,11 @@ assert.ok(
   smartNativeObserverSource,
   "smart native drag observer should use the one HostInputAdapter session"
 );
+assert.match(
+  smartNativeObserverSource[1],
+  /hostInputDragContext\(/,
+  "native drag observation must not resolve the full current order"
+);
 assert.doesNotMatch(
   smartNativeObserverSource[1],
   /preventDefault|stopPropagation|stopImmediatePropagation|dataTransfer\s*[.=]|setPointerCapture/,
@@ -855,13 +961,51 @@ for (const handlerName of [
     `${handlerName} must not contain rename policy`
   );
 }
+const pointerMoveSource = source.match(
+  /const pointerMoveHandler = \(event\) => \{([\s\S]*?)\n\s+\};\s+const pointerUpHandler/
+);
+assert.ok(pointerMoveSource, "pointer move handler should be present");
+assert.match(
+  pointerMoveSource[1],
+  /hostInputDragContext\(/,
+  "pointer move must use a cached/lightweight drag context"
+);
+assert.match(
+  pointerMoveSource[1],
+  /nativeDragActive\)\s*return/,
+  "pointer tracking must yield once Eagle native drag owns the session"
+);
 assert.match(source, /collection\.kind !== "smart"[\s\S]*?pointerDown/);
 assert.match(source, /hostInputAdapter\?\.nativeDropCommitted\(\)/);
 assert.match(source, /hostInputAdapter\.previewOpened\(\)/);
 assert.match(source, /hostInputAdapter\?\.lockChanged\(\)/);
 assert.match(source, /hostInputAdapter\?\.contextChanged\(\)/);
 assert.match(source, /hostInputAdapter\.windowBlurred\(\)/);
+assert.match(
+  source,
+  /projectionProof\.ok === true && visibleProof\.ok === true/,
+  "smart drag visible verification must require a proven rendered window, not projection state alone"
+);
+assert.match(
+  source,
+  /let provenStreak = 0;[\s\S]*?provenStreak >= 2/,
+  "smart drag must observe two consecutive proven virtual-grid frames before success"
+);
 assert.match(source, /hostInputAdapter\.pointerCancelled\(/);
+const smartManualPresenterSource = source.match(
+  /async function presentSmartManualMove\(input = \{\}\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(smartManualPresenterSource, "smart manual presenter should exist");
+assert.match(
+  smartManualPresenterSource[1],
+  /awaitVisibleProof: true/,
+  "manual smart moves must keep the DOM move and await the transactional visible-window proof"
+);
+assert.match(
+  smartManualPresenterSource[1],
+  /smartManualPresentationActive = true[\s\S]*?finally[\s\S]*?smartManualPresentationActive = false/,
+  "manual presentation must fence host observer re-entry until its transaction ends"
+);
 assert.match(source, /command: result\.command/);
 assert.match(source, /hostInputDiagnostics:/);
 assert.match(source, /moveDiagnostics:/);
@@ -1113,6 +1257,8 @@ assert.match(source, /const normalOrderStabilityGate = createNormalOrderStabilit
   "R85: normal-folder presentation must own an explicit stability gate");
 assert.match(source, /normalOrderStabilityGate\.request\(\{[\s\S]*?expectedVisibleIds,[\s\S]*?observedVisibleIds: originalVisibleIds/s,
   "R85: the existing host boundary must compare the visible grid before deduping a normal presentation");
+assert.match(source, /verifyVisible: \(\{ desiredIds, visibleIds \}\) =>\s*verifySmartVisibleWindow\(\{ desiredIds, visibleIds \}\)\.ok/s,
+  "R89: normal folders must verify Eagle's current contiguous virtual window against the full order plan");
 assert.match(source, /stability\.action !== "present"[\s\S]*?"SKIP_STABLE"[\s\S]*?"FAIL_OPEN"/s,
   "R85: stable normal grids must be no-ops and repeated late rewrites must fail open");
 assert.doesNotMatch(source, /NORMAL_PRESENTER_POST_COMMIT[\s\S]{0,500}setTimeout/s,

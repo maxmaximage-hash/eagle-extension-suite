@@ -86,6 +86,29 @@ const source = [
   assert.deepStrictEqual(snapshot.finalIds, ["b", "a", "d", "c"]);
 }
 
+// R110: a smart virtual grid exposes only its current rendered window.  The
+// visible order must be merged into the complete host source so the next
+// consecutive manual drag does not rebuild its command from Eagle's stale
+// pre-overlay prefix.
+{
+  const snapshot = runtime.resolveOrder({
+    collection,
+    items: source,
+    contextId: collection.key,
+    pluginSort: true,
+    sortMode: "automatic",
+    rules: [{ field: "TAKEN_AT", direction: "asc" }],
+    renderedIds: ["b", "a", "c"],
+    preferRendered: true
+  });
+  assert.strictEqual(snapshot.authority, "visible-adapter");
+  assert.deepStrictEqual(snapshot.finalIds, ["b", "a", "c", "d"]);
+  assert.deepStrictEqual(
+    runtime.partialRenderedOrder(source, ["b", "a", "c"]).map((entry) => entry.id),
+    ["b", "a", "c", "d"]
+  );
+}
+
 {
   const snapshot = runtime.resolveOrder({
     collection,

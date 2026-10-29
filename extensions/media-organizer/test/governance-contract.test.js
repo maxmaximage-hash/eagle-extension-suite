@@ -99,13 +99,23 @@ for (const source of [rootAgents, pluginAgents]) {
   for (const marker of [
     "SORTING-BUG-LEDGER.md",
     "先写失败测试",
-    "真实 Eagle",
-    "不得安装",
-    "不得操作真实 Library"
+    "真实 Eagle"
   ]) {
     assert.ok(source.includes(marker), "AGENTS gate must retain: " + marker);
   }
 }
+assert.ok(
+  rootAgents.includes("不得在中途重复询问安装或重启许可"),
+  "root AGENTS must preserve the continuous installation authorization"
+);
+assert.ok(
+  pluginAgents.includes("不得安装"),
+  "media-organizer AGENTS must preserve its explicit installation gate"
+);
+assert.ok(
+  pluginAgents.includes("不得操作真实 Library"),
+  "media-organizer AGENTS must preserve its real Library gate"
+);
 
 const packageJson = JSON.parse(read(pluginRoot, "package.json"));
 assert.ok(

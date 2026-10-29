@@ -1,6 +1,6 @@
 # Eagle Extension Suite 团队安装、配置与使用指南
 
-更新时间：2026-08-09。面向从 GitHub 获取本仓库、希望在自己的 Mac 上使用 Eagle 扩展的团队成员。
+更新时间：2026-10-29。面向从 GitHub 获取本仓库、希望在自己的 Mac 上使用 Eagle 扩展的团队成员。
 
 ## 你将获得什么
 
@@ -10,8 +10,8 @@
 | MAX Publisher | 需要水印、隐私打码、导出或线上作品页的成员 | 仅线上发布需要本人 Cloudflare 凭证 |
 | Live Photo 管家 | 需要安全检查 JPG/HEIC + MOV 配对的成员 | 否 |
 | 头像共享源 | 维护指定 Eagle 头像文件夹的管理员 | 否；消费者只读取共享源 |
-| 网页媒体导入器 | 需要把当前网页已加载的直连图片/视频交给 Eagle 的成员 | 否 |
-| Instagram / 小红书专用导入器 | 需要使用站点专用单帖流程的成员 | 否 |
+| Instagram / 小红书导入器 | 需要将单条公开帖子整理为 Eagle 导入计划的成员 | 否 |
+| Eagle 工作台 | 需要查看每个扩展的产品版本、基本功能和版本修复记录的成员 | 否 |
 | iCloud 搬运台账 | 管理 iCloud 素材批次的成员 | 否；当前不执行下载 |
 
 ## 开始前的三件事
@@ -37,7 +37,7 @@
 
 ## 安装媒体智能整理
 
-该插件的版本为 `2.5.22-qa.71`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥；安装器只验证桥是否已存在，**不会**安装或修改桥，更不会修改 `app.asar`。
+该插件当前源码版本为 `2.5.22-qa.94`，用户界面产品版本为 `2.5`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥；安装器只验证桥是否已存在，**不会**安装或修改桥，更不会修改 `app.asar`。
 
 ```bash
 git clone https://github.com/maxmaximage-hash/eagle-extension-suite.git
@@ -45,16 +45,23 @@ cd eagle-extension-suite/extensions/media-organizer
 npm ci
 npm test
 zsh scripts/build-github-release.sh
-zsh releases/install-媒体智能整理-v2.5.22-qa.71.sh --check
+zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --check
 ```
 
 预检输出“兼容性检查通过”后，确认 Eagle 仍然完全退出，再显式安装：
 
 ```bash
-zsh releases/install-媒体智能整理-v2.5.22-qa.71.sh --install-plugin
+zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --install-plugin
 ```
 
 安装器会拒绝以下情况：宿主版本/审计指纹不匹配、发行包哈希不匹配、Eagle 正在运行、或发现同一插件 ID 的第二份来源。它会为被替换的旧插件创建本机回滚点，但不会读取或修改当前 Library。
+
+### 安装 Eagle 工作台
+
+工作台是只读汇总面板，不接管排序、改名、标签、导入或发布。源码目录运行
+`npm test && npm run package` 后，将生成的 `eagle-workbench-1.1.eagleplugin` 拖入 Eagle
+安装。打开后每张卡片先显示基本功能，再显示当前版本日志；它不显示无效的入口按钮或
+“已安装登记”标签。
 
 ### 排序怎样同步给团队
 
@@ -113,44 +120,15 @@ npm run package:plugin
 
 Live Photo 管家会识别同名 JPG/JPEG/HEIC 与 MOV 的安全配对，缺件或重复时进入冲突队列，绝不猜测配对。iCloud 搬运台账只记录批次、冲突和“继续上次”的选择锚点；它目前不登录 iCloud、不下载、不创建 NAS 目录。
 
-### 6. 网页媒体和站点专用单帖导入
+### 6. Instagram / 小红书单帖导入
 
-网页媒体导入器 2.0 只在用户触发后识别归属明确的当前帖子/视频：微博当前帖子图片、B站当前封面与
-页面显式渐进完整视频、抖音当前图文与显式完整 play 地址、YouTube 当前视频封面，以及通用网页中
-唯一正文/右键选中的媒体。它不会把头像、Logo 和推荐卡片当成当前帖子。
-
-```bash
-cd eagle-extension-suite/extensions/web-media-importer
-npm test
-npm run check
-npm run package:stable
-```
-
-在 Chrome 打开 `chrome://extensions/`，开启开发者模式，选择「加载已解压的扩展程序」，加载
-`extensions/web-media-importer` 或根目录 `releases/网页媒体保存至Eagle-Stable/eagle-web-media-importer`。
-之后点击扩展按钮，或在网页/媒体上右键；先检查候选数量、估计大小、遗漏/阻止提示，再选择一个
-Eagle 普通文件夹并勾选确认。popup 可配置默认 25 项、单项 1 GiB、整批 2 GiB 上限，并显示
-API 已读回、待确认、失败/阻止、重试和取消未完成项。
-
-Chrome Downloads 不注入 Referer、Cookie、Authorization 或 token；登记跨站 CDN 会标记为需要真实浏览器
-验证。待确认项会退避读取已有 Eagle item ID，或由用户点“重新确认已接收项”，不会重复导入。
-
-它不支持 `blob:`、`.m3u8`、`.mpd`、DRM/加密视频、没有直接文件地址的媒体，也不绕过登录、
-站点权限或反爬限制；YouTube 视频必须走官方导出/下载，本插件只保存封面。Eagle API `success` 只记
-accepted；返回 ID 且公开 API 读回同 ID、未删除才显示“API 已读回”。这仍不是 UI visible，最终可见
-以 Eagle 界面为准。只有 API 已读回项会在 24 小时后精确清理缓存，待确认项不清理。
-
-Instagram 和小红书导入器仍是两个独立的站点专用扩展。Instagram 处理当前有权查看的单帖轮播和
-直连视频；小红书稳定版当前只处理单帖静态图片。安装前分别进入对应目录运行其 README 要求的测试和
-检查，再按开发者模式加载。三者都不覆盖 Eagle 现有素材，不能用于创作者主页批量抓取或权限绕过。
+两个导入器均是独立的浏览器扩展源码：只把当前公开帖子的图片、视频和必要来源信息组织成导入计划。安装前分别进入对应目录运行 `npm test` 与 `npm run check`，再按各自 README 的浏览器开发者模式流程加载。它们不覆盖 Eagle 现有素材，也不能用于批量抓取或绕过站点权限。
 
 ## 界面示例
 
 ![Eagle 正常资料库界面](screenshots/2026-08-09-normal-library.jpeg)
 
 截图仅用于说明界面；不代表团队成员的真实素材、排序数据或线上发布内容会被上传到 GitHub。
-网页媒体导入器尚未获准安装到真实 Chrome/Eagle，因此本版不放置伪造的现场截图；真实界面截图只会在
-获得批准并完成低风险验收后补充。
 
 ## 更新、回滚与问题处理
 

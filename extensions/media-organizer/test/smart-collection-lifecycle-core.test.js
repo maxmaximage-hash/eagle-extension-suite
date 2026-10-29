@@ -451,6 +451,70 @@ async function run() {
     "R69: a presentation reorder of identical smart members must not start a second lifecycle commit"
   );
 
+  // R90: a manual smart-folder drag advances the overlay revision while an
+  // automatic lifecycle restore may still be waiting on Eagle's virtual
+  // window.  The late lifecycle result is no longer the owner of the host
+  // arrays and must be discarded; otherwise its rollback can overwrite the
+  // just-committed manual drag and make the next drag appear to do nothing.
+  let releaseStaleLifecycle;
+  const fencedCalls = [];
+  const fenced = createSmartCollectionLifecycleController({
+    requireReadyProofs: true,
+    present(request) {
+      fencedCalls.push(request.overlayRevision);
+      if (request.overlayRevision === 1) {
+        return new Promise((resolve) => { releaseStaleLifecycle = resolve; });
+      }
+      return { ok: true, dataOrderVerified: true, visibleOrderVerified: true };
+    }
+  });
+  const fencedContext = fenced.enter({
+    kind: "smart", libraryId: "library", collectionId: "fenced"
+  });
+  const staleLifecycle = fenced.observe({
+    token: fencedContext.token,
+    items: items(3, "fenced"),
+    queryComplete: true,
+    stable: true,
+    overlayRevision: 1,
+    sourceIdentity: "eagle-smart-query:fenced",
+    queryEpoch: "fenced-epoch",
+    snapshotFingerprint: "3:fenced-v1",
+    snapshotGeneration: 1,
+    metadataProof: createSmartMetadataProof({
+      libraryId: "library", collectionId: "fenced", snapshotGeneration: 1,
+      snapshotFingerprint: "3:fenced-v1", totalCount: 3,
+      resolvedCount: 3, complete: true
+    })
+  });
+  const manualRevision = await fenced.observe({
+    token: fencedContext.token,
+    items: items(3, "fenced"),
+    queryComplete: true,
+    stable: true,
+    overlayRevision: 2,
+    sourceIdentity: "eagle-smart-query:fenced",
+    queryEpoch: "fenced-epoch",
+    snapshotFingerprint: "3:fenced-v2",
+    snapshotGeneration: 2,
+    metadataProof: createSmartMetadataProof({
+      libraryId: "library", collectionId: "fenced", snapshotGeneration: 2,
+      snapshotFingerprint: "3:fenced-v2", totalCount: 3,
+      resolvedCount: 3, complete: true
+    })
+  });
+  assert.strictEqual(manualRevision.state, SMART_COLLECTION_STATES.READY);
+  releaseStaleLifecycle({
+    ok: true, dataOrderVerified: true, visibleOrderVerified: true
+  });
+  const staleResult = await staleLifecycle;
+  assert.strictEqual(
+    staleResult.reason,
+    "stale-token",
+    "R90: an older lifecycle restore must be invalidated by a newer manual overlay revision"
+  );
+  assert.deepStrictEqual(fencedCalls, [1, 2]);
+
   console.log("smart collection lifecycle core tests passed");
 }
 

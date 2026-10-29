@@ -166,7 +166,9 @@ const evidence = {
   "test/smart-collection-presenter.test.js": [
     "automatic smart restore must verify Eagle's rerendered virtualized prefix",
     "automatic restore must not imitate hundreds of manual DOM drag moves",
-    "automatic presentation must preserve a non-zero virtual window"
+    "automatic presentation must preserve a non-zero virtual window",
+    "R96: a native drag that already applied",
+    "R97: when moveItemsBefore returns false"
   ],
   "test/smart-collection-lifecycle-core.test.js": [
     "a presentation reorder of identical smart members must not start a second lifecycle commit"
@@ -216,8 +218,8 @@ const evidence = {
   ],
   "test/smart-first-visible-frame-core.test.js": ["first frame", "A→B→A"],
   "test/smart-metadata-proof-core.test.js": ["stale metadata"],
-  "test/host-order-presentation-core.test.js": ["atomic rollback handle", "data-rollback-failed"],
-  "test/normal-order-stability-core.test.js": ["R85", "late native overwrite", "loop forever"],
+  "test/host-order-presentation-core.test.js": ["atomic rollback handle", "data-rollback-failed", "R89", "1177"],
+  "test/normal-order-stability-core.test.js": ["R85", "R89", "late native overwrite", "loop forever", "presentation-failed"],
   "test/smart-visible-window-proof-core.test.js": ["R86", "shrink", "noncontiguous"],
   "test/manual-drop-transaction-core.test.js": ["DOM, host arrays and manual persistence"],
   "test/durable-state-core.test.js": ["immutable plugin code", "team sorting sidecar backups"],

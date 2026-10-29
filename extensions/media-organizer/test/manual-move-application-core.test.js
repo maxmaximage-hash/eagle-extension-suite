@@ -91,9 +91,13 @@ async function run() {
   });
 
   const unchangedStages = [];
+  const unchangedPersistCalls = [];
   const unchangedRuntime = createManualMoveApplicationRuntime({
     reduce: () => ({ relations: command.relations, revision: 1 }),
-    persist: () => true,
+    persist: (state, meta) => {
+      unchangedPersistCalls.push({ state, meta });
+      return true;
+    },
     // Replays qa.18: the command is correct and submitted once, but the
     // presenter leaves Eagle's visible order unchanged.
     present: () => true,
@@ -114,6 +118,40 @@ async function run() {
   assert.strictEqual(
     unchangedStages.at(-1),
     MOVE_APPLICATION_STAGES.VISIBLE_VERIFY_FAIL
+  );
+  assert.strictEqual(unchangedPersistCalls.length, 2);
+  assert.deepStrictEqual(unchangedPersistCalls.map((entry) => entry.meta.rollback === true), [false, true]);
+  assert.deepStrictEqual(unchangedPersistCalls[1].state, {});
+
+  // R108: the Eagle persist adapter mutates the live api.manual object while
+  // writing the new relation set. Rollback must use a pre-persist snapshot,
+  // not that same object after it has been overwritten.
+  const aliasedState = { relations: [], history: [] };
+  const aliasedPersistCalls = [];
+  const aliasedRuntime = createManualMoveApplicationRuntime({
+    reduce: () => ({ relations: command.relations, revision: 2 }),
+    persist: (state, meta) => {
+      aliasedPersistCalls.push({ state: JSON.parse(JSON.stringify(state)), meta });
+      Object.assign(aliasedState, state);
+      return true;
+    },
+    present: () => true,
+    readVisibleIds: () => ["a", "b", "c"],
+    diagnose: () => {}
+  });
+  const aliasedFailure = await aliasedRuntime.apply({
+    command,
+    collection: command.collection,
+    state: aliasedState,
+    expectedVisibleIds: ["b", "c", "a"]
+  });
+  assert.strictEqual(aliasedFailure.ok, false);
+  assert.strictEqual(aliasedPersistCalls.length, 2);
+  assert.strictEqual(aliasedPersistCalls[1].meta.rollback, true);
+  assert.deepStrictEqual(
+    aliasedPersistCalls[1].state,
+    { relations: [], history: [] },
+    "R108: failed visible proof must restore the pre-persist relation set"
   );
 
   const persistenceStages = [];

@@ -133,6 +133,27 @@ const outside = node();
   assert.strictEqual(result.reason, "selected-target");
 }
 
+// R99: during a native drag, the event target can remain the source card while
+// the pointer is physically over another card. Point geometry must win over
+// the stale composedPath source, otherwise most drops are rejected as
+// selected-target and only occasional drops succeed.
+{
+  const resolver = createSmartDragTargetResolver({
+    elementsFromPoint: () => [childB, cardB, grid]
+  });
+  const result = resolver.resolve({
+    target: childA,
+    composedPath: () => [childA, cardA, grid],
+    clientX: 175,
+    clientY: 20
+  }, {
+    selectedIds: ["item-A"]
+  });
+  assert.strictEqual(result.insideGrid, true);
+  assert.strictEqual(result.targetId, "item-B");
+  assert.strictEqual(result.reason, "target-resolved");
+}
+
 {
   const resolver = createSmartDragTargetResolver({
     elementsFromPoint: () => [outside]
@@ -201,6 +222,42 @@ const outside = node();
   assert.strictEqual(result.insideGrid, undefined);
   assert.strictEqual(result.gridIdentity, null);
   assert.strictEqual(result.reason, "target-unknown");
+}
+
+// A virtualized rerender may replace #box-list while the pointer is down.
+// The semantic grid key must keep the same drag session valid even though the
+// DOM element identity changed.
+{
+  const replacementGrid = node({ id: "box-list" });
+  const replacementTarget = node({
+    id: "box-item-B-replacement",
+    boxId: "item-B",
+    classes: ["box"],
+    parent: replacementGrid,
+    left: 100,
+    width: 100,
+    helpers: {
+      ".box-sortable-helper.left": leftB,
+      ".box-sortable-helper.right": rightB
+    }
+  });
+  const resolver = createSmartDragTargetResolver({
+    elementsFromPoint: () => [replacementTarget, replacementGrid]
+  });
+  const result = resolver.resolve({
+    target: replacementTarget,
+    composedPath: () => [replacementTarget, replacementGrid],
+    clientX: 175,
+    clientY: 20
+  }, {
+    selectedIds: ["item-A"],
+    startGridIdentity: grid,
+    startGridKey: "box-list",
+    allowUnknownSurface: true
+  });
+  assert.strictEqual(result.insideGrid, true);
+  assert.strictEqual(result.gridKey, "box-list");
+  assert.strictEqual(result.targetId, "item-B");
 }
 
 console.log("smart drag target resolver tests passed");
