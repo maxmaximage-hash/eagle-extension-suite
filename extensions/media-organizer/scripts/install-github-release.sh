@@ -17,6 +17,7 @@ readonly PLUGIN_ROOT="${EAGLE_PLUGIN_ROOT:-$HOME/Library/Application Support/Eag
 readonly TARGET="$PLUGIN_ROOT/$EXPECTED_PLUGIN_ID"
 readonly BACKUP_ROOT="$HOME/Library/Application Support/Eagle/Backups/media-organizer-plugin"
 readonly STATE_ROOT="$HOME/Library/Application Support/Eagle/PluginData/$EXPECTED_PLUGIN_ID"
+readonly BRIDGE_EVIDENCE="$HOME/Library/Application Support/Eagle/Backups/media-organizer-safe-bridge/bridge-evidence.json"
 
 MODE="check"
 
@@ -46,11 +47,25 @@ host_version=$(
   fail "Eagle 版本是 ${host_version:-未知}，只接受已审计的 4.0.0 宿主"
 
 host_hash=$(sha256 "$HOST_ASAR")
-if [[ "$host_hash" != "$BRIDGED_SHA256" ]]; then
-  if [[ "$host_hash" == "$ORIGINAL_SHA256" ]]; then
-    fail "通信桥不存在或未经审计；本安装器不会修改 Eagle host"
+bridge_state=""
+if [[ "$host_hash" == "$BRIDGED_SHA256" ]]; then
+  bridge_state="audited"
+else
+  evidence_hash=""
+  evidence_original=""
+  evidence_marker=""
+  if [[ -f "$BRIDGE_EVIDENCE" ]]; then
+    evidence_hash=$(/usr/bin/plutil -extract appAsarSha256 raw -o - "$BRIDGE_EVIDENCE" 2>/dev/null || true)
+    evidence_original=$(/usr/bin/plutil -extract originalSha256 raw -o - "$BRIDGE_EVIDENCE" 2>/dev/null || true)
+    evidence_marker=$(/usr/bin/plutil -extract marker raw -o - "$BRIDGE_EVIDENCE" 2>/dev/null || true)
   fi
-  fail "通信桥不存在或未经审计（宿主哈希未知）；本安装器不会修改 Eagle host"
+  if [[ "$host_hash" == "$evidence_hash" && "$evidence_original" == "$ORIGINAL_SHA256" && "$evidence_marker" == "photo-taken-sort.execute" ]]; then
+    bridge_state="rebuilt"
+  elif [[ "$host_hash" == "$ORIGINAL_SHA256" ]]; then
+    fail "通信桥不存在；请先运行 bridge/rebuild-compatible-bridge.js --check，再在 Eagle 退出后运行 --install"
+  else
+    fail "通信桥不存在或未经审计（宿主哈希未知）；本安装器不会修改 Eagle host"
+  fi
 fi
 
 [[ -f "$ARCHIVE" ]] || fail "找不到插件包：$ARCHIVE"
@@ -92,7 +107,7 @@ if (( ${#matching_sources} == 1 )) && [[ "${matching_sources[1]}" != "$TARGET" ]
   fail "同 ID 插件位于非规范目录；请先人工核对，安装器不会创建第二来源"
 fi
 
-print "兼容性检查通过：Eagle $host_version，已存在审计桥，插件 $plugin_version。"
+print "兼容性检查通过：Eagle $host_version，通信桥状态=${bridge_state}，插件 $plugin_version。"
 if [[ "$MODE" == "check" ]]; then
   print "本次只检查；安装插件需在 Eagle 完全退出后显式运行：$0 --install-plugin"
   exit 0

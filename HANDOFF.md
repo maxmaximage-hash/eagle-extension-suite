@@ -30,6 +30,11 @@ open docs/CROSS-COMPUTER-HANDOFF.md
 然后按文档逐项完成依赖安装、测试、打包、Eagle 插件安装和 Chrome 扩展加载。所有扩展
 都必须使用仓库中的唯一插件 ID，不要并行安装旧目录或第二份同 ID 插件。
 
+排序功能的 Eagle 主网格桥接不能靠复制当前电脑的 `app.asar` 完成。目标电脑必须使用
+仓库里的 `extensions/media-organizer/bridge/rebuild-compatible-bridge.js`，在本机原始
+Eagle 4.0.0 上通过指纹检查后重建桥接；脚本会自动备份原始文件并写入本机证据。未知
+Eagle 版本会被拒绝，不得绕过检查。
+
 ## 不同步的内容
 
 当前电脑的 Library 路径、NAS 挂载路径、素材、排序状态、Cloudflare 登录态、本机字体、

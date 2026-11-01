@@ -19,5 +19,15 @@
       "bridgedSha256": "7f8cda10b3ef706e3e51afd13877bae09e53ff0ab3bbd02b5203c36260a61353"
     }
   },
+  "rebuild": {
+    "script": "rebuild-compatible-bridge.js",
+    "dependency": "@electron/asar@3.2.13",
+    "sourceHost": "local Eagle 4.0.0 original app.asar",
+    "verification": "bridge-evidence.json",
+    "changedFiles": [
+      "app/js/plugin/api.js",
+      "app/js/plugin/index.js"
+    ]
+  },
   "marker": "/* eagle-photo-taken-sort */"
 }
