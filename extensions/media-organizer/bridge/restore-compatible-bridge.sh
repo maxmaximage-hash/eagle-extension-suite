@@ -6,6 +6,7 @@ readonly BRIDGED_SHA256="4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f
 readonly APP_PATH="${EAGLE_APP_PATH:-/Applications/Eagle.app}"
 readonly TARGET="$APP_PATH/Contents/Resources/app.asar"
 readonly BACKUP="$HOME/Library/Application Support/Eagle/Backups/media-organizer-safe-bridge/Eagle-4.0.0-build23-original-app.asar"
+readonly EVIDENCE="$HOME/Library/Application Support/Eagle/Backups/media-organizer-safe-bridge/bridge-evidence.json"
 
 sha256() { shasum -a 256 "$1" | awk '{print $1}'; }
 fail() { print -u2 "拒绝执行：$1"; exit 1; }
@@ -13,7 +14,15 @@ fail() { print -u2 "拒绝执行：$1"; exit 1; }
 [[ "${1:-}" == "--restore" ]] || fail "回退必须显式运行：$0 --restore"
 [[ -f "$TARGET" ]] || fail "找不到当前 app.asar。"
 [[ -f "$BACKUP" ]] || fail "找不到安装时生成的原始备份：$BACKUP"
-[[ "$(sha256 "$TARGET")" == "$BRIDGED_SHA256" ]] || fail "当前 app.asar 不是本桥接的已知版本，不会覆盖。"
+current_hash=$(sha256 "$TARGET")
+if [[ "$current_hash" != "$BRIDGED_SHA256" ]]; then
+  [[ -f "$EVIDENCE" ]] || fail "当前 app.asar 不是本桥接的已知版本，且缺少重建桥证据，不会覆盖。"
+  evidence_hash=$(/usr/bin/plutil -extract appAsarSha256 raw -o - "$EVIDENCE" 2>/dev/null || true)
+  evidence_original=$(/usr/bin/plutil -extract originalSha256 raw -o - "$EVIDENCE" 2>/dev/null || true)
+  evidence_marker=$(/usr/bin/plutil -extract marker raw -o - "$EVIDENCE" 2>/dev/null || true)
+  [[ "$current_hash" == "$evidence_hash" && "$evidence_original" == "$ORIGINAL_SHA256" && "$evidence_marker" == "photo-taken-sort.execute" ]] || \
+    fail "当前 app.asar 指纹与桥接证据不匹配，不会覆盖。"
+fi
 [[ "$(sha256 "$BACKUP")" == "$ORIGINAL_SHA256" ]] || fail "原始备份哈希不匹配。"
 pgrep -x Eagle >/dev/null && fail "请先完全退出 Eagle。"
 

@@ -31,5 +31,5 @@ Eagle 4.0.0 的原始 `app.asar` 指纹；通过后，完全退出 Eagle，再�
 仍只用于带有已审计桥接载荷的历史交接包，不是新电脑的首选入口。
 
 安装前会在 Eagle Application Support 的备份目录留下经过哈希验证的原始副本。
-`restore-compatible-bridge.sh --restore` 仅在当前文件仍是已知桥接版本时回退，
-不会删除插件、资料库或其他用户数据。
+`restore-compatible-bridge.sh --restore` 仅在当前文件仍是已知桥接版本，或与本机
+`bridge-evidence.json` 完全匹配的重建桥版本时回退；不会删除插件、资料库或其他用户数据。
