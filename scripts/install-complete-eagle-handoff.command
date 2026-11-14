@@ -8,6 +8,7 @@ readonly WORK_ROOT="${TMPDIR:-/tmp}/eagle-complete-handoff-install.$$"
 readonly DOWNLOAD="$WORK_ROOT/eagle-complete-runtime.tar.gz"
 readonly EXTRACT="$WORK_ROOT/extract"
 readonly APP_PATH="/Applications/Eagle.app"
+readonly PLUGIN_ROOT="$HOME/Library/Application Support/Eagle/Plugins"
 
 fail() { print -u2 "安装失败：$1"; exit 1; }
 cleanup() { rm -rf "$WORK_ROOT"; }
@@ -56,6 +57,26 @@ PLUGIN="$EXTRACT/media-organizer/install-媒体智能整理-v2.5.22-qa.94.sh"
 "$BRIDGE" --check
 "$PLUGIN" --check
 "$PLUGIN" --install-plugin
+
+mkdir -p "$PLUGIN_ROOT"
+for archive in \
+  "$EXTRACT/plugins/MAX头像共享源-v1.0.0.eagleplugin" \
+  "$EXTRACT/plugins/eagle-workbench-1.1.eagleplugin" \
+  "$EXTRACT/plugins/max-eagle-publisher-1.2.7.eagleplugin"; do
+  [[ -f "$archive" ]] || fail "交接包缺少插件：${archive:t}"
+  plugin_stage=$(mktemp -d "$WORK_ROOT/plugin.XXXXXX")
+  unzip -q "$archive" -d "$plugin_stage"
+  manifest="$plugin_stage/manifest.json"
+  [[ -f "$manifest" ]] || fail "插件缺少 manifest.json：${archive:t}"
+  plugin_id=$(/usr/bin/plutil -extract id raw -o - "$manifest" 2>/dev/null || true)
+  [[ -n "$plugin_id" ]] || fail "插件 ID 读取失败：${archive:t}"
+  target="$PLUGIN_ROOT/$plugin_id"
+  if [[ -e "$target" ]]; then
+    plugin_backup="$target.before-complete-handoff-$(date +%Y%m%d-%H%M%S)"
+    mv "$target" "$plugin_backup"
+  fi
+  mv "$plugin_stage" "$target"
+done
 
 print "完整 Eagle 交接安装完成。"
 print "原生排序面板环境已按桥接 app.asar 安装。"
