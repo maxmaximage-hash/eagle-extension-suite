@@ -423,6 +423,7 @@ let publicDeliveryFallbackBound = false;
 let publicDeliveryFallbackFolder = null;
 let publicDeliveryFallbackStats = null;
 let publicDeliveryFallbackBusy = false;
+let publicDeliveryFallbackGeneration = 0;
 let publicSortPreviewBound = false;
 let publicSortPreviewItems = [];
 let publicSortPreviewFolder = null;
@@ -1308,8 +1309,11 @@ function renderPublicDeliveryFallback(message = "") {
   }
   const generate = document.getElementById("public-delivery-generate");
   if (generate) {
-    generate.disabled = publicDeliveryFallbackBusy || !publicDeliveryFallbackFolder?.ok;
-    generate.textContent = publicDeliveryFallbackBusy ? "正在扫描..." : "生成交付文案";
+    generate.disabled = !publicDeliveryFallbackBusy && !publicDeliveryFallbackFolder?.ok;
+    generate.textContent = publicDeliveryFallbackBusy ? "暂停扫描" : "生成交付文案";
+    generate.title = publicDeliveryFallbackBusy
+      ? "暂停当前扫描，可以切换文件夹后重新扫描"
+      : "扫描当前文件夹的直属子文件夹并生成交付文案";
   }
   const copy = document.getElementById("public-delivery-copy-button");
   if (copy) copy.disabled = !text?.value?.trim();
@@ -1379,11 +1383,13 @@ async function readDeliveryItemsByFolder(groups) {
 }
 
 async function refreshPublicDeliveryFallback() {
+  const generation = ++publicDeliveryFallbackGeneration;
   publicDeliveryFallbackBusy = true;
   renderPublicDeliveryFallback("正在扫描当前文件夹的直属子文件夹...");
   let completionMessage = "";
   try {
     const result = await readPublicDeliveryFallbackScope();
+    if (generation !== publicDeliveryFallbackGeneration) return;
     publicDeliveryFallbackFolder = result.folder;
     publicDeliveryFallbackStats = result.stats;
     if (!result.folder?.ok) {
@@ -1399,9 +1405,19 @@ async function refreshPublicDeliveryFallback() {
     publicDeliveryFallbackStats = null;
     completionMessage = `交付文案扫描失败：${error?.message || String(error)}`;
   } finally {
-    publicDeliveryFallbackBusy = false;
-    renderPublicDeliveryFallback(completionMessage);
+    if (generation === publicDeliveryFallbackGeneration) {
+      publicDeliveryFallbackBusy = false;
+      renderPublicDeliveryFallback(completionMessage);
+    }
   }
+}
+
+function cancelPublicDeliveryFallback() {
+  if (!publicDeliveryFallbackBusy) return false;
+  publicDeliveryFallbackGeneration += 1;
+  publicDeliveryFallbackBusy = false;
+  renderPublicDeliveryFallback("扫描已暂停，可以切换到其他文件夹继续扫描。");
+  return true;
 }
 
 async function copyPublicDeliveryFallback() {
@@ -1429,7 +1445,9 @@ function bindPublicDeliveryFallbackUi() {
   publicDeliveryFallbackBound = true;
   document.getElementById("public-delivery-generate")?.addEventListener(
     "click",
-    () => refreshPublicDeliveryFallback()
+    () => publicDeliveryFallbackBusy
+      ? cancelPublicDeliveryFallback()
+      : refreshPublicDeliveryFallback()
   );
   document.getElementById("public-delivery-copy-button")?.addEventListener(
     "click",
@@ -5708,11 +5726,11 @@ const API_VERSION = 155;
             ".eagle-photo-delivery-copy"
           );
           if (deliveryButton) {
-            const directFolderCount = collectionKind === "normal" &&
-              bodyScope.currentFolder
+            const directFolderCount = bodyScope.currentFolder
               ? folderLevelRuntime.directChildren(bodyScope.currentFolder).length
               : 0;
-            const available = collectionKind === "normal" && directFolderCount > 0;
+            const available = Boolean(bodyScope.currentFolder?.id) &&
+              directFolderCount > 0;
             deliveryButton.disabled = !available;
             deliveryButton.textContent = api.deliveryCopyStatus === "queued"
               ? "暂停扫描"
@@ -6887,11 +6905,10 @@ const API_VERSION = 155;
 
     function requestDeliveryCopy() {
       const collection = currentCollection();
-      const children = collection.kind === "normal" && bodyScope.currentFolder
+      const children = bodyScope.currentFolder
         ? folderLevelRuntime.directChildren(bodyScope.currentFolder)
         : [];
       if (
-        collection.kind !== "normal" ||
         !bodyScope.currentFolder?.id ||
         children.length === 0
       ) {
@@ -13524,7 +13541,7 @@ async function handleDeliveryCopyRequest(request, context) {
   if (cancelledDeliveryCopyRequestIds.has(requestId)) return;
   if (String(request.contextId || "") !== String(context?.contextId || "")) return;
   const groups = Array.isArray(request.groups) ? request.groups : [];
-  if (!groups.length || context?.currentSmartFolderId || !context?.currentFolderId) {
+  if (!groups.length || !context?.currentFolderId) {
     await executeInMain(
       `window.__eaglePhotoTakenSort?.showDeliveryCopyError(${JSON.stringify(
         "请在普通总文件夹中生成交付文案"
