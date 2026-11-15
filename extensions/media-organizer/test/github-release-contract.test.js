@@ -20,11 +20,14 @@ const packageVersion = JSON.parse(fs.readFileSync(
 
 assert.match(installer, /MODE="check"/);
 assert.match(installer, /--install-plugin/);
+assert.match(installer, /--install-plugin-only/);
 assert.match(installer, /通信桥不存在或未经审计/);
 assert.match(installer, /BRIDGE_EVIDENCE=/);
 assert.match(installer, /photo-taken-sort\.execute/);
 assert.match(installer, /bridge\/rebuild-compatible-bridge\.js/);
 assert.match(installer, /BRIDGED_SHA256=/);
+assert.match(installer, /codesign --verify --deep --strict/);
+assert.match(installer, /verify_codesign/);
 assert.match(installer, /CHECKSUM_FILE=/);
 assert.match(installer, /发现多个同 ID 插件来源/);
 assert.match(installer, /同 ID 插件位于非规范目录/);

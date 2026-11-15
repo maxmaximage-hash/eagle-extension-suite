@@ -15,7 +15,7 @@ test("browser importer is user-triggered, supports direct web media and never ed
   const source = `${background}\n${content}`;
 
   assert.equal(manifest.manifest_version, 3);
-  assert.equal(manifest.version, "2.3.0");
+  assert.equal(manifest.version, "2.4.4");
   assert.match(manifest.description, /网页图片/);
   assert.deepEqual(Object.keys(manifest.icons).sort(), ["16", "32", "48", "128"].sort());
   assert.equal(manifest.action.default_icon["32"], "icons/icon-32.png");
@@ -37,16 +37,38 @@ test("browser importer is user-triggered, supports direct web media and never ed
   assert.match(popup, /open-web-media-collector/);
   assert.doesNotMatch(popup, /chrome\.tabs\.sendMessage/);
   assert.match(`${popupHtml}\n${popup}`, /网页图片，右键就能保存/);
-  assert.match(`${popupHtml}\n${popup}`, /扫描当前帖子\/页面/);
+  assert.match(`${popupHtml}\n${popup}`, /保存当前媒体整体/);
+  assert.match(popup, /pageActionFor/);
+  assert.match(popup, /action\.collectible/);
   assert.match(`${popupHtml}\n${popup}`, /为什么有些内容不能保存/);
   assert.match(`${popupHtml}\n${popup}`, /当前视频只保存封面/);
-  assert.match(`${popupHtml}\n${popup}`, /需要你确认后才会导入/);
+  assert.match(`${popupHtml}\n${popup}`, /选择文件夹后立即导入/);
   assert.match(popup, /重试失败项/);
-  assert.match(source, /保存当前帖子\/内容至 Eagle/);
-  assert.match(source, /保存当前媒体至 Eagle/);
+  assert.match(source, /wholeSaveMenuTitle/);
+  assert.match(source, /保存当前.*至 Eagle/);
+  assert.match(source, /保存当前 Instagram 帖子至 Eagle/);
+  assert.match(background, /保存当前小红书整帖至 Eagle/);
   assert.match(background, /selectedKind:\s*String\(info\.mediaType/);
+  assert.match(background, /contexts:\s*\["page", "link", "image", "video"\]/);
+  assert.match(background, /enabled:\s*Boolean\(action\.contextCollectible \?\? action\.collectible\)/);
   assert.match(background, /sourcePageUrl:\s*String\(tab\.url/);
   assert.match(content, /request\.selectedKind/);
+  assert.match(content, /captureContextMedia/);
+  assert.match(content, /context-selected/);
+  assert.match(content, /保存当前图片至 Eagle/);
+  assert.match(content, /action\.label/);
+  assert.match(content, /SPA sites/);
+  assert.match(content, /\["selected", "context-selected"\]\.includes\(request\?\.mode\)/);
+  assert.match(content, /request\.mode === "post"/);
+  assert.match(content, /request\.mode === "post" && provider === "xiaohongshu"/);
+  assert.match(content, /findXiaohongshuNoteRoot/);
+  assert.match(content, /XIAOHONGSHU_NOTE_REQUIRED/);
+  assert.match(content, /captureInstagramCarousel/);
+  assert.match(content, /captureXiaohongshuPostMedia/);
+  assert.match(content, /Array\.isArray\(recent\) \? recent : \[\]\)\s*\.map/);
+  assert.doesNotMatch(content, /data-confirm/);
+  assert.doesNotMatch(content, /data-import/);
+  assert.match(content, /最近使用/);
   assert.match(content, /searchParams\.get\("modal_id"\)/);
   assert.match(content, /attachShadow/);
   assert.match(content, /aria-live/);
@@ -81,11 +103,28 @@ test("release packaging preserves prior version archives for rollback", () => {
 
 test("right-clicking one media item cannot widen into every image in its article or main container", () => {
   const content = read("content.js");
-  const selectedGate = content.indexOf('if (request.mode === "selected" && selectedUrl)');
+  const selectedGate = content.indexOf('if ((request.mode === "selected" || request.mode === "context-selected") && selectedUrl)');
   const containerScan = content.indexOf("const selectors = provider");
   assert.ok(selectedGate > 0, "selected-media mode needs an explicit early gate");
   assert.ok(selectedGate < containerScan, "selected-media gate must run before article/main enumeration");
   const selectedBranch = content.slice(selectedGate, containerScan);
-  assert.match(selectedBranch, /candidateForSelected\(request, selectedElement\)/);
+  assert.match(selectedBranch, /candidateForSelected\(\{ \.\.\.request, sourceUrl: selectedUrl/);
   assert.match(selectedBranch, /structured:\s*\{\}/);
+});
+
+test("Xiaohongshu full-post capture has an explicit body-media filter", () => {
+  const content = read("content.js");
+  const start = content.indexOf("function captureXiaohongshuPostMedia");
+  const end = content.indexOf("function bestImageUrl", start);
+  assert.ok(start >= 0 && end > start, "Xiaohongshu needs a dedicated post-media collector");
+  const collector = content.slice(start, end);
+  assert.match(collector, /isXiaohongshuBodyMedia/);
+  assert.match(collector, /role:\s*"post-image"/);
+  assert.doesNotMatch(collector, /role:\s*isPageChrome/);
+});
+
+test("popup and content surface recoverable extension communication errors", () => {
+  assert.match(read("popup.js"), /async function sendRuntimeMessage\(message\)/);
+  assert.match(read("popup.js"), /扩展已更新，请关闭并重新打开弹窗后重试/);
+  assert.match(read("content.js"), /message\?\.type === "web-media-error"/);
 });

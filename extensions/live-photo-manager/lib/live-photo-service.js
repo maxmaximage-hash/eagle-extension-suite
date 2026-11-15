@@ -6,6 +6,7 @@ const path = require("path");
 const { pathToFileURL } = require("url");
 const { findLivePairs } = require("./vendor/live-package");
 const { SerialPreviewQueue } = require("./preview-queue");
+const { createLivePhotoIdentity } = require("./live-photo-identity");
 
 const DEFAULT_SAMPLE_DIRECTORY = "/Users/max/Downloads/iCloud 照片 2";
 
@@ -21,8 +22,15 @@ function describePair(pair) {
   const hasConflict = issues.some((issue) => issue.startsWith("multiple "));
   const imageStat = pair.image && fs.existsSync(pair.image) ? fs.statSync(pair.image) : null;
   const movieStat = pair.movie && fs.existsSync(pair.movie) ? fs.statSync(pair.movie) : null;
+  const identity = createLivePhotoIdentity({
+    stem: pair.stem,
+    imagePath: pair.image,
+    moviePath: pair.movie,
+  });
   return {
     id: pairId(pair),
+    identity,
+    groupId: identity.groupId,
     stem: pair.stem.toUpperCase(),
     imagePath: pair.image,
     moviePath: pair.movie,

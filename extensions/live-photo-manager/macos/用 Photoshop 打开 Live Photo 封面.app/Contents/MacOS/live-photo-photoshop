@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+for NODE in "${MAX_LIVE_NODE:-}" /Users/max/.local/bin/node /opt/homebrew/bin/node /usr/local/bin/node; do
+  if [ -n "$NODE" ] && [ -x "$NODE" ]; then
+    exec "$NODE" "$ROOT/Resources/open-handler.js" "$@"
+  fi
+done
+echo "MAX Live Photo helper requires Node.js" >&2
+exit 127

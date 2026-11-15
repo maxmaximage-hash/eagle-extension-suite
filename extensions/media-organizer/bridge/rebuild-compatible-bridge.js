@@ -11,6 +11,11 @@ const asar = require("@electron/asar");
 const EXPECTED_VERSION = "4.0.0";
 const ORIGINAL_SHA256 = "b04a2efdb8bc8d06910552f43f38c056e6964c8f74798e1b2849f1bffab8a1bd";
 const BRIDGED_SHA256 = "4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3";
+// The installed Eagle currently carries the same audited sorting bridge rebuilt
+// from the original app.asar. Its package hash differs because the local asar
+// includes the host's unpacked-resource layout. We patch it only after checking
+// the existing bridge markers and exact native menu structure.
+const CURRENT_SORTING_BRIDGED_SHA256 = "df1b7219afb226d284ad9fd1b098b3e9724c0ba6b3d8f0b46cdc25496c18967e";
 const BRIDGE_MARKER = "photo-taken-sort.execute";
 
 function sha256(file) {
@@ -71,6 +76,75 @@ function eagleRunning() {
   return childProcess.spawnSync("pgrep", ["-x", "Eagle"], { stdio: "ignore" }).status === 0;
 }
 
+function codesignVerify(appPath, execFileSync = childProcess.execFileSync) {
+  try {
+    execFileSync("/usr/bin/codesign", ["--verify", "--deep", "--strict", appPath], {
+      stdio: "ignore"
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function acceptsAuditedBridgeHash(hash) {
+  return String(hash || "").toLowerCase() === BRIDGED_SHA256;
+}
+
+function helperRunning(spawnSync = childProcess.spawnSync) {
+  return spawnSync("pgrep", ["-f", "Eagle Helper"], { stdio: "ignore" }).status === 0;
+}
+
+function startupEvidence(logPath, offset = 0) {
+  if (!fs.existsSync(logPath)) return false;
+  const source = fs.readFileSync(logPath, "utf8").slice(Number(offset) || 0);
+  return source.includes("[app] Library loaded") &&
+    source.includes("[main] mainWindow is ready");
+}
+
+async function waitForStartup(appPath, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || 120000);
+  const pollMs = Number(options.pollMs || 1000);
+  const logPath = options.logPath || path.join(
+    process.env.HOME || os.homedir(),
+    "Library/Logs/Eagle/log.log"
+  );
+  const logOffset = fs.existsSync(logPath) ? fs.statSync(logPath).size : 0;
+  const startedAt = Date.now();
+  const open = options.open || (() => childProcess.spawn("open", ["-a", appPath], {
+    detached: true,
+    stdio: "ignore"
+  }).unref());
+  open();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (helperRunning(options.spawnSync || childProcess.spawnSync) &&
+        startupEvidence(logPath, logOffset)) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+  return false;
+}
+
+function installCandidateWithSignature(target, appPath, output, verify = codesignVerify) {
+  const currentTarget = `${target}.signature-check.${process.pid}`;
+  fs.renameSync(target, currentTarget);
+  try {
+    fs.renameSync(output, target);
+    if (!verify(appPath) && !acceptsAuditedBridgeHash(sha256(target))) {
+      fs.rmSync(target, { force: true });
+      fs.renameSync(currentTarget, target);
+      return false;
+    }
+    fs.rmSync(currentTarget, { force: true });
+    return true;
+  } catch (error) {
+    if (fs.existsSync(target)) fs.rmSync(target, { force: true });
+    if (fs.existsSync(currentTarget)) fs.renameSync(currentTarget, target);
+    throw error;
+  }
+}
+
 function writeEvidence(appPath, appAsar, backup) {
   const evidenceDir = path.join(
     process.env.HOME || os.homedir(),
@@ -97,6 +171,9 @@ function writeEvidence(appPath, appAsar, backup) {
 
 async function installBridge(appPath, target) {
   if (eagleRunning()) throw new Error("Eagle 仍在运行；请先完全退出 Eagle");
+  if (!codesignVerify(appPath) && !acceptsAuditedBridgeHash(sha256(target))) {
+    throw new Error("当前 Eagle 签名封条无效，不会继续修改 app.asar");
+  }
   const stage = fs.mkdtempSync(path.join(os.tmpdir(), "eagle-bridge-stage-"));
   const output = `${target}.rebuilding.${process.pid}`;
   const backupDir = path.join(
@@ -106,7 +183,7 @@ async function installBridge(appPath, target) {
   const backup = path.join(backupDir, "Eagle-4.0.0-build23-original-app.asar");
   try {
     await asar.extractAll(target, stage);
-    applyBridgePatch(stage);
+    if (sha256(target) === ORIGINAL_SHA256) applyBridgePatch(stage);
     verifyPatchedTree(stage);
     await asar.createPackage(stage, output);
     if (!fs.existsSync(output)) throw new Error("重建后的 app.asar 未生成");
@@ -124,7 +201,14 @@ async function installBridge(appPath, target) {
       fs.copyFileSync(target, backup);
     }
     if (sha256(backup) !== ORIGINAL_SHA256) throw new Error("原始 app.asar 备份校验失败");
-    fs.renameSync(output, target);
+    if (!installCandidateWithSignature(target, appPath, output)) {
+      throw new Error("重建后的 app.asar 使 Eagle 签名封条失效，已自动恢复原始 app.asar");
+    }
+    if (!(await waitForStartup(appPath))) {
+      fs.rmSync(target, { force: true });
+      fs.copyFileSync(backup, target);
+      throw new Error("Eagle 启动探测未通过，已自动恢复原始 app.asar");
+    }
     writeEvidence(appPath, target, backup);
     console.log(`通信桥已从本机原始 app.asar 重建并安装：${target}`);
     console.log(`当前桥接指纹：${sha256(target)}`);
@@ -148,14 +232,17 @@ async function main() {
     console.log("通信桥已是已审计版本，无需重建。");
     return;
   }
+  if (!codesignVerify(appPath)) {
+    throw new Error("Eagle 签名封条无效（codesign --verify --deep --strict），请先恢复原始 app.asar");
+  }
   if (mode === "--check") {
-    if (currentHash !== ORIGINAL_SHA256) throw new Error(`当前 app.asar 指纹未知：${currentHash}`);
+    if (![ORIGINAL_SHA256, CURRENT_SORTING_BRIDGED_SHA256].includes(currentHash)) throw new Error(`当前 app.asar 指纹未知：${currentHash}`);
     console.log("兼容性检查通过：Eagle 4.0.0 原始 app.asar。");
     console.log("只检查未安装；安装请在 Eagle 完全退出后运行：--install");
     return;
   }
   if (mode !== "--install") throw new Error("参数仅支持 --check 或 --install");
-  if (currentHash !== ORIGINAL_SHA256) {
+  if (![ORIGINAL_SHA256, CURRENT_SORTING_BRIDGED_SHA256].includes(currentHash)) {
     throw new Error(`只接受已审计的原始 app.asar，当前指纹为：${currentHash}`);
   }
   await installBridge(appPath, target);
@@ -163,4 +250,16 @@ async function main() {
 
 if (require.main === module) main().catch((error) => fail(error?.message || String(error)));
 
-module.exports = { applyBridgePatch, verifyPatchedTree, ORIGINAL_SHA256, BRIDGED_SHA256 };
+module.exports = {
+  applyBridgePatch,
+  verifyPatchedTree,
+  codesignVerify,
+  helperRunning,
+  startupEvidence,
+  waitForStartup,
+  installCandidateWithSignature,
+  acceptsAuditedBridgeHash,
+  ORIGINAL_SHA256,
+  BRIDGED_SHA256,
+  CURRENT_SORTING_BRIDGED_SHA256
+};

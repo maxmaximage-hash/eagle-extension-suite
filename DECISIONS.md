@@ -1,5 +1,284 @@
 # 决策记录
 
+## 2026-10-30：以当前主机现场身份为同步真源
+
+- 当前主机 Eagle 4.0.0 的 `app.asar` 指纹与已审计 bridge 一致，因此本轮只替换插件目录，不修改 `app.asar`、Library 或 NAS。
+- “GitHub 已拉取”与“Eagle 已加载”分开记录：排序助手 1.17.0、MAX Publisher 1.2.7 已安装到唯一正式目录，Workbench 1.1 已加载；旧版本分别保留在日期备份目录中。
+- 真实验收以 Eagle 菜单和窗口为准：排序助手 bridge 自检通过；Publisher 四个主要页面和线上标签读取可见。导出、批量改名和线上发布仍需单独动作证据。
+- Publisher 1.2.7 包现场 SHA-256 为 `5a42c53a37ce799f0431cf5ce98d4193bf3eac772e7809f4c68eb4f1282017f2`；发行证据中的旧 hash 不再作为当前文件身份。
+
+## 2026-10-30：排序真实红灯必须以原生面板注入为验收边界
+
+- 排序助手窗口显示 bridge 正常不代表排序可用；真实真源是 Eagle 原生“排列方式”面板中是否存在插件入口和控制行。
+- 本轮确认旧 adapter 因 `$parent` scope 归属错误完全没有接管原生排序回调；修复只扩大 scope owner 解析，不改变 Eagle 原生事件主权或排序核心。
+- 修复后真实面板出现排序锁、手动拖动、自动编号和高级设置；因此可以报告“入口注入已恢复”，不能把它扩大为真实排序写入已验收。
+
+## 2026-09-18：继续核验发现旧 v1.16 release 文件当前缺失
+
+- 按 P0.1 重读 `/Users/max/引力环球/AGENTS.md`，完成时间 `2026-09-18 03:30:33 +0800`，SHA-256
+  `2801097c9d0efece8df9c22da95ea3f285d431c11f13a8242777b360d578aeb1`。
+- 只读盘点确认源码 manifest 为 `1.17.0`，唯一正式安装 manifest 为 `1.16.0`；原排序专项因
+  `function_call_output requires call_id` 终止，当前没有新的业务证据。
+- `releases/` 现在仅列出 `.DS_Store` 和网页媒体子目录，先前登记的 `Eagle排序助手-v1.16.0.eagleplugin`
+  及校验文件不在当前目录。没有执行删除，也没有精确删除授权，因此只登记为“当前缺失、来源未知”，
+  不把它解释为清理完成或生产门禁通过。
+- 继续授权已用于恢复治理监督，但不等同于创建新的可见执行专项、安装、重启 Eagle、真实 Library/NAS
+  操作、批量改名或删除授权；这些动作仍分别受项目规则和精确授权约束。
+
+## 2026-09-12：新总管调用链失败时不宣称接管成功
+
+- 用户批准以干净任务接管并持续跟进，接管目标为 `01a095c3-db6e-74c1-9111-541c57c916f9`；不 fork 故障上下文，不复制正式根。
+- 新任务在 `gpt-5.6-sol/high` 下首次运行和一次受控重试均被 `call_id` / HTTP continuation 校验拒绝。这证明仅新建任务未解决故障，旧总管的历史上下文损坏不能作为本次故障的唯一已确认根因；具体来源尚未定位。
+- 原监督 `eagle` 迁移后保持暂停，直到恢复条件满足；旧任务保留历史，继任未完成前不伪造当前总管已恢复。调整统一规范中的固定总管模型需用户明确同意，不静默切换、不无限重试。
+- 本次仅完成任务创建、监督状态调整及治理记录；未修改业务代码、执行功能测试、构建安装、重启 Eagle 或操作真实 Library/NAS。
+
+## 2026-08-25：旧总管上下文损坏后由唯一治理任务接管
+
+- 旧总管 `019f8f8e-0465-7491-9dde-44a026e3dfc7` 已发生 `ctc/fc` 内部消息 ID 损坏，继续输入会稳定失败；因此退出派发，只保留历史读取，不再作为当前治理入口。
+- 当前治理接管任务成为 EAGLE 扩展唯一项目总管；唯一事实根仍为 `/Users/max/引力环球/软件开发中台/EAGLE 扩展`。
+- `2.5.22-qa.113/API189` 固定为当前唯一已安装且已验证基线。保留专项只允许三条：排序控件状态显示、R121 物理拖放验收、Chrome/Instagram 网页媒体导入正式修复闭环。
+- 其余重复、失败和被取代窗口进入归档范围。本次只是治理交接，不授权业务代码、测试、构建、安装、Eagle UI 或真实 Library/NAS 操作。
+
+## 2026-08-23：R130 route 身份与 host 写权限分离
+
+- URL 已明确 smart collection 时，过期 Angular `view=global` 不得推翻 route 身份；但 route 本身不授予 host-array 写权限，必须等待同 collection exact scope 与 live renderer。
+- 等待复用 Eagle 自身 Angular digest，按 supervisor identity one-shot 登记并可取消；禁止 timer、通用轮询、DOM 强排/observer、refresh、第二 lifecycle 与无限重试。旧等待迟到由 token/identity 门禁归零。
+- qa.112 是正常重启后 fail-open 无恢复的真实失败证据；新候选为 qa.113/API189，只有完成双构建、唯一安装与完整真实 UI 验收后才具备发布资格。
+- qa.113 已完成上述发布门禁：正常重启后的 MAX 与 smart/Library 往返最终均 539/527/12/0、DATA/VISIBLE/PRESENT-READY；视频 `高颜值` 571/571/0/0。真实 unresolved 只登记一个 readiness owner，水合后新 generation READY；60 秒稳定窗无二次提交/跳序。
+- 唯一安装及 qa.112 回滚点已核验；两 Library 普通文件夹选择/预览/右键保持 Eagle 原生。本轮未改 `.library`、NAS 素材或 `app.asar`。
+
+## 2026-08-23：排序运行链由唯一 supervisor 按身份管理
+
+- 每个 Eagle window/Library 只能存在一个 `SortingSupervisor`。它以 Library、route/collection、排序意图、Angular scope 和 renderer 引用组成身份；任一变化先取消旧 generation，再允许新链 attach。
+- 普通/global/原生筛选/后台状态立即 fail-open；smart 的成员只能由 smart adapter 提供。后续仍固定为纯 OrderEngine → sparse manual overlay → LockGuard → 原子 host presentation → persistence，DOM 只反馈和验证。
+- 诊断载荷不得携带 scope/renderer 等循环运行时引用；运行时 snapshot 保留引用供所有权比较，跨桥诊断只输出 `hasScopeRef/hasRendererRef`。该边界关闭了 qa.111 在 MAX 冷启动 monitor structured-clone 卡死。
+- 纯拍摄时间 `PHOTO_TAKEN_AT` 只含 TAKEN_AT；旧 `PHOTO_TAKEN` 继续表示 NAME+TAKEN_AT 多级规则。宿主滞后回调不得覆盖已保存插件意图。
+- 唯一安装候选为 qa.112/API188；qa.108-qa.111 仅保留为定位证据，不再具备安装资格。
+- 最终真实验收以两 Library 的只读证据关闭：视频库 `高颜值` 571 项完成 generation 1 呈现，主库 MAX 在最终正常重启后以新 runtime generation 1 完成 539/527/12/0；65 秒稳定窗内不允许第二次 commit 或可见首序列变化。本轮未重装、未修改 `.library`、NAS 或 `app.asar`。
+
+## 2026-08-22：R121 接管不以自动化手势冒充物理 drop
+
+- qa.107 已安装且身份、自动门禁和 L0 原生入口通过；第一次 JPG 手势经网格与诊断共同确认未提交。
+- Computer Use 的受控手势没有向 Eagle 交付 `onDropBoxItem`，与项目既有工具边界一致；这不是已证明的代码缺陷，故不升 qa.108，也不引入延时、dragend 补提交、第二状态机或 DOM 强排。
+- 四类内部 drop、持久化及 Finder 拖出保持未验收。只有物理 HID 或等效宿主事件执行器完成后，才能回报“已安装，等待用户验收”。
+
+## 2026-08-20：smart READY 只能由同一原子事务的证明关闭
+
+- qa.104 的真实画面已能正确升降序和恢复筛选，但 presenter 又从分页/陈旧 readback 重做 data verify，
+  覆盖了 backing + projection 原子提交已经得到的正确证明；因此日志仍 fail-open，不能发布。
+- R120 规定 commit transaction 是本次 data order 的唯一证明边界。adapter 返回该 transaction 的
+  `dataOrderVerified`，presenter 不再读取可变全局数组指针或以其它分页数组推翻它；可见投影验证仍独立保留。
+- 原生标签/搜索筛选必须在创建 smart lifecycle/frame generation 前被识别；筛选活动时插件 lifecycle
+  保持 inactive，清除后建立新 generation，禁止旧筛选状态触发 `READY-COMMIT-FAILED`。
+- qa.104 保留为 R119 画面转绿但 READY 证明失败的现场证据；唯一候选递增为 qa.105/API181。
+  插件 SHA-256 为 `cd7ef72999a0e2b3906657d5384606c96bbb2aae72418636e619e260a5b8a85e`，
+  安装器 SHA-256 为 `ea2bd39a60748504066ad9d49b2824093677bd6a1ca1fd66d2b10541361b2181`。
+- qa.105 已按授权正常退出、建立回滚点、唯一安装并正常启动。真实 MAX照片集 539 项冷启动、
+  拍摄时间升降序镜像、A→B→A 和原生人物图筛选/清除均通过；清除筛选后的新 generation
+  明确完成 `DATA-VERIFY ok=true`、`VISIBLE-VERIFY ok=true`、`PRESENT-READY`，当前运行实例
+  不含 R120 三类失败日志。因此 qa.105/API181 可进入用户最终目视验收，不再以 fail-open 代替排序成功。
+- 安装身份决定以源码/安装 `plugin.js` 同 SHA、唯一同 ID 来源及宿主 `app.asar` 未变为闭环；
+  回滚点为 `/Users/max/Library/Application Support/Eagle/Backups/media-organizer-plugin/com.max.eagle-photo-taken-sort-20260820-224120`。
+
+## 2026-08-20：smart 稳定尾差必须自动完成一次最终确认
+
+- qa.103 的 150ms 稳定门没有错误放行，但通用 timer 若早于窗口起点计时，会在仍差有限预算时触发，
+  后续无 mutation 就永久停在 HOST-PENDING。
+- R119 由 adapter 返回精确剩余预算，接入层只安排一个绑定当前 generation 的 follow-up；所有旧路由、
+  loading 和模块停止沿用取消栅栏，稳定后归零。不引入轮询、refresh、DOM 重排或第二排序链。
+- qa.103 保留为现场失败证据；唯一候选递增为 qa.104/API180。
+- qa.104 完整自动门禁、静态检查、双确定性构建及只读预检通过；插件 SHA-256
+  `18a327796b8593c083d8385938d3684c37c50797f7d2b33f50a926937347bed6`。
+
+## 2026-08-20：smart 完整成员证明不等于宿主投影已稳定
+
+- qa.102 的真实快速 A→B→A 证据显示：539 成员和 metadata 都正确，但 presenter 在 Eagle 仅挂载
+  60 张过渡卡时就提交；紧随其后的宿主 loading/120 张补载覆盖了网格。这不是旧 B generation
+  迟到提交，而是当前 A 的提交早于宿主投影稳定边界。
+- R118 使用 adapter 已有的有界 minimumStableMs 契约：完整性仍只由 advertised count/query/
+  pagination 证明；另外要求同一投影连续稳定 150ms 才授权一次 presenter 事务。任何 loading
+  过渡都重置窗口，不以延时刷新、DOM 强排或二次改写补救。
+- qa.102 保留为 R117 冷启动转绿但 R118 快切失败证据；唯一候选递增为 qa.103/API179。
+
+## 2026-08-20：smart metadata pending proof 只获得一次 heartbeat 复核
+
+- qa.101 冷启动证明：首帧 fail-open 与后台最终排序是两项独立门禁；若 smart scan 的第二次稳定观察
+  被 unchanged-heartbeat 快速返回吞掉，539 项会永久保留原生顺序。
+- R117 让明确的 `pendingSmartScanIdentity` 触发且仅触发一次 follow-up context read；相同 identity
+  确认后清空，变化则开始新的两次证明。禁止以固定 refresh、DOM observer 风暴或 EXIF 轮询替代。
+- 唯一候选为 qa.102/API178；qa.101 失去发布资格。
+
+## 2026-08-20：smart host owner 必须随同一快照原样进入 presenter
+
+- qa.99 已证明 R114 scope 修复不足以关闭真实故障：owner 在 lifecycle request 中存在，却在
+  presenter 接入层被漏掉，transaction boundary 因 expected owner 为空而正确 fail-open。
+- R115 禁止 presenter 异步重捕获或补造 owner，只允许透传 observation 捕获的同一对象并在提交前
+  继续执行全部相等检查；唯一候选为 qa.100/API176。
+- 双确定性插件 SHA-256 为
+  `47b959aa9597bd74836e132ea8c87a3ec19a46809a82e1da5017aa1897609191`，安装脚本为
+  `1f66b7038da64e4f27e730c890de6e2422813617177dc6642f7bef27e0397316`。
+
+## 2026-08-20：host scope 必须按 Eagle 真实 lowercase smart route 绑定
+
+- qa.98 已能完成 539 项 metadata，但真实 URL 使用 `view=smartfolder&smartfolder=...`，旧 scope
+  resolver 只匹配驼峰 `smartFolder=`，路由切换后继续持有旧 controller，最终 owner 捕获退化为
+  `smart-owner-required`，正确顺序无法提交。
+- R114 新增纯 route/scope ownership resolver：身份只取 route kind + collection ID，只选择拥有同一
+  `currentSmartFolder.id` 的 live scope；未找到时原生 fail-open，不通过刷新、重试或 DOM 推断修补。
+- qa.98 保留为 R113 自动转绿但 R114 真实 scope 所有权失败证据；唯一候选为 qa.99/API175。
+- qa.99 双确定性插件包 SHA-256 为
+  `9322f41d97ec86e418f233b010a742440e3c5f29ff8b6a00d69a340a11c7df20`，安装器为
+  `50d5096a9fdcbec8daea670bf94fd3e4950334bb02da7f310f4309ac3e3de843`；只读预检通过。
+
+## 2026-08-20：智能完整顺序与当前分页前缀必须同一事务
+
+- qa.97 的 539 项真实证据表明 `allData` 正确不等于网格正确；Eagle 当前投影由
+  `filtereds = allData.slice(0, len * page)` 驱动。
+- qa.98/API174 新增唯一 smart projection boundary：同 owner/live refs/page/member 证明后原子提交
+  backing 与 projection，失败一起回滚；原生 filter/search 活跃时零写入。
+- DOM 虚拟卡不参与顺序写入，禁止 polling、refresh、timeout 放宽或 DOM 强排；真实网格仍是最终真源。
+- qa.98 双确定性插件包 SHA-256 为
+  `d9fec3b782ae57416b94c721b6e2c74a78a4b256a31f79365d0af5ccf726535b`；安装器只读预检通过。
+
+## 2026-08-20：虚拟卡片不能在提交前冒充完整顺序证明
+
+- qa.96 现场为 539 个完整成员、300 张挂载卡；deadline 后已进入 presenter，却因 DOM 非连续被拒绝。
+- 预提交 DOM 仅验证 member containment；完整 host projection 在提交后验证顺序。qa.96 失去发布资格，
+  唯一候选递增为 qa.97/API173。
+- qa.97 双确定性插件包 SHA-256 为
+  `bb2fa3a95ce85909e6884ce8b17d32cd9ffeb9ddc26f0e5243a78fdccc34849f`；安装前只读检查通过。
+
+## 2026-08-20：智能首帧 fail-open 不得退化为永久不排序
+
+- 首帧 1500ms deadline 只释放 UI 所有权，后台 metadata/成员准备继续；完成后同 generation 允许
+  一次 presenter 提交。任何全屏遮罩、无限 spinner、清队列或永久 ERROR 都被禁止。
+- orderBy、升降序、多级规则、锁和手动 revision 共同定义稳定排序意图 generation；路由/Library
+  切换取消旧 generation。qa.95 失去发布资格，唯一候选为 qa.96/API172。
+- qa.96 双确定性插件包 SHA-256 为
+  `6f1a57e655abe5372e49ca1cff0a8187dbd793df74904ef990e76fa591f03001`；安装前只读兼容性检查通过。
+
+## 2026-08-20：智能排序证明不得遮挡原生网格
+
+- 成员、metadata 和最终顺序证明只拥有后台计算与同 generation 的一次提交权，永远不拥有
+  Eagle 首帧可见性；timeout、异常、部分虚拟窗口和慢 NAS 一律原生 fail-open。
+- 拍摄时间以新鲜 item metadata/EXIF 为先，旧 cache 只兜底；无 EXIF 稳定置尾但仍是完整 L0
+  成员。唯一候选为 qa.95/API171，真实 539 项升降序是完成真源。
+
+## 2026-08-20：外部测试产物只允许进入用户指定测试目录
+
+- 唯一允许位置是 `/Users/max/Downloads/测试/`。不得自行挂载卷，不得在 NAS 收藏根目录、
+  正式 NAS 根目录、桌面或用户主目录创建测试库、共享辅助目录、测试导出或临时副本。
+- 已通过逐文件名和 SHA 证明 `/Users/max/NAS` 的 39 张为本专项导出副本，并与 R105 测试库、
+  辅助目录及桌面测试目录一并移入废纸篓；正式入口未改动。后续测试必须先校验目标路径位于
+  用户指定目录内，否则 fail-closed。
+
+## 2026-08-20：普通 host sorter 未证明当前 route 时必须原生放行
+
+- qa.93 首进 1-GAGA 时出现 39→0 空网格，日志证明新 route 与上一文件夹 587 项 scope 短暂
+  共存；相邻文件夹与返回后的 39 项均正常，不能把导航恢复当成修复。
+- R109 要求 normal host sorter 在 route、active/callback scope、Library、item membership 全部
+  一致前直接调用 Eagle 原生 sorter，零 refresh/零延时补写。新候选 qa.94/API170。
+- qa.94 全量自动/静态门禁、双确定性构建和安装器只读预检已通过；插件包 SHA-256 为
+  `d3b5330dc27974607e7e27924bf0419e02a63ebff4979fed60c8a394fdb1a751`，安装器为
+  `dca98b3725a2455ad33c135d492481f332af4e83760e5ef1d04bc7a63a9f76f2`。只有首次直接进入
+  1-GAGA 即显示 39 项的真实复验通过后，才可关闭 R109。
+
+## 2026-08-20：排序拖动健康只核对当前七监听器所有权
+
+- qa.92 的启动“手动拖动自检失败”是旧诊断要求 11 个 handler 的假红灯；R103 已有意删除
+  四个 pointer listener，不能为了诊断变绿把第二状态机重新接回 Eagle 主网格。
+- R108 将启动健康和只读 integration check 绑定同一 canonical handler set，只有
+  `drag/dragend/dragover/dragstart/drop/keydown/visibilitychange`。新候选为 qa.93/API169；
+  真实拖动与拖出仍必须由 Eagle 现场独立证明。
+
+## 2026-08-20：原生 39/39 与 reference drift 修复采用 Eagle 项目级事务
+
+- 39→28 的直接原因不是文件消失，而是 11 个 item 的 Eagle display/metadata 名与同 item
+  唯一真实原图名分叉；原生导出按显示名查找时得到 `File not existing`。
+- 修复必须以 immutable item ID、fresh item、metadata/raw name、可读性和 SHA-256 全部一致
+  为前提，只调用 Eagle native rename pipeline；禁止手改 `.library` 或图片内容。
+- qa.91/API167 已完成 11/11 修复和原生 39/39 导出。当前交付目录中的 39 个文件名和 SHA
+  与先前完整恢复目录完全相同，故可确认用户工作流已恢复。因 qa.90 同样使用 API167，
+  最终候选递增为 qa.92/API168；其余拖动/批量改名矩阵仍独立验收。
+
+## 2026-08-20：排序插件不得放大 Eagle 原生导入后处理
+
+- 无插件本地 1/10/39 无 EXIF 基线未复现约 61 秒后处理，且没有新增后台无响应、缩略图
+  超时或 renderer 崩溃；因此当时未加载的排序插件不是该次现场阻塞的直接运行时来源，
+  生产 NAS/宿主链仍须单独取证。
+- 未来安装仍必须防止插件放大负载：常驻任务只读 revision；无变化时零完整快照、零全网格
+  DOM 扫描、零整库 GPS、零整份 cache 序列化。qa.88/API165 因 R105 失去安装资格，唯一
+  下一候选是 qa.89/API166。
+- 启用插件后的本地 1/10/39 对比不得比无插件基线增加超过 25%，任何持续 spinner、
+  thumbnail timeout 或 renderer unresponsive 都是发布否决。
+
+## 2026-08-20：网页媒体导入只向 Eagle 交付可验证 JPG 位图
+
+- “WebP 不可用”按用户意图落实为图片统一 JPG。转码在 Chrome MV3 内完成，不能依赖开发机 `sips` 或修改 Eagle `.library`；原图 URL 和 JPEG 产物均通过来源、MIME、大小与状态机门禁。
+- 小红书整帖不再使用“详情容器内所有 img”的不安全推断。正文过滤器明确排除头像、评论、表情、贴纸和 UI；有归属不确定性时 fail-closed。
+- 文件夹点击是明确的导入授权，但仍只可选择普通 Eagle 文件夹，且后台在创建、重试和实际 `addFromPath` 前重复核验。
+
+## 2026-08-18：无 EXIF 只影响排序字段，metadata 后台任务不得刷新 Eagle
+
+- 可见可选素材的 L0 资格与 EXIF/拍摄时间完全解耦；无时间素材仍可选、预览、右键、
+  手动排序、拖出和原生导出。
+- metadata 扫描不拥有 Eagle 网格、selection 或 inspector。扫描完成禁止 host refresh；
+  缺失值以稳定哨兵进入唯一排序 presenter，不得从 member/export source 中删除。
+- qa.87/API164 只允许作为自动预检候选；当前正式插件保持可逆停用，未经统一安装批准
+  不恢复或替换，不以源码通过宣称现场已修好。
+
+## 2026-08-18：qa.85 因 L0 原生改名/导出回归发布否决
+
+- Eagle 原生 dragstart、拖出、导出和批量改名是 L0。排序模块不得用 `.pinned`、helper、selection、DOM 虚拟窗口、锁或 metadata 改变素材资格。
+- dragend 不是排序提交证明；跨应用原生导出同样会产生 dragend。只有显式同网格有效 drop 可写当前 collection 的手动关系。
+- host-array 排序只改变 live item 的 ID 顺序，不能把捕获时的旧 item 对象、名称或 metadata 写回；DOM 名称 mask 和锁态原生改名拦截均停用。
+- `2.5.22-qa.86/API163` 只通过源码和自动门禁；未获再次批准前不安装、不重启、不真实导出/改名、不操作 Library/NAS。
+
+## 2026-08-17：普通文件夹只有在路由成员和完整可见窗口均可证明时才可 L3 呈现
+
+- 普通文件夹 route 已变而 Eagle 数组尚未补水时，数组引用、长度和 source/desired 成员相等都不能证明它属于新 folder；每个 item 必须以 `folders` 正向证明当前 folder ID。
+- 逐卡 DOM move/rollback 不得用于虚拟化或分页的部分可见窗口。完整 source member set 与可见集合不等时，必须 zero-write/fail-open 并交还 Eagle host sorter/refresh。
+- 这不取消 R74：归属与完整可见窗口均已证明的小型叶子文件夹仍允许唯一 L3 transaction。缺证据时的稳定原生画面高于强制首帧重排。
+- `2.5.22-qa.84/API161` 只是通过开发预检的候选；当前安装现场仍是 qa.83/API160。安装、Eagle 正常 Quit/重启和插件模式真实 30 秒验收均需用户再次批准。
+
+## 2026-08-16：排序原生选择是当前 collection 的显式权威
+
+- Eagle 原生“添加日期”必须在插件旧多级持久值之前生效；插件不得用虚拟标签把原生值伪装成“添加日期 + 多级排序”。
+- 原生切换只更新当前 collection 的 Eagle `orderBy`，不写规则、手动关系、锁、自动编号、改名或团队 sidecar；切回多级必须恢复既有规则。
+- qa.83/API160 已唯一安装并完成普通/智能真实 UI 代验，sidecar 与宿主桥哈希未变；安装和代验不能替代用户最终验收，额外重启仍需再次批准。
+
+## 2026-08-16：网页媒体推荐流以“单媒体选择”与“整帖归属”分层
+
+- 推荐流封面可在用户明确指向时作为唯一单媒体保存；这不授予对卡片链接、页面区域或推荐流其他内容的采集权限。
+- 小红书/Instagram 链接右键需以同一 DOM 事件路径中的实际媒体为证据；不存在该证据时停止。详情整帖则必须继续满足其容器/帖子归属门禁，不能为提升成功率退回全页扫描。
+
+## 2026-08-16：网页媒体推荐流必须先引导到具体内容，不能伪造可保存状态
+
+- 用户在小红书推荐流的卡片右键会触发链接菜单而非图片菜单；扩展把保存入口注册到链接上下文以呈现下一步，但在推荐流禁用动作并提示先打开具体笔记。
+- 站点域名识别不能等同于当前内容可保存。只有 URL 和 DOM 归属都满足详情页门禁时，才允许整帖/整笔记进入下载与 Eagle 导入链路。
+
+## 2026-08-16：网页媒体整体保存采用平台感知命名，仍以归属证明为先
+
+- 同一批量入口根据当前 provider 显示 Instagram / 小红书的整帖名称；无法识别平台时明确称为“保存当前媒体整体”，避免将通用网页误称为某个平台帖子。
+- 名称不授予采集权限：小红书限笔记详情页和唯一归属内容，Instagram 限显式当前帖；多内容流、推荐区和证据不足页面保持 fail-closed。
+
+## 2026-08-16：网页媒体通用扩展吸收 Instagram 整帖体验，但不复用旧扩展的不安全网络行为
+
+- 新能力落在 `extensions/web-media-importer/` 的 Instagram provider 与内容采集 adapter 中；它不依赖旧 Instagram 插件的内部实现，继续通过 Eagle 公共 localhost API 与可恢复队列导入。
+- 整帖仅在用户明确选择当前 Instagram 帖子后工作，轮播遍历有 20 步上限并尝试恢复原位置；网格、推荐和归属不唯一的页面保持拒绝。
+- 旧 Instagram 扩展曾直接向 Eagle 提交 URL 与自定义 Referer；通用扩展不复制此做法，而是继续使用浏览器原生下载上下文、下载后验真和 Eagle API 读回确认。
+
+## 2026-08-15：R97 是通用排序并发缺陷，禁止做视频 Library 特例
+
+- 引力环球视频 Library 只是复现环境。修复必须同时约束普通与智能 collection，对 `.jpg/.mov/.mp4` 等媒体类型零分支。
+- Eagle `.pinned` 不是插件权限；用户活动拖动高于后台 presenter；同 smart key 的最新 manual revision 是最终呈现真源。
+- qa.82/API159 已在用户明确授权后可回滚安装为唯一来源并正常重启。真实视频库已证明新 normal presenter 在活动拖动期让路、smart UI 不渲染自动编号行；Computer Use 未产生 `drop`，所以安装完成不等同于物理拖动最终验收通过。
+
+## 2026-08-12：R96 排序呈现不得写入非当前宿主集合
+
+- 排序插件只能在同一 Library、route/collection、renderer scope/generation、live array reference 和完整 member-ID 集合全部一致时重排 Eagle 宿主数组；global/全部永远禁止插件写入。
+- 缺证据时插件放弃提交并保持 Eagle 原生投影。该规则优先于任何智能排序显示需求，且不清除用户手动关系、锁、改名或真实 Library 数据。
+
 ## 2026-08-10：网页媒体导入器 2.3.0 最终完整性门禁
 
 - 平台页面的“可见视频 URL”不等于可独立保存的完整文件。B站多段 `durl` 是一个连续分片作品，必须整体阻止；
@@ -456,7 +735,7 @@
 - 决定：每次新建或重新派发必须在任务书或台账记录模型、推理等级、选择原因和升级条件；
   要求模型不可用时停止派发并说明，禁止静默降级。
 - 顶层事实来源：
-  `/Users/max/引力环球/00_总管中心/Codex协作操作系统与动态模型策略.md`。项目规则可以
+  `/Users/max/引力环球/AGENTS.md`。项目规则可以
   更严格，但不得放宽该协议。
 
 ## 2026-07-26：iCloud Live Photo 的 Eagle 导出边界
@@ -835,3 +1114,70 @@
 - Eagle 文件夹“刷新”可安全地重新排入缩略图和时长解析：本次恢复了 7/7 项显示，不需要重新导入、删除
   项目、修改 `.library` 内部结构或重启宿主。后续出现同一症状时，先使用此宿主入口并等待后台队列完成；
   若刷新后仍不恢复，再以源文件解码检查与 Eagle 日志定位为下一层诊断。
+## 2026-08-12：执行任务只有正式安装完成一个正常停止点
+
+- 决定：用户要求开始修复、继续、执行或改完安装后，项目总管与对应专项必须持续推进。除非用户明确暂停、停止或取消，否则只有当本轮全部要求修改完成、完整回归通过、唯一正式版本已经安装到本地正式软件、宿主正常启动且安装身份核验完成后，才允许回报“已安装，等待用户验收”并结束本轮执行。
+- 分析完成、红灯测试、源码候选、自动测试、确定性构建、QA Library 或单个子问题完成均不是交付，也不是停止理由。真实日志或用户现场出现新红灯时，任务必须回到修复阶段继续运行。
+- 安全边界不因持续运行而取消。需要新增授权、外部系统恢复或遇到破坏性风险时，任务保持未完成并报告唯一阻断；禁止强杀 Eagle、绕过授权、修改 `.library`、猜测性写入或把等待状态表述为完成。
+- 用户只负责最终真实软件验收。安装核验完成前不得要求用户接手半成品；用户确认前不得宣称“全部通过”或“所有问题已经修好”。
+
+## 2026-08-28：file:// renderer 资源加载修复递增为 v1.3
+
+- v1.2 实机打开插件仍停在“等待 Eagle...”，面板未取得真实 Library/集合/成员；可见断点位于 renderer 资源加载/bootstrap 之前，真实数据动作保持停止。
+- file:// renderer 不能假设 fetch 一定可用或会及时拒绝。运行资源加载改为 file:// 优先异步 XMLHttpRequest、fetch 回退，并为两条路径设置有限失败边界；任何失败统一写入面板并放行 Eagle 原生行为，不新增轮询。
+- v1.2 已真实安装，修复后的下一次唯一正式身份必须为用户版本 v1.3、package/manifest 1.3.0，产物名固定为 `Eagle排序助手-v1.3.0.eagleplugin`；生产构建和安装仍由项目总管执行。
+# 2026-08-29：v1.7 原生排列入口与计数核对
+
+- 用户确认所有日常排序操作必须进入 Eagle 原生“布局方式/排列方式”弹窗；独立插件面板不得重复承载排序命令，仅显示版本、总开关、当前状态和诊断。业务规则仍由唯一核心 owner 决定，无法安全接入则 fail-open。
+- `4-英国站🇬🇧` 计数先按只读证据拆分口径：当前照片 Library `引力环球.library`、集合 ID `MPB2IRPBMIUTX`，插件完整成员数 1,188 与侧栏 1,188 一致；`396/1831` 尚未解释，禁止据此排序或改写原生计数。
+
+# 2026-08-31：v1.9 的拍摄时间与显示结果必须可逐项证明
+
+- v1.8 的正式 runtime 只读取顶层 `DateTimeOriginal`，无法覆盖 Eagle 当前 item 对同一“拍摄时间”的真实表示；误判缺失会让固定槽位规则合法地保留错误顺序，规则文字已选中不等于排序生效。
+- 唯一拍摄时间 provider 只接受 Eagle 同语义字段或按 Library + item ID 核验的同语义缓存，并记录逐项来源；导入、创建、修改时间禁止替代。
+- 一次性写入后必须核对完整宿主数组、完整筛选投影和当前可见网格；首个反例进入可见诊断，未完成核对不得保存本次排序记录。网格更新只发一次宿主刷新信号，不搬运 DOM、不轮询。
+- v1.8 已真实安装，下一次安装身份递增为 `v1.9 / 1.9.0`；只有项目总管可构建、安装并恢复实体 Eagle 验收。
+
+# 2026-09-12：v1.17 文件与文件夹目标不得混用
+
+- 普通父级只排序/拖动/编号直属子文件夹，普通叶子只处理直属媒体；两类计划和写入 owner 必须由目标 ID 类型永久隔离。配置“应用到全部”只复制所点设置，禁止携带或触发名称变化。
+- Eagle 原生排列弹窗是唯一日常入口；adapter 只发唯一 runtime command，并负责晚开幂等挂载和开关/停止时完整卸载。全局默认、本地覆盖、恢复全局是三条明确命令，智能集合不显示锁定或编号。
+- v1.16 已正式安装，本轮下一正式身份为 v1.17/1.17.0；专项不构建、不安装，自动检查只作为项目总管生产构建前的代码辅助证据。
+
+# 2026-09-12：v1.17 原生弹窗高级设置默认折叠
+
+- 原生排列主区只保留锁定、手动/恢复自动和当前目标编号；规则来源操作与状态文件不是高频动作，统一放入默认关闭的次级设置节点。
+- 折叠摘要持续显示当前来源；三个来源命令与导出/加载只有展开后可见。安装前门禁必须构造真实节点核对后代关系和默认关闭状态，不能只搜索源码文字。
+
+## 2026-09-12：EAGLE 项目总管继任与当前事实优先级
+
+- 唯一项目总管改为 `01a095da-9b45-7890-b469-387d9a1030ec`。故障总管
+  `01a03439-a1d2-7e81-bb8c-540eba5cdc28` 不再派发；其历史记录保留但不能覆盖新总管审核。
+- 当前版本事实以正式根与安装目标的只读身份为准：源码 `1.17.0`、安装 `1.16.0`。
+  2026-08-25 的 `2.5.22-qa.113/API189` 是历史，不得继续写成当前唯一安装基线。
+- 排序主线只复用 `01a04308-2871-7de3-ad83-2ede4324223f`。历史排序专项不得并发写；
+  网页导入专项只在未撤回需求明确涉及它时恢复。
+- 旧总管最后明确退回优先于此前“高级设置默认折叠”记录：最终 UI 是否应彻底移除三个规则来源
+  按钮、并只保留“排序记录”导出/加载，必须由原专项以真实节点先红后绿证据重新证明。此前
+  `e2e5b28...` 回报只证明折叠，不满足最后退回，不能进入生产构建。
+- 本次“继续”授权总管持续协调，不等于删除旧 release、安装、重启 Eagle、操作真实 Library/NAS、
+  批量改名或删除的精确授权。达到安装门禁后，由总管统一询问一次明确范围。
+
+## 2026-09-12：损坏排序专项不得继续或 fork
+
+- `01a04308-2871-7de3-ad83-2ede4324223f` 连续空结束后，在同一任务显式模型恢复时返回
+  `function_call_output requires call_id on HTTP requests; continuation via previous_response_id is only
+  supported on Responses WebSocket v2`。这是明确系统终态，不再按“等待输出”处理。
+- 损坏上下文只读保留并归档；不得继续发消息、fork 或把历史专项恢复为并发写入口。创建新的同项目
+  可见排序专项必须取得用户明确授权，并从唯一正式根当前磁盘事实重新建立回报链。
+- 原 heartbeat `eagle` 只迁移不复制，目标改为唯一总管
+  `01a095da-9b45-7890-b469-387d9a1030ec` 并恢复 ACTIVE；无变化保持安静，等待新专项授权时不重复通知。
+# 2026-11-06：启动前预检缺少宿主基线时必须 fail-closed
+
+- 决定：Eagle 启动前预检必须同时接收官方 `app.asar` 与 `/etc/hosts` 的 SHA-256 基线；
+  未提供、格式错误或实际指纹不匹配均阻断启动/安装流程。
+- 决定：插件目录仅允许目录根内目标，越界 symlink、FlClash 未排除 `eagle.cool` 的 Fake-IP
+  配置和可观测的 `198.18.0.0/16` DNS 结果均只读报告并阻断，不自动修复。
+- 影响：门禁不会修改 app.asar、插件、hosts、FlClash 配置、Library 或 NAS；真实 Eagle 安装、
+  重启和启动耗时验收仍由项目总管专项执行。
+

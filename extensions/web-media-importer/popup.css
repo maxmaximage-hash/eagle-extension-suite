@@ -73,6 +73,7 @@ h2 {
 
 .version,
 .scan-section > p,
+.instagram-note,
 .recent .section-heading span {
   color: var(--muted);
   font-size: 12px;
@@ -158,6 +159,14 @@ main > details {
 .page-state.blocked { color: var(--amber); }
 
 .scan-section > p { margin: 7px 0 12px; }
+
+.instagram-note {
+  margin-top: 9px;
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.instagram-note strong { color: #d8dde6; }
 
 .primary-button,
 .secondary-button,

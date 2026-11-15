@@ -58,12 +58,14 @@ function createStyle(initial = {}) {
 
 function createCard(id, options = {}) {
   const card = {
-    id: `box-${id}`,
+    id: options.elementId || `box-${id}`,
     computedPosition: options.computedPosition || "absolute",
     classList: createClassList(["box", ...(options.classes || [])]),
     helpers: [],
     getAttribute(name) {
-      return name === "data-box-id" ? id : null;
+      if (name === "data-box-id" && options.identity !== "data-id") return id;
+      if (name === "data-id" && options.identity === "data-id") return id;
+      return null;
     },
     querySelector(selector) {
       return this.helpers.find((helper) =>
@@ -88,6 +90,28 @@ function createCard(id, options = {}) {
     card.helpers.push(helper);
   }
   return card;
+}
+
+// A normal Eagle card can expose data-id or only id="box-*". Normal drag
+// feedback must still project its helpers in those host shapes.
+{
+  const dataIdCard = createCard("data-id-card", { identity: "data-id" });
+  const elementIdCard = createCard("element-id-card", {
+    identity: "element-id",
+    elementId: "box-element-id-card"
+  });
+  const { controller } = createHarness([dataIdCard, elementIdCard]);
+  controller.start([], { mode: "normal" });
+  assert.strictEqual(
+    dataIdCard.helpers[0].style.getPropertyValue("display"),
+    "block",
+    "normal feedback must project cards identified by data-id"
+  );
+  assert.strictEqual(
+    elementIdCard.helpers[0].style.getPropertyValue("display"),
+    "block",
+    "normal feedback must project cards identified by box element id"
+  );
 }
 
 function createHarness(cards) {

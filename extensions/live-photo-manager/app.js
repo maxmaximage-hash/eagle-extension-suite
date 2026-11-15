@@ -17,6 +17,9 @@
     failed: document.getElementById("countFailed"),
     remaining: document.getElementById("countRemaining"),
   };
+  // serviceMode keeps the bridge alive in a hidden 1x1 page.  That page must
+  // not instantiate the diagnostic panel or bind handlers to missing nodes.
+  if (!elements.grid) return;
   let currentState = null;
   let activeVideo = null;
   let contextItemId = null;
@@ -148,10 +151,11 @@
   }
 
   async function request(action) {
+    const bridgeAction = { "choose-source": "chooseSource" }[action] || action;
     if (window.MaxLivePhotoBridge) {
       const result = action === "scan"
         ? window.MaxLivePhotoBridge.scan()
-        : window.MaxLivePhotoBridge[action]();
+        : window.MaxLivePhotoBridge[bridgeAction]();
       if (result && typeof result.then === "function") await result;
       render(window.MaxLivePhotoBridge.getState());
       return;
@@ -237,8 +241,22 @@
     const exportAction = event.target.closest("[data-export]")?.dataset.export;
     if (exportAction) {
       const item = currentState?.items.find((candidate) => candidate.id === contextItemId);
-      const labels = { image: "静态 JPG", movie: "MOV", photos: "苹果照片（Live）" };
-      showToast(`${item?.stem || "当前项目"}：${labels[exportAction]}导出将在下一试点开放`);
+      const labels = {
+        image: "静态照片（HEIC/JPG）",
+        movie: "MOV",
+        livp: "完整 Live Photo（LIVP）",
+      };
+      try {
+        if (!window.MaxLivePhotoBridge?.exportSelected) {
+          throw new Error("当前运行模式没有 Eagle 本地导出适配器");
+        }
+        const operation = await window.MaxLivePhotoBridge.exportSelected(contextItemId, exportAction);
+        const result = operation.results?.[0];
+        if (result?.status !== "confirmed") throw new Error(result?.error || "导出未确认");
+        showToast(`${item?.stem || "当前项目"}：${labels[exportAction]}已导出到 MAX Live Photo Exports`);
+      } catch (error) {
+        showError(error);
+      }
       elements.contextMenu.hidden = true;
       return;
     }

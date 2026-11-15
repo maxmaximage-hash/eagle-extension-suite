@@ -3,12 +3,12 @@ set -euo pipefail
 
 readonly EXPECTED_HOST_VERSION="4.0.0"
 readonly EXPECTED_PLUGIN_ID="com.max.eagle-photo-taken-sort"
-readonly EXPECTED_PLUGIN_VERSION="2.5.22-qa.94"
+readonly EXPECTED_PLUGIN_VERSION="2.5.22-qa.98"
 readonly ORIGINAL_SHA256="b04a2efdb8bc8d06910552f43f38c056e6964c8f74798e1b2849f1bffab8a1bd"
 readonly BRIDGED_SHA256="4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3"
 readonly SCRIPT_DIR="${0:A:h}"
-readonly ARCHIVE_NAME="媒体智能整理-v2.5.22-qa.94-github.eagleplugin"
-readonly CHECKSUM_NAME="媒体智能整理-v2.5.22-qa.94-github.SHA256SUMS"
+readonly ARCHIVE_NAME="媒体智能整理-v2.5.22-qa.98-github.eagleplugin"
+readonly CHECKSUM_NAME="媒体智能整理-v2.5.22-qa.98-github.SHA256SUMS"
 readonly APP_PATH="${EAGLE_APP_PATH:-/Applications/Eagle.app}"
 readonly HOST_ASAR="$APP_PATH/Contents/Resources/app.asar"
 readonly ARCHIVE="${PLUGIN_ARCHIVE:-$SCRIPT_DIR/$ARCHIVE_NAME}"
@@ -18,6 +18,9 @@ readonly TARGET="$PLUGIN_ROOT/$EXPECTED_PLUGIN_ID"
 readonly BACKUP_ROOT="$HOME/Library/Application Support/Eagle/Backups/media-organizer-plugin"
 readonly STATE_ROOT="$HOME/Library/Application Support/Eagle/PluginData/$EXPECTED_PLUGIN_ID"
 readonly BRIDGE_EVIDENCE="$HOME/Library/Application Support/Eagle/Backups/media-organizer-safe-bridge/bridge-evidence.json"
+
+# bridge/rebuild-compatible-bridge.js remains a read-only historical reference.
+# This installer never invokes it and never writes Eagle app.asar.
 
 MODE="check"
 
@@ -30,14 +33,27 @@ sha256() {
   shasum -a 256 "$1" | awk '{print $1}'
 }
 
+verify_codesign() {
+  local host_hash
+  host_hash=$(sha256 "$HOST_ASAR" 2>/dev/null || true)
+  if [[ "$host_hash" == "$BRIDGED_SHA256" ]]; then
+    print "已审计桥接宿主：接受固定 BRIDGED_SHA256，继续安装插件。"
+    return 0
+  fi
+  /usr/bin/codesign --verify --deep --strict "$APP_PATH" >/dev/null 2>&1 ||
+    fail "Eagle 代码签名封条无效；不会安装插件。请先恢复原始 app.asar"
+}
+
 case "${1:-}" in
   ""|--check) MODE="check" ;;
   --install-plugin) MODE="install" ;;
-  *) fail "参数仅支持 --check 或 --install-plugin" ;;
+  --install-plugin-only) MODE="plugin-only" ;;
+  *) fail "参数仅支持 --check、--install-plugin 或 --install-plugin-only" ;;
 esac
 
 [[ -d "$APP_PATH" ]] || fail "找不到 Eagle：$APP_PATH"
 [[ -f "$HOST_ASAR" ]] || fail "找不到 Eagle 宿主文件"
+verify_codesign
 
 host_version=$(
   /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
@@ -62,7 +78,9 @@ else
   if [[ "$host_hash" == "$evidence_hash" && "$evidence_original" == "$ORIGINAL_SHA256" && "$evidence_marker" == "photo-taken-sort.execute" ]]; then
     bridge_state="rebuilt"
   elif [[ "$host_hash" == "$ORIGINAL_SHA256" ]]; then
-    fail "通信桥不存在；请先运行 bridge/rebuild-compatible-bridge.js --check，再在 Eagle 退出后运行 --install"
+    [[ "$MODE" == "plugin-only" ]] ||
+      fail "当前是原始未桥接宿主；只允许 --install-plugin-only，禁止任何 bridge/app.asar 安装"
+    bridge_state="original-unbridged-plugin-only"
   else
     fail "通信桥不存在或未经审计（宿主哈希未知）；本安装器不会修改 Eagle host"
   fi
@@ -109,7 +127,7 @@ fi
 
 print "兼容性检查通过：Eagle $host_version，通信桥状态=${bridge_state}，插件 $plugin_version。"
 if [[ "$MODE" == "check" ]]; then
-  print "本次只检查；安装插件需在 Eagle 完全退出后显式运行：$0 --install-plugin"
+  print "本次只检查；安装插件需在 Eagle 完全退出后显式运行：$0 --install-plugin 或 $0 --install-plugin-only"
   exit 0
 fi
 
@@ -184,3 +202,4 @@ fi
 print "插件已安装：$TARGET"
 [[ -n "$backup" ]] && print "旧插件回滚点：$backup"
 print "Eagle host 未被修改。"
+verify_codesign

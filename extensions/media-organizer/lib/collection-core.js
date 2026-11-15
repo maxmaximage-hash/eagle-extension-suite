@@ -111,6 +111,12 @@ function createCollectionRuntime() {
     if (routedView(context) === "unknown") return allData || filtered || [];
     const normalFolder = normalFolderFromContext(context);
     if (normalFolder?.id) {
+      if (
+        routedView(context) === "folder" &&
+        String(context.currentFolder?.id || "") !== String(normalFolder.id)
+      ) {
+        return [];
+      }
       // During smart → normal navigation Eagle can leave the previous smart
       // record attached while its current-view array is still that projection.
       // Do not expose that array as normal-folder contents; wait for the

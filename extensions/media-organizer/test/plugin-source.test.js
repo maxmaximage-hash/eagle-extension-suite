@@ -42,7 +42,7 @@ assert.match(
   /stopRuntimeActivity\("library-changed"\)/,
   "library changes must cancel all delayed runtime work"
 );
-assert.match(source, /const API_VERSION = 150/);
+assert.match(source, /const API_VERSION = 155/);
 assert.match(
   source,
   /function diagnoseNormalOrderPresentation\(stage, payload = \{\}\)/,
@@ -58,6 +58,23 @@ assert.match(
   /function refreshHostScope\(\)/,
   "R77: route changes must rebind plugin state to Eagle's live collection scope"
 );
+const refreshHostScopeSource = source.match(
+  /function refreshHostScope\(\) \{([\s\S]*?)\n    \}\n\n    \$\{createMediaSortRuntime\.toString\(\)\}/
+);
+assert.ok(refreshHostScopeSource, "host scope refresh implementation must be inspectable");
+// Eagle's parent-folder controller is mounted below #sub-folder-container.
+// Keep both native folder-view roots in the lookup contract so a navigation
+// frame cannot leave delivery and folder-level actions bound to a stale scope.
+assert.match(
+  refreshHostScopeSource[1],
+  /document\.querySelector\("#sub-folder-container"\)/,
+  "R77: refreshHostScope must inspect Eagle's native sub-folder controller"
+);
+assert.match(
+  refreshHostScopeSource[1],
+  /document\.querySelector\("#box-container"\)/,
+  "R77: refreshHostScope must inspect Eagle's native grid controller"
+);
 assert.match(
   source,
   /if \(refreshHostScope\(\)\) renderSettings\(\);/,
@@ -68,8 +85,204 @@ assert.match(
   /HOST_SCOPE_UNRESOLVED/,
   "R78: an unresolvable Eagle route must emit a bounded structural diagnostic"
 );
+assert.match(
+  source,
+  /createHostScopeStateRuntime/,
+  "R130: unresolved host scope must have an explicit pending gate"
+);
+assert.match(
+  source,
+  /if \(hostScopeState\.isPending\(\)\) return false;/,
+  "R130: pending host scope must fail open before normal presentation"
+);
+assert.match(
+  source,
+  /SORT_INTENT_STORAGE_KEY/,
+  "R131: plugin sort intent must survive transient Eagle order resets"
+);
+assert.match(
+  source,
+  /clearCurrentSortIntent\(\)/,
+  "R131: an explicit native sort selection must clear saved plugin intent"
+);
+assert.match(
+  source,
+  /function currentIncrease\(\)[\s\S]*?sortIntentRuntime\.increase\(/,
+  "R131: a native host order reset must retain the saved plugin direction"
+);
+const libraryIdentitySource = source.match(
+  /function currentLibraryId\(\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(libraryIdentitySource, "library identity boundary must exist");
+assert.match(
+  libraryIdentitySource[1],
+  /canonicalizeLibraryIdentitySafe\(bodyScope\.rootDir\)/,
+  "manual state must use one canonical library key when Eagle alternates encoded and decoded paths"
+);
+const renameLibrarySource = source.match(
+  /function renameLibrary\(create = true\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(renameLibrarySource, "rename library scope boundary must exist");
+assert.match(
+  renameLibrarySource[1],
+  /canonicalizeLibraryIdentitySafe\(bodyScope\.rootDir\)/,
+  "automatic rename state must use the same canonical Library key as manual state"
+);
+assert.match(
+  source,
+  /const LIBRARY_IDENTITY_SOURCE =/,
+  "the injected Eagle bridge must receive the library identity canonicalizer"
+);
+const manualStoreReaderSource = source.match(
+  /function readManualStore\(\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(manualStoreReaderSource, "manual store reader must exist");
+assert.match(
+  manualStoreReaderSource[1],
+  /canonicalizeLibraryIdentitySafe\(libraryId\)/,
+  "manual store must migrate encoded and decoded library keys into one bucket"
+);
+const currentCollectionSource = source.match(
+  /function currentCollection\(\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(currentCollectionSource, "collection identity boundary must exist");
+assert.match(
+  currentCollectionSource[1],
+  /rootDir:\s*canonicalizeLibraryIdentitySafe\(bodyScope\.rootDir\)\s*\|\|\s*"default"/,
+  "collection context must use the same canonical library identity as manual persistence"
+);
+assert.match(
+  source,
+  /const canonicalizeLibraryIdentitySafe\s*=\s*typeof canonicalizeLibraryIdentity === "function"/,
+  "injected collection identity must have a runtime-safe canonicalizer fallback"
+);
+assert.match(
+  source,
+  /pendingExplicitRenamePlan:\s*null/,
+  "explicit rename confirmation must survive a short prior rename task"
+);
+assert.match(
+  source,
+  /function applyRenamePlan\(plan, options = \{\}\) \{[\s\S]*?pendingExplicitRenamePlan/s,
+  "explicit rename confirmation must queue instead of being silently dropped"
+);
+assert.match(
+  source,
+  /function drainPendingExplicitRenamePlan\(\)/,
+  "queued explicit rename must drain after the previous task completes"
+);
+const nativeOrderChangeSource = source.match(
+  /bodyScope\.changeOrderBy = function\(orderBy\) \{([\s\S]*?)\n    \};/
+);
+assert.ok(nativeOrderChangeSource, "native order change wrapper must be inspectable");
+assert.match(
+  nativeOrderChangeSource[1],
+  /clearCurrentSortIntent\(\);[\s\S]*?api\.original\.changeOrderBy\.call\(this, orderBy\)/,
+  "R131/R140: explicit IMPORT or CREATEDATE selection must clear stale plugin intent before native callbacks"
+);
+assert.match(
+  source,
+  /if \(presentation\.ok\) \{[\s\S]*?bodyScope\.\$evalAsync\(\(\) => \{[\s\S]*?renderTakenMeta\(\);[\s\S]*?renderSettings\(\);/,
+  "R132: a verified normal presentation must refresh numbering statistics after the source set stabilizes"
+);
+const normalPresenterSource = source.match(
+  /function scheduleNormalOrderPresentation\(\) \{([\s\S]*?)\n    \}\n\n    function applyManualOrderToGrid/
+);
+assert.ok(normalPresenterSource, "R132: normal presenter source must be inspectable");
+assert.match(
+  normalPresenterSource[1],
+  /if \(presentation\.ok\) \{[\s\S]*?bodyScope\.\$evalAsync\(\(\) => \{[\s\S]*?renderTakenMeta\(\);[\s\S]*?renderSettings\(\);/,
+  "R132: renderSettings must run in the verified normal presentation callback"
+);
 assert.match(source, /createItemResourceResolver/);
+assert.match(source, /createFolderCopyRuntime/);
+assert.match(source, /function createFolderCopy/);
+assert.match(source, /eagle\.folder\.getSelected\(\)/);
+assert.match(source, /normalizeSelectedFolder/);
+assert.match(source, /copy-folder-current/);
+assert.match(
+  source,
+  /await eagle\.window\.show\(\);[\s\S]*?bindFolderCopyUi\(\);[\s\S]*?refreshFolderCopyTarget\(\);/,
+  "folder copy window entry must remain available before optional sorting bridge readiness"
+);
+assert.match(source, /eagle\.folder\.create/);
+assert.match(source, /eagle\.item\.get\(\{ folders: \[sourceFolderId\] \}\)/);
+assert.match(source, /item\.folders = change\.folders/);
+assert.match(source, /normal-folder-required/);
+assert.doesNotMatch(source, /function installFolderCopyMenuBridge\(\)/);
+assert.doesNotMatch(source, /CONTEXTMENU\.OPEN/);
+assert.doesNotMatch(source, /pluginModule\.broadcast\("library-changed", \{/);
+assert.doesNotMatch(source, /__eagleFolderCopyAction/);
+assert.doesNotMatch(source, /eagle\.onFolderCopyAction/);
+assert.match(indexSource, /id="copy-folder-current"/);
+assert.match(indexSource, /复制当前选中文件夹（含内容）/);
+assert.match(source, /if \(typeof libraryPath !== "string" \|\| !libraryPath\) return/);
 assert.match(source, /eagle\.item\.getById/);
+assert.match(
+  source,
+  /交付标准 12组，5组人像精拍，7组不带人氛围环境[\s\S]*?每组 3 张人物共 15 张，10 张环境共 120 张，共计 135 张/,
+  "delivery template must use the current 12-group standard"
+);
+assert.match(
+  source,
+  /排版最低可发 14 组[\s\S]*?发布频率可以1周1条[\s\S]*?发布时间以场景时间发生时间为佳/,
+  "delivery template must use the current publishing guidance"
+);
+assert.doesNotMatch(
+  source,
+  /openDeliveryCopyModal[\s\S]*?deliveryCopyRuntime\.normalizeLink/,
+  "injected delivery modal must not depend on the plugin-process runtime"
+);
+assert.match(
+  indexSource,
+  /id="public-delivery-copy-fallback"/,
+  "unbridged plugin window must expose a delivery-copy fallback section"
+);
+assert.match(
+  indexSource,
+  /id="public-delivery-link"[\s\S]*?id="public-delivery-text"/,
+  "delivery fallback must expose editable Quark link and message"
+);
+assert.match(
+  source,
+  /function refreshPublicDeliveryFallback\(\)/,
+  "delivery fallback must refresh from the official Eagle APIs"
+);
+assert.doesNotMatch(
+  source,
+  /async function refreshPublicRenameFallback\(\) \{\s*if \(typeof eagle\.photoTakenSort\?\.execute === "function"\) return;/,
+  "rename fallback must remain available when a stale bridge object is present"
+);
+assert.doesNotMatch(
+  source,
+  /async function refreshPublicDeliveryFallback\(\) \{\s*if \(typeof eagle\.photoTakenSort\?\.execute === "function"\) return;/,
+  "delivery fallback must remain available when a stale bridge object is present"
+);
+assert.match(
+  source,
+  /function renderPublicRenameFallbackState\(message = ""\) \{[\s\S]*?section\.hidden = false;/,
+  "rename fallback section must stay visible in the plugin window"
+);
+assert.match(
+  source,
+  /function renderPublicDeliveryFallback\(message = ""\) \{[\s\S]*?section\.hidden = false;/,
+  "delivery fallback section must stay visible in the plugin window"
+);
+assert.match(
+  source,
+  /deliveryCopyRuntime\.buildStats\(\{ groups, itemsByFolder \}\)/,
+  "delivery fallback must reuse the delivery stats runtime"
+);
+assert.match(
+  source,
+  /section\.hidden = mainBridgeAllowed\s*&&\s*injectionReady\s*&&[\s\S]*?typeof eagle\.photoTakenSort\?\.execute === "function"/,
+  "public sort fallback must stay visible whenever the bridge is stale or unavailable"
+);
+assert.match(
+  source,
+  /public-delivery-copy-button/,
+  "delivery fallback must provide a copy action"
+);
 assert.match(
   source,
   /fetchItems: \(query\) => withTimeout\(\s*\(\) => eagle\.item\.get\(query\)/,
@@ -204,6 +417,21 @@ const pluginCreateSource = source.match(
 );
 assert.ok(pluginCreateSource, "plugin create lifecycle should be present");
 assert.doesNotMatch(pluginCreateSource[1], /initializeGeoTagService|runGeoPoll/);
+assert.match(
+  pluginCreateSource[1],
+  /expectedLibraryIdentity = seedExpectedLibraryIdentityFromHost\(\)/,
+  "plugin startup should seed the readiness identity from Eagle's current library"
+);
+assert.match(
+  source,
+  /function seedExpectedLibraryIdentityFromHost\(\)[\s\S]*?expectedLibraryIdentity = path\.normalize\(libraryId\)/,
+  "readiness identity seeding helper should be present"
+);
+assert.match(
+  source,
+  /async function monitor\(\)[\s\S]*?seedExpectedLibraryIdentityFromHost\(\);[\s\S]*?ensureStartupReadinessGate\(\)\.observe/s,
+  "monitor should seed the library identity before observing startup readiness"
+);
 const pluginRunSource = source.match(
   /eagle\.onPluginRun\(async \(\) => \{([\s\S]*?)\n\}\);/
 );
@@ -432,6 +660,30 @@ assert.match(
   /function effectivePluginOrderBy\(hostOrderBy = ""\)/,
   "R75: a visibly selected plugin sort must remain authoritative when legacy Eagle folder state still reports a native key"
 );
+const effectivePluginOrderSource = source.match(
+  /function effectivePluginOrderBy\(hostOrderBy = ""\) \{([\s\S]*?)\n    \}\n\n    function isPluginSort/
+);
+assert.ok(effectivePluginOrderSource, "effective plugin-order resolver must be inspectable");
+assert.match(
+  effectivePluginOrderSource[1],
+  /sortIntentRuntime\.resolveEffective\(/,
+  "R140: host-native callbacks must resolve before stale scoped or DOM plugin selections"
+);
+assert.match(
+  effectivePluginOrderSource[1],
+  /!isPluginSortKey\(hostOrderBy\)[\s\S]*?clearCurrentSortIntent\(\)/,
+  "R140: an explicit native callback must persist removal of stale plugin intent"
+);
+assert.match(
+  effectivePluginOrderSource[1],
+  /clearCurrentSortIntent\(\);[\s\S]*?sortIntentRuntime\.resolveEffective\(/,
+  "R140: persist clearing stale plugin intent before host resolution can consume it"
+);
+assert.match(
+  effectivePluginOrderSource[1],
+  /const nativeHostSelection = hostOrderBy &&\s*!isPluginSortKey\(hostOrderBy\) &&\s*!isPluginSortKey\(configuredOrder\);/,
+  "R140: a native host callback must clear persisted intent even when scoped or DOM plugin state is stale"
+);
 assert.match(
   source,
   /const effectiveOrderBy = pluginOrderByForHost\(orderBy\);[\s\S]*?if \(!isPluginSort\(effectiveOrderBy\)\)/,
@@ -441,6 +693,21 @@ assert.match(
   source,
   /bodyScope\.sortRawData = function\(orderBy\) \{[\s\S]*?const effectiveOrderBy = pluginOrderByForHost\(orderBy\);/,
   "R71: raw-data sorting must use the same authoritative effective order as visible sorting"
+);
+assert.match(
+  source,
+  /const HOST_NATIVE_ORDER_SOURCE =/,
+  "R140: native date direction correction must be injected as an adapter helper"
+);
+assert.match(
+  source,
+  /const nativeResult = api\.original\.sortData\.call\(this, data, orderBy\);[\s\S]*?correctNativeHostOrder\(nativeResult,\s*\{[\s\S]*?orderBy: effectiveOrderBy/,
+  "R140: sortData must reverse only the inverted native date keys"
+);
+assert.match(
+  source,
+  /const nativeResult = correctNativeHostOrder\([\s\S]*?orderBy: effectiveOrderBy,[\s\S]*?\);[\s\S]*?this\.raw = applyHostManualOverlay\(/,
+  "R140: sortRawData must apply the same native date direction correction"
 );
 assert.match(source, /collectionActions\.className = "eagle-photo-collection-actions"/);
 assert.match(
@@ -709,6 +976,119 @@ assert.match(
   /sortingSystemRuntime\.buildRenamePlan\(orderSnapshot, \{\s*folderName: bodyScope\.currentFolder\.name/s,
   "manual drop rename must preserve the current folder scene name"
 );
+
+// A selected rename plan is built from the visible order. The commit must use
+// that same snapshot after Eagle refreshes its backing arrays, otherwise a
+// stale allData/bodyScope item can overwrite the planned visible result.
+const selectedRenameSource = source.match(
+  /function applySelectedRename\(group\) \{([\s\S]*?)\n    \}\n\n    function requestDeliveryCopy/
+);
+assert.ok(selectedRenameSource, "selected rename entry point should exist");
+const selectedRenamePlanSource = source.match(
+  /function buildSelectedRenamePlan\(group, sourceItemsOverride = null\) \{([\s\S]*?)\n    \}\n\n    function applySelectedRename/
+);
+assert.ok(selectedRenamePlanSource, "selected rename plan builder should accept a source snapshot");
+assert.match(
+  selectedRenamePlanSource[1],
+  /const sourceItems = Array\.isArray\(sourceItemsOverride\)\s*\? sourceItemsOverride\s*:\s*selectedMediaItemsInCurrentOrder\(\);/s,
+  "selected rename plan builder must use the supplied source snapshot"
+);
+assert.match(
+  selectedRenameSource[1],
+  /const visibleItems = selectedMediaItemsInCurrentOrder\(\);/,
+  "selected rename must capture the current visible item snapshot before building the plan"
+);
+assert.match(
+  selectedRenameSource[1],
+  /buildSelectedRenamePlan\(group,\s*visibleItems\)/,
+  "selected rename plan must receive the captured visible item snapshot"
+);
+assert.match(
+  selectedRenameSource[1],
+  /applyRenameEntries\(plan\.changes,\s*\{\s*sourceItems:\s*visibleItems\s*\}\)/s,
+  "selected rename commit must reuse the same visible item snapshot"
+);
+assert.match(
+  selectedRenameSource[1],
+  /if \(renameTaskBusy\(\)\) return 0;/,
+  "selected rename must only wait for a live queue or bounded direct-save handoff"
+);
+const applyRenameEntriesSource = source.match(
+  /function applyRenameEntries\(entries, options = \{\}\) \{([\s\S]*?)\n    \}\n\n    function applyFolderRenameEntries/
+);
+assert.ok(applyRenameEntriesSource, "rename commit helper should exist");
+assert.match(
+  applyRenameEntriesSource[1],
+  /const sourceItems = Array\.isArray\(options\.sourceItems\)\s*\? options\.sourceItems\s*:\s*currentItems\(\);/s,
+  "rename commit must prefer the plan snapshot over refreshed currentItems"
+);
+assert.match(
+  applyRenameEntriesSource[1],
+  /pendingAfterRun[\s\S]*?scheduleAutoRename\("manual-drop-continuation"/,
+  "a direct rename quiet-period completion must resume one pending automatic rename"
+);
+const selectedRenameProjection = source.match(
+  /if \(selectedRenameRow\) \{([\s\S]*?)\n          \}/
+);
+assert.ok(
+  selectedRenameProjection,
+  "selected rename controls must have a dedicated availability projection"
+);
+assert.doesNotMatch(
+  selectedRenameProjection[1],
+  /api\.rename\.running/,
+  "a stale automatic rename task must not permanently disable selected rename buttons"
+);
+const renderedCardIdsSource = source.match(
+  /function renderedCardIds\(\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(renderedCardIdsSource, "visible card order reader should exist");
+assert.match(
+  renderedCardIdsSource[1],
+  /getAttribute\("data-box-id"\)[\s\S]*?box\.id[\s\S]*?replace\(/,
+  "visible order must fall back to Eagle's stable box element id when data-box-id is absent"
+);
+assert.match(
+  source,
+  /function cardIdFromElement\(element\) \{/,
+  "normal drag must resolve a card id from every Eagle card identity form"
+);
+const selectedDragSource = source.match(
+  /function selectedIdsForDrag\(sourceId\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(selectedDragSource, "selected drag identity reader should exist");
+assert.match(
+  selectedDragSource[1],
+  /querySelectorAll\("#box-list \.box\.selected"\)[\s\S]*?cardIdFromElement\(/,
+  "selected normal cards must remain draggable when Eagle omits data-box-id"
+);
+const draggableCardsSource = source.match(
+  /function syncNormalDraggableCards\(\) \{([\s\S]*?)\n    \}/
+);
+assert.ok(draggableCardsSource, "normal draggable card sync should exist");
+assert.match(
+  draggableCardsSource[1],
+  /querySelectorAll\("#box-list \.box"\)/,
+  "normal draggable sync must cover cards identified by id or data-id"
+);
+const manualGridSource = source.match(
+  /function applyManualOrderToGrid\([\s\S]*?\n    \}/
+);
+assert.ok(manualGridSource, "manual grid presentation boundary should exist");
+assert.match(
+  manualGridSource[0],
+  /cardElementById\(/,
+  "manual grid presentation must resolve cards through the same fallback identity reader"
+);
+const normalPointerSource = source.match(
+  /if \(collection\.kind === "normal"\) \{([\s\S]*?)\n        return;\n      \}/
+);
+assert.ok(normalPointerSource, "normal pointer drag boundary should exist");
+assert.doesNotMatch(
+  normalPointerSource[1],
+  /\.box\[data-box-id\]/,
+  "normal pointer drag must not require data-box-id"
+);
 assert.match(collectionSettingsRendererSource, /renameSection\?\.remove\?\.\(\)/);
 assert.match(
   collectionSettingsRendererSource,
@@ -746,22 +1126,17 @@ assert.ok(dragOverSource, "in-grid dragover handler should be present");
 assert.match(dragOverSource[1], /valid: Boolean\(helper\)/);
 assert.match(dragOverSource[1], /sortingOwnership\.classify/);
 assert.match(dragOverSource[1], /applyEventOwnership\(event, decision\)/);
-assert.match(
-  dragOverSource[1],
-  /dragState\.lastHelper = helper/,
-  "the one native drag state must retain the last valid in-grid target"
-);
 const dragEndSource = source.match(
   /const dragEndHandler = \(event\) => \{([\s\S]*?)\n\s+\};\s+const keyDownHandler/
 );
 assert.ok(
   dragEndSource,
-  "dragend must provide a same-grid fallback when Eagle omits drop"
+  "dragend must provide a final-coordinate supplement when Eagle omits drop"
 );
 assert.match(dragEndSource[1], /const dragState = api\.dragState/);
 assert.match(
   dragEndSource[1],
-  /dropHelperAtPoint\(event\.clientX, event\.clientY\)[\s\S]*?dragState\.lastHelper/
+  /const helper = dropHelperAtPoint\(event\.clientX, event\.clientY\);/
 );
 assert.match(
   dragEndSource[1],
@@ -776,8 +1151,7 @@ assert.doesNotMatch(
 function runDragEndScenario({
   dragState = {
     collectionId: "smart-A",
-    selectedIds: ["item-A"],
-    lastHelper: null
+    selectedIds: ["item-A"]
   },
   helper = { id: "helper-B" },
   collectionId = "smart-A",
@@ -822,8 +1196,7 @@ assert.deepStrictEqual(smartDragEnd.points, [[120, 240]]);
 assert.deepStrictEqual(smartDragEnd.drops, [{
   state: {
     collectionId: "smart-A",
-    selectedIds: ["item-A"],
-    lastHelper: null
+    selectedIds: ["item-A"]
   },
   target: { id: "helper-B" }
 }]);
@@ -839,16 +1212,16 @@ for (const scenario of [
   assert.strictEqual(result.drops.length, 0);
   assert.strictEqual(result.finishes, scenario.dragState === null ? 0 : 1);
 }
-const retainedTarget = { id: "retained-helper", isConnected: true };
 const retainedDragEnd = runDragEndScenario({
   dragState: {
     collectionId: "smart-A",
     selectedIds: ["item-A"],
-    lastHelper: retainedTarget
+    submitted: false
   },
   helper: null
 });
-assert.strictEqual(retainedDragEnd.drops[0].target, retainedTarget);
+assert.deepStrictEqual(retainedDragEnd.drops, []);
+assert.strictEqual(retainedDragEnd.finishes, 1);
 
 const submitManualDropSource = source.match(
   /function submitManualDrop\(dragState, helper\) \{([\s\S]*?)\n    \}\n\n    function startSortingModule/
@@ -1024,6 +1397,11 @@ const manualDropSource = source.match(
   /function performManualDrop\(event, selectedIds, options = \{\}\) \{([\s\S]*?)\n    \}\n\n    function startSortingModule/
 );
 assert.ok(manualDropSource, "manual MoveCommand submission should exist");
+assert.match(
+  manualDropSource[1],
+  /const helper = event\?\.target\?\.closest\?\.\("\.box-sortable-helper"\)\s*\|\|\s*\n?\s*event\?\.target\?\.closest\?\.\("\.box"\)/,
+  "normal manual drop must accept Eagle cards when the host omits sortable helper elements"
+);
 assert.match(manualDropSource[1], /createMoveCommand/);
 assert.match(manualDropSource[1], /manualMoveRuntime\.reduce/);
 assert.match(manualDropSource[1], /commitPresentedManualStateTransaction\(\{/);
@@ -1188,7 +1566,7 @@ assert.match(
 assert.match(source, /beginVisibleRenameMask\(immediatePlan\)/);
 assert.match(
   source,
-  /if \(api\.rename\.running \|\| api\.rename\.batchRequest\) \{\s+api\.rename\.pendingAfterRun = true/s
+  /if \(renameTaskBusy\(\) \|\| api\.rename\.batchRequest\) \{\s+api\.rename\.pendingAfterRun = true/s
 );
 assert.doesNotMatch(source, /mapWithConcurrency\(plan\.changes, 4/);
 assert.match(source, /sourceContextId: currentContextId\(\)/);
@@ -1208,7 +1586,10 @@ assert.match(
 assert.match(source, /if \(!isPluginSort\(\)\) \{/);
 assert.match(source, /manualEnabled\(\) &&\s+!folderLocked\(\)/s);
 assert.match(source, /function applyHostManualOverlay\(items, orderBy = currentOrder\(\)\)/);
-assert.match(source, /return applyHostManualOverlay\(\s*api\.original\.sortData\.call/s);
+assert.match(
+  source,
+  /const nativeResult = api\.original\.sortData\.call\(this, data, orderBy\);[\s\S]*?return applyHostManualOverlay\(/s
+);
 assert.doesNotMatch(
   source,
   /function applyManualOverlay\(items, orderBy = currentOrder\(\)\)/,
@@ -1222,6 +1603,20 @@ assert.match(
   source,
   /function scheduleNormalOrderPresentation\(\)/,
   "R74: opening a normal folder with an already-persisted plugin sort must actively present the authoritative order"
+);
+const normalDragEndHandler = source.match(
+  /const dragEndHandler = \(event\) => \{([\s\S]*?)\n      \};\n      const pointerDownHandler/
+);
+assert.ok(normalDragEndHandler, "normal dragend handler should be present");
+assert.doesNotMatch(
+  normalDragEndHandler[1],
+  /dragState\.lastHelper\?\./,
+  "API151: a normal dragend must not reuse the last in-grid helper after the pointer leaves Eagle"
+);
+assert.match(
+  normalDragEndHandler[1],
+  /dropHelperAtPoint\(event\.clientX, event\.clientY\)/,
+  "API151: normal dragend must commit only when its final coordinates hit a valid in-grid target"
 );
 assert.match(
   source,

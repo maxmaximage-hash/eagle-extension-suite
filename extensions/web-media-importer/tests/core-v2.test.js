@@ -141,6 +141,29 @@ test("network policy uses Chrome-managed context and flags registered cross-site
     provider: "douyin",
     pageUrl: "https://www.douyin.com/video/1?token=SECRET"
   }, "https://v3.douyinvod.com/a.mp4")), /SECRET|Cookie|Authorization|Referer/);
+
+  assert.deepEqual(core.classifyNetworkAccess({
+    provider: "instagram",
+    pageUrl: "https://www.instagram.com/p/CAROUSEL/",
+    type: "image",
+    sourceEvidence: "dom-media-element"
+  }, "https://scontent.cdninstagram.com/v/t51.2885-15/a.webp"), {
+    ok: true,
+    mode: "browser-managed",
+    requiresBrowserValidation: true,
+    pageOrigin: "https://www.instagram.com"
+  });
+  assert.deepEqual(core.classifyNetworkAccess({
+    provider: "xiaohongshu",
+    pageUrl: "https://www.xiaohongshu.com/explore/abc",
+    type: "image",
+    sourceEvidence: "dom-media-element"
+  }, "https://sns-webpic-qc.xhscdn.com/current.webp"), {
+    ok: true,
+    mode: "browser-managed",
+    requiresBrowserValidation: true,
+    pageOrigin: "https://www.xiaohongshu.com"
+  });
 });
 
 test("an explicitly right-clicked HTTPS image may use an unrelated public CDN without widening page scans", () => {
@@ -224,6 +247,19 @@ test("real MIME safely names extensionless files and rejects conflicting known e
   );
   assert.equal(mismatch.ok, false);
   assert.equal(mismatch.reason, "DOWNLOAD_EXTENSION_MISMATCH");
+});
+
+test("a locally transcoded image is accepted only as JPEG and keeps the JPG extension", () => {
+  const accepted = core.validateDownloadItem(
+    { type: "image", extension: "jpg", transcodedJpeg: true },
+    { state: "complete", mime: "image/jpeg", fileSize: 32, danger: "safe", filename: "/tmp/a.jpg", finalUrl: "data:image/jpeg;base64,AA==" }
+  );
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.extension, "jpg");
+  assert.equal(core.validateDownloadItem(
+    { type: "image", extension: "jpg", transcodedJpeg: true },
+    { state: "complete", mime: "image/webp", fileSize: 32, danger: "safe", filename: "/tmp/a.jpg", finalUrl: "data:image/webp;base64,AA==" }
+  ).reason, "TRANSCODE_NOT_JPEG");
 });
 
 test("durable queue has explicit validated, confirmed and accepted_unconfirmed states", () => {
@@ -355,6 +391,12 @@ test("batch limits enforce item count and estimated aggregate bytes", () => {
   ], { maxItems: 3, maxBatchBytes: 100 });
   assert.equal(result.ready.length, 2);
   assert.deepEqual(result.skipped.map((item) => item.reason), ["BATCH_SIZE_LIMIT"]);
+});
+
+test("settings clamp byte limits to safe product caps", () => {
+  const settings = core.normalizeSettings({ maxItemBytes: Number.MAX_SAFE_INTEGER, maxBatchBytes: Number.MAX_SAFE_INTEGER });
+  assert.equal(settings.maxItemBytes, 4 * 1024 * 1024 * 1024);
+  assert.equal(settings.maxBatchBytes, 20 * 1024 * 1024 * 1024);
 });
 
 test("hostile page text and URLs cannot inflate persistent queue records without bounds", () => {

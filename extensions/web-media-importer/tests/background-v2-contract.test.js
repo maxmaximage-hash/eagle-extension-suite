@@ -38,6 +38,8 @@ test("MV3 background uses durable per-item processing and restart recovery", () 
   assert.match(source, /download_unknown/);
   assert.match(source, /submitting/);
   assert.match(source, /submission_unknown/);
+  assert.match(source, /function reportCollectorError\(tab, error\)/);
+  assert.match(source, /type: "web-media-error"/);
   assert.match(source, /prepareDownloadEntry/);
   assert.match(source, /entry\.type === "image" && entry\.extension && entry\.sourceEvidence === "user-selected-media"/);
   assert.match(source, /inspectFlvStreams/);
@@ -48,6 +50,13 @@ test("MV3 background uses durable per-item processing and restart recovery", () 
   assert.match(source, /async function fetchMediaRange[\s\S]*?const controller = new AbortController\(\)/);
   assert.match(source, /async function fetchMediaRange[\s\S]*?signal:\s*controller\.signal/);
   assert.match(source, /DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED/);
+  assert.match(source, /transcodeImageToJpeg/);
+  assert.match(source, /OffscreenCanvas/);
+  assert.match(source, /image\/jpeg/);
+  assert.match(source, /transcodedJpeg/);
+  assert.match(source, /function shouldTranscodeToJpeg\(entry\)/);
+  assert.match(source, /\["jpg", "jpeg"\]\.includes\(extension\)/);
+  assert.match(source, /initializeQueuesPromise/);
   assert.match(source, /cleanupEvictedQueue/);
   assert.match(source, /credentialLock/);
   assert.match(source, /withCredentialLock/);
@@ -83,23 +92,34 @@ test("runtime package includes provider adapters and version 2 candidate", () =>
   const manifest = JSON.parse(read("manifest.json"));
   const packageJson = JSON.parse(read("package.json"));
   const packageScript = read("scripts/package-stable.sh");
-  assert.equal(manifest.version, "2.3.0");
-  assert.equal(packageJson.version, "2.3.0");
+  const background = read("background.js");
+  assert.equal(manifest.version, "2.4.4");
+  assert.equal(packageJson.version, "2.4.4");
   assert.match(JSON.stringify(manifest.content_scripts), /structured-media\.js/);
   assert.match(JSON.stringify(manifest.content_scripts), /provider-adapters\.js/);
+  assert.match(read("popup.html"), /provider-adapters\.js/);
+  assert.match(background, /save-current-xiaohongshu-post-to-eagle/);
+  assert.match(background, /wholeSaveMenuTitle/);
+  // Chrome's MV3 contextMenus API has no onShown event. Registering it makes
+  // the entire service worker fail during startup, which disables every menu.
+  assert.doesNotMatch(background, /chrome\.contextMenus\.onShown/);
   assert.match(packageScript, /provider-adapters\.js/);
   assert.match(packageScript, /structured-media\.js/);
 });
 
-test("content model uses provider registry and requires explicit batch confirmation", () => {
+test("content model uses provider registry and starts once a folder is selected", () => {
   const source = read("content.js");
   assert.match(source, /EagleWebMediaProviders\.collect/);
   assert.match(source, /CURRENT_CONTENT_AMBIGUOUS/);
-  assert.match(source, /data-confirm/);
+  assert.doesNotMatch(source, /data-confirm/);
+  assert.doesNotMatch(source, /data-import/);
+  assert.match(source, /beginImport\(plan, folder, panel\)/);
   assert.match(source, /estimated/);
   assert.match(source, /sourcePageUrl/);
   assert.match(source, /网页已经切换/);
   assert.match(source, /panel\.querySelectorAll\("button,input"\).*disabled = false/);
   assert.match(source, /MAX_DOM_CANDIDATES\s*=\s*500/);
   assert.match(source, /MAX_CONTENT_CONTAINERS\s*=\s*100/);
+  assert.match(source, /async function sendRuntimeMessage\(message\)/);
+  assert.match(source, /扩展上下文已更新，请刷新当前页面后重试/);
 });

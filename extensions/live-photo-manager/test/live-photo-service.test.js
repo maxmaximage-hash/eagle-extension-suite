@@ -35,6 +35,8 @@ test("pairs uppercase JPG and MOV as one read-only Live item", () => {
     assert.equal(items[0].status, "ready");
     assert.equal(items[0].imageName, "IMG_0001.JPG");
     assert.equal(items[0].movieName, "IMG_0001.MOV");
+    assert.equal(items[0].identity.pairing.confidence, "provisional");
+    assert.equal(items[0].identity.groupId.startsWith("live:"), true);
     assert.deepEqual([digest(image), digest(movie)], before);
   });
 });

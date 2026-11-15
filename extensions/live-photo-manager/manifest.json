@@ -1,6 +1,6 @@
 {
   "id": "com.max.eagle-live-photo-manager",
-  "version": "0.1.0-demo.1",
+  "version": "0.2.0-dev.11",
   "platform": "all",
   "arch": "all",
   "name": "MAX Live Photo 管家",
@@ -8,15 +8,16 @@
   "keywords": ["Live Photo", "iCloud", "JPG", "MOV"],
   "devTools": false,
   "main": {
-    "serviceMode": false,
+    "serviceMode": true,
+    "keepAlive": true,
+    "runAfterInstall": true,
     "multiple": false,
-    "frame": true,
+    "frame": false,
     "url": "index.html",
-    "width": 1180,
-    "minWidth": 860,
-    "height": 780,
-    "minHeight": 620,
-    "resizable": true,
+    "width": 1,
+    "height": 1,
+    "resizable": false,
+    "show": false,
     "backgroundColor": "#f4f5f7"
   }
 }

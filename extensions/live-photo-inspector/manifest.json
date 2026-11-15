@@ -1,0 +1,19 @@
+{
+  "id": "com.max.eagle-live-photo-inspector",
+  "version": "0.1.0",
+  "platform": "all",
+  "arch": "all",
+  "name": "MAX Live Photo 静态照片信息",
+  "logo": "/logo.png",
+  "keywords": ["LIVP", "EXIF", "GPS", "Live Photo", "静态照片"],
+  "devTools": true,
+  "preview": {
+    "livp": {
+      "inspector": {
+        "path": "index.html",
+        "height": 300,
+        "multiSelect": false
+      }
+    }
+  }
+}

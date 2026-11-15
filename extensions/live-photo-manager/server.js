@@ -3,6 +3,7 @@
 
 const fs = require("fs");
 const http = require("http");
+const os = require("os");
 const path = require("path");
 const {
   DEFAULT_SAMPLE_DIRECTORY,
@@ -10,6 +11,20 @@ const {
   scanDirectory,
   snapshotPayload,
 } = require("./lib/live-photo-service");
+const {
+  createLedger,
+  loadLedger,
+  saveLedger,
+  ensureGroup,
+  createOperation,
+  transitionOperation,
+  recordOperationResult,
+} = require("./lib/live-photo-ledger");
+const {
+  exportLivePairComponent,
+  exportLivePairComponents,
+  exportLivePairPackage,
+} = require("./lib/export-service");
 
 function parseArgs(argv) {
   const args = {};
@@ -34,6 +49,31 @@ function sendJson(response, status, body) {
     "Cache-Control": "no-store",
   });
   response.end(JSON.stringify(body));
+}
+
+function readJsonBody(request) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > 1024 * 1024) {
+        reject(new Error("Request body is too large"));
+        request.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    request.on("end", () => {
+      if (chunks.length === 0) return resolve({});
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      } catch {
+        reject(new Error("Request body must be valid JSON"));
+      }
+    });
+    request.on("error", reject);
+  });
 }
 
 function contentType(filePath) {
@@ -88,8 +128,15 @@ function serveFile(request, response, filePath, cache = false) {
   fs.createReadStream(filePath).pipe(response);
 }
 
-function createManager(sourceDirectory) {
+function createManager(sourceDirectory, options = {}) {
   let queue;
+  const ledgerPath = path.resolve(options.ledgerPath || path.join(process.env.HOME || os.homedir(), ".eagle-live-photo-manager", "ledger.json"));
+  let ledger = fs.existsSync(ledgerPath) ? loadLedger(ledgerPath) : createLedger({ sourceDirectory });
+  ledger.sourceDirectory = sourceDirectory;
+
+  function persist() {
+    saveLedger(ledgerPath, ledger);
+  }
 
   function publicState() {
     const payload = snapshotPayload(sourceDirectory, queue.snapshot(), "browser-demo");
@@ -100,15 +147,63 @@ function createManager(sourceDirectory) {
       imagePath: undefined,
       moviePath: undefined,
     }));
+    payload.operations = Object.values(ledger.operations);
     return payload;
   }
 
   function reset() {
     if (queue) queue.cancel();
     queue = createPreviewQueue({ timeoutMs: 10000, maxConsecutiveFailures: 3 });
-    queue.enqueue(scanDirectory(sourceDirectory));
+    const items = scanDirectory(sourceDirectory);
+    for (const item of items) {
+      ensureGroup(ledger, item);
+    }
+    queue.enqueue(items);
     queue.start().catch(() => {});
+    persist();
     return publicState();
+  }
+
+  function exportGroups({ groupIds, outputDirectory, mode = "components", overwrite = false } = {}) {
+    if (!Array.isArray(groupIds) || groupIds.length === 0) {
+      throw new Error("At least one Live Photo group must be selected");
+    }
+    if (!outputDirectory) throw new Error("Output directory is required");
+    if (!["components", "image", "movie", "livp"].includes(mode)) throw new Error(`Unsupported export mode: ${mode}`);
+    const operation = createOperation(ledger, {
+      type: mode === "livp" ? "export-livp" : `export-${mode}`,
+      groupIds,
+      outputDirectory: path.resolve(outputDirectory),
+    });
+    transitionOperation(ledger, operation.id, "running");
+    persist();
+    let failed = false;
+    for (const groupId of operation.groupIds) {
+      const group = ledger.groups[groupId];
+      try {
+        if (!group) throw new Error(`Live Photo group not found: ${groupId}`);
+        if (group.status !== "ready") throw new Error(`Live Photo group is not exportable: ${group.status}`);
+        const result = mode === "livp"
+          ? exportLivePairPackage(group, operation.outputDirectory, { overwrite })
+          : mode === "components"
+            ? exportLivePairComponents(group, operation.outputDirectory, { overwrite })
+            : exportLivePairComponent(group, operation.outputDirectory, mode, { overwrite });
+        recordOperationResult(ledger, operation.id, groupId, {
+          status: "confirmed",
+          ...result,
+        });
+      } catch (error) {
+        failed = true;
+        recordOperationResult(ledger, operation.id, groupId, {
+          status: "failed",
+          error: error.message,
+        });
+      }
+      persist();
+    }
+    transitionOperation(ledger, operation.id, failed ? "failed" : "completed");
+    persist();
+    return { operation: ledger.operations[operation.id], results: ledger.operations[operation.id].results };
   }
 
   function itemPath(id, kind) {
@@ -126,13 +221,14 @@ function createManager(sourceDirectory) {
     resume: () => queue.resume(),
     cancel: () => queue.cancel(),
     retry: () => queue.retryFailed(),
+    exportGroups,
   };
 }
 
 function startServer(options = {}) {
   const sourceDirectory = path.resolve(options.sourceDirectory || DEFAULT_SAMPLE_DIRECTORY);
   const port = Number(options.port || 4177);
-  const manager = createManager(sourceDirectory);
+  const manager = createManager(sourceDirectory, options);
   const root = __dirname;
 
   const server = http.createServer(async (request, response) => {
@@ -144,6 +240,11 @@ function startServer(options = {}) {
       }
       if (request.method === "POST" && url.pathname === "/api/scan") {
         sendJson(response, 200, manager.reset());
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/export") {
+        const body = await readJsonBody(request);
+        sendJson(response, 200, manager.exportGroups(body));
         return;
       }
       if (request.method === "POST" && ["/api/pause", "/api/resume", "/api/cancel", "/api/retry"].includes(url.pathname)) {

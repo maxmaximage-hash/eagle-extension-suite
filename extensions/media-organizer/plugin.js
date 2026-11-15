@@ -12,6 +12,27 @@ const {
   mediaTypeForExtension,
   readMediaTakenAt
 } = require(path.join(initialPluginPath, "lib", "media-time.js"));
+const { createSelectedRenameRuntime } = require(
+  path.join(initialPluginPath, "lib", "selected-rename-core.js")
+);
+const { createPublicRenameFallbackRuntime } = require(
+  path.join(initialPluginPath, "lib", "public-rename-fallback-core.js")
+);
+const { createPublicSortPreviewRuntime } = require(
+  path.join(initialPluginPath, "lib", "public-sort-preview-core.js")
+);
+const {
+  createDeliveryCopyRuntime,
+  partitionItemsByFolder
+} = require(
+  path.join(initialPluginPath, "lib", "delivery-copy-core.js")
+);
+const {
+  createFolderCopyRuntime,
+  normalizeSelectedFolder
+} = require(
+  path.join(initialPluginPath, "lib", "folder-copy-core.js")
+);
 const { createMediaSortRuntime } = require(
   path.join(initialPluginPath, "lib", "sort-core.js")
 );
@@ -149,6 +170,18 @@ const {
 const { createHostInputAdapter } = require(
   path.join(initialPluginPath, "lib", "host-input-adapter.js")
 );
+const { createNormalPointerDragRuntime } = require(
+  path.join(initialPluginPath, "lib", "normal-pointer-drag-core.js")
+);
+const { createHostScopeStateRuntime } = require(
+  path.join(initialPluginPath, "lib", "host-scope-state-core.js")
+);
+const { createSortIntentRuntime } = require(
+  path.join(initialPluginPath, "lib", "sort-intent-core.js")
+);
+const { correctNativeHostOrder } = require(
+  path.join(initialPluginPath, "lib", "host-native-order-core.js")
+);
 const { createSmartDragTargetResolver } = require(
   path.join(initialPluginPath, "lib", "smart-drag-target-resolver.js")
 );
@@ -197,6 +230,41 @@ const {
 const SORT_KEY = "PHOTO_TAKEN";
 const TAKEN_SORT_KEY = "PHOTO_TAKEN_AT";
 const META_KEY = "PHOTO_TAKEN";
+const DEFAULT_DELIVERY_COPY_TEMPLATE = `🔻久等了兄弟 精修照片已经全部为你打包好
+
+📌交付标准 12组，5组人像精拍，7组不带人氛围环境
+每组 3 张人物共 15 张，10 张环境共 120 张，共计 135 张
+
+📌实际交付 {groups} 组，{groupsWithPeople} 组人像精拍，{groupsWithoutPeople} 组不带人氛围环境
+人物图共计 {peopleCount} 张，环境图 {environmentCount} 张
+超额交付的为免费赠送内容
+
+📌发布排版看00号文件夹，每组有排版设计和配文
+📌照片全部按序编号，1-开头为人物图，2-开头为环境图，直接按照模板发布
+📌排版最低可发 14 组
+📌发布频率可以1周1条
+📌发布时间以场景时间发生时间为佳
+
+链接：{quarkLink}
+链接永久有效，未来拍摄的照片也会更新在这个链接上请大家妥善保存
+
+🎺照片最高画质保存方法（三步）🎺
+1️⃣点开下面照片链接，点击左下角按钮“保存到网盘”（不要在链接直接预览，因为是压缩的缩略图）
+
+2️⃣将文件夹保存至自己的夸克网盘后可以全部一次性下载
+
+3️⃣下载后照片会在传输列表，此时照片还不会到你的相册里，长按任意文件会出现全选标志，全选已经下载的照片，再点左下角的保存至相册，原画质照片就会全部保存到相册里
+
+📱基础的朋友圈包装可以看这篇教程
+https://x1mv4oqq6lz.feishu.cn/wiki/F1ebwsdKQiqUPVkqeA6cj7xwn7b?from=from_copylink
+
+🎮如果你不会发朋友圈，不会排版的可以看下面这条基础排版小攻略，也可以私信与我们联系指导
+https://x1mv4oqq6lz.feishu.cn/wiki/H2KewUkIOiAhOCkqEqwcdwthnM
+
+📍如果你想修改定位可以看下面这篇改定位攻略
+https://x1mv4oqq6lz.feishu.cn/wiki/Vdk1w759iiE3sDkDBafcL2i6nme?from=from_copylink
+
+📷后期照片有任何需要调整需求，或者社交软件账号搭建问题可随时联系我们团队导师`;
 const CACHE_VERSION = CACHE_SCHEMA_VERSION;
 const CANONICAL_PLUGIN_DIRECTORY = "com.max.eagle-photo-taken-sort";
 const backgroundSortRuntime = createMediaSortRuntime({
@@ -211,6 +279,26 @@ const backgroundCollectionRuntime = createCollectionRuntime();
 const backgroundRenameRuntime = createRenameRuntime({
   isMedia: backgroundSortRuntime.isMedia
 });
+const backgroundSelectedRenameRuntime = createSelectedRenameRuntime({
+  isMedia: backgroundSortRuntime.isMedia
+});
+const publicRenameFallbackRuntime = createPublicRenameFallbackRuntime({
+  buildPlan: (items, config) => backgroundSelectedRenameRuntime.buildPlan(items, config),
+  saveItem: (item) => item.save()
+});
+const publicSortPreviewRuntime = createPublicSortPreviewRuntime({
+  sortRuntime: backgroundSortRuntime
+});
+const { createPublicSortControlsRuntime } = require(
+  path.join(initialPluginPath, "lib", "public-sort-controls-core.js")
+);
+const publicSortControlsRuntime = createPublicSortControlsRuntime({
+  renameRuntime: backgroundRenameRuntime
+});
+const deliveryCopyRuntime = createDeliveryCopyRuntime({
+  isMedia: backgroundSortRuntime.isMedia
+});
+const folderCopyRuntime = createFolderCopyRuntime();
 const backgroundOrderCoordinator = createOrderCoordinator({
   sortRuntime: backgroundSortRuntime
 });
@@ -319,6 +407,32 @@ let folderTagPendingContext = null;
 let folderTagUiActive = false;
 let currentGeoScanContextId = "";
 let activeLocationTag = "";
+let lastDeliveryCopyRequestId = "";
+let folderCopyInProgress = null;
+let folderCopyUiBusy = false;
+let folderCopyUiRequest = 0;
+let folderCopyUiSelection = null;
+let folderCopyUiBound = false;
+let publicRenameFallbackBound = false;
+let publicRenameFallbackItems = [];
+let publicRenameFallbackFolder = null;
+let publicRenameFallbackPlan = null;
+let publicRenameFallbackGroup = "";
+let publicDeliveryFallbackBound = false;
+let publicDeliveryFallbackFolder = null;
+let publicDeliveryFallbackStats = null;
+let publicDeliveryFallbackBusy = false;
+let publicSortPreviewBound = false;
+let publicSortPreviewItems = [];
+let publicSortPreviewFolder = null;
+let publicSortPreviewRules = backgroundSortRuntime.defaultRules.map((rule) => ({
+  ...rule,
+  options: rule.options ? { ...rule.options } : undefined
+}));
+let publicSortPreviewResult = null;
+let publicSortControlsFolderId = "";
+let publicSortControlsState = publicSortControlsRuntime.normalizeState();
+let publicSortAutoRenamePlan = null;
 
 // All delayed work that can outlive a Library route is cancelled through this
 // single boundary. Generation changes make already-running async scans stale;
@@ -365,8 +479,18 @@ const EVENT_OWNERSHIP_SOURCE = [
 ].join("\n");
 const RENAME_LIFECYCLE_SOURCE =
   `const createRenameLifecycleRuntime = ${createRenameLifecycleRuntime.toString()};`;
+const LIBRARY_IDENTITY_SOURCE =
+  `const canonicalizeLibraryIdentity = ${canonicalizeLibraryIdentity.toString()};`;
 const HOST_INPUT_ADAPTER_SOURCE =
   `const createHostInputAdapter = ${createHostInputAdapter.toString()};`;
+const NORMAL_POINTER_DRAG_SOURCE =
+  `const createNormalPointerDragRuntime = ${createNormalPointerDragRuntime.toString()};`;
+const HOST_SCOPE_STATE_SOURCE =
+  `const createHostScopeStateRuntime = ${createHostScopeStateRuntime.toString()};`;
+const SORT_INTENT_SOURCE =
+  `const createSortIntentRuntime = ${createSortIntentRuntime.toString()};`;
+const HOST_NATIVE_ORDER_SOURCE =
+  `const correctNativeHostOrder = ${correctNativeHostOrder.toString()};`;
 const SMART_DRAG_TARGET_RESOLVER_SOURCE =
   `const createSmartDragTargetResolver = ${createSmartDragTargetResolver.toString()};`;
 const DRAG_FEEDBACK_CONTROLLER_SOURCE =
@@ -710,9 +834,1029 @@ async function executeInMain(source) {
   return result;
 }
 
-async function mainLibraryReadiness({ libraryId: targetLibraryId = "" } = {}) {
+function folderCopyTree(sourceId, folders) {
+  const flatFolders = [];
+  const visited = new Set();
+  function flatten(folder, inheritedParent = null) {
+    if (!folder?.id || visited.has(String(folder.id))) return;
+    const normalized = {
+      ...folder,
+      parent: folder.parent || inheritedParent || null
+    };
+    visited.add(String(folder.id));
+    flatFolders.push(normalized);
+    for (const child of Array.isArray(folder.children) ? folder.children : []) {
+      flatten(child, folder.id);
+    }
+  }
+  for (const folder of Array.isArray(folders) ? folders : []) flatten(folder);
+  const byParent = new Map();
+  for (const folder of flatFolders) {
+    const parent = String(folder?.parent || "");
+    if (!byParent.has(parent)) byParent.set(parent, []);
+    byParent.get(parent).push(folder);
+  }
+  const source = flatFolders.find(
+    (folder) => String(folder?.id || "") === String(sourceId || "")
+  );
+  if (!source) return null;
+  function copy(folder) {
+    const plain = {
+      id: String(folder.id),
+      name: String(folder.name || ""),
+      description: String(folder.description || ""),
+      parent: folder.parent || null,
+      iconColor: folder.iconColor || null,
+      children: []
+    };
+    plain.children = (byParent.get(String(folder.id)) || []).map(copy);
+    return plain;
+  }
+  return copy(source);
+}
+
+function folderNamesByParent(folders) {
+  const names = Object.create(null);
+  for (const folder of Array.isArray(folders) ? folders : []) {
+    const parent = String(folder?.parent || "");
+    if (!names[parent]) names[parent] = [];
+    names[parent].push(String(folder?.name || ""));
+  }
+  return names;
+}
+
+async function createFolderCopy(sourceId) {
+  const id = String(sourceId || "");
+  if (!runtimeInstanceAllowed || !id) {
+    return { ok: false, reason: "runtime-or-folder-missing" };
+  }
+  if (folderCopyInProgress) return { ok: false, reason: "already-running" };
+  const operationGeneration = scanGeneration;
+  const operationLibraryIdentity = expectedLibraryIdentity;
+  const operationIsCurrent = () =>
+    scanGeneration === operationGeneration &&
+    (!operationLibraryIdentity || expectedLibraryIdentity === operationLibraryIdentity);
+  folderCopyInProgress = (async () => {
+    const allFolders = await withTimeout(
+      () => eagle.folder.getAll(),
+      15000,
+      "Read folder inventory for folder copy"
+    );
+    const source = folderCopyTree(id, allFolders);
+    if (!source || !folderCopyRuntime.canCopy({ kind: "normal", id })) {
+      return { ok: false, reason: "normal-folder-required" };
+    }
+    const sourceIds = folderCopyRuntime.folderEntries(source).map(
+      (entry) => entry.sourceId
+    );
+    const itemsBySourceId = Object.create(null);
+    for (const sourceFolderId of sourceIds) {
+      itemsBySourceId[sourceFolderId] = await withTimeout(
+        () => eagle.item.get({ folders: [sourceFolderId] }),
+        20000,
+        `Read folder items ${sourceFolderId}`
+      ).then((items) => (Array.isArray(items) ? items : []).filter((item) =>
+        Array.isArray(item?.folders) && item.folders.map(String).includes(String(sourceFolderId))
+      ));
+    }
+    const plan = folderCopyRuntime.buildPlan(source, {
+      existingNamesByParent: folderNamesByParent(allFolders)
+    });
+    if (!plan.ok || !plan.folders.length) {
+      return { ok: false, reason: plan.reason || "copy-plan-empty" };
+    }
+    const createdBySourceId = new Map();
+    const createdFolders = [];
+    const changedItems = [];
+    try {
+      for (const entry of plan.folders) {
+        if (!operationIsCurrent()) throw new Error("Library changed during folder copy");
+        const parentId = entry.parentSourceId
+          ? createdBySourceId.get(entry.parentSourceId)
+          : plan.root.parent;
+        const created = await withTimeout(
+          () => eagle.folder.create({
+            name: entry.name,
+            description: entry.description,
+            ...(parentId ? { parent: parentId } : {})
+          }),
+          15000,
+          `Create copied folder ${entry.name}`
+        );
+        if (!created?.id) throw new Error(`Folder create returned no id for ${entry.name}`);
+        if (entry.iconColor && created.iconColor !== entry.iconColor &&
+            typeof created.save === "function") {
+          created.iconColor = entry.iconColor;
+          await created.save();
+        }
+        createdBySourceId.set(entry.sourceId, String(created.id));
+        createdFolders.push(created);
+      }
+      for (const entry of plan.folders) {
+        const targetId = createdBySourceId.get(entry.sourceId);
+        for (const item of Array.isArray(itemsBySourceId[entry.sourceId])
+          ? itemsBySourceId[entry.sourceId]
+          : []) {
+          if (!operationIsCurrent()) throw new Error("Library changed during folder copy");
+          const change = folderCopyRuntime.addFolderMembership(item, targetId);
+          if (!change) continue;
+          const previousFolders = Array.isArray(item.folders)
+            ? item.folders.slice()
+            : [];
+          item.folders = change.folders;
+          await withTimeout(
+            () => item.save(),
+            20000,
+            `Save copied membership ${change.itemId}`
+          );
+          changedItems.push({ item, folders: previousFolders });
+        }
+      }
+      await eagle.folder.open(createdBySourceId.get(plan.sourceId));
+      await eagle.notification.show({
+        title: "复制文件夹完成",
+        body: `${plan.root.name}，已复制 ${plan.folders.length} 个文件夹及 ${changedItems.length} 个素材引用`,
+        duration: 4000,
+        mute: false
+      });
+      return {
+        ok: true,
+        rootFolderId: createdBySourceId.get(plan.sourceId),
+        rootName: plan.root.name,
+        folderCount: plan.folders.length,
+        itemCount: changedItems.length
+      };
+    } catch (error) {
+      for (const change of changedItems.reverse()) {
+        try {
+          change.item.folders = change.folders;
+          await change.item.save();
+        } catch (rollbackError) {
+          console.warn("[photo-taken-sort] Folder copy membership rollback failed", rollbackError);
+        }
+      }
+      const removeFolder = eagle.folder.remove || eagle.folder.delete;
+      if (typeof removeFolder === "function") {
+        for (const created of createdFolders.slice().reverse()) {
+          try { await removeFolder.call(eagle.folder, created.id); } catch (removeError) {
+            console.warn("[photo-taken-sort] Folder copy folder rollback failed", removeError);
+          }
+        }
+      }
+      await eagle.notification.show({
+        title: "复制文件夹失败",
+        body: error?.message || String(error),
+        duration: 6000,
+        mute: false
+      }).catch(() => {});
+      console.warn("[photo-taken-sort] Folder copy failed", error);
+      return { ok: false, reason: error?.message || String(error) };
+    }
+  })();
   try {
-    return await executeInMain(`(() => {
+    return await folderCopyInProgress;
+  } finally {
+    folderCopyInProgress = null;
+  }
+}
+
+function folderCopySelectionMessage(reason) {
+  return {
+    "no-folder-selected": "请先在 Eagle 侧栏选中一个普通文件夹。",
+    "single-folder-required": "请只选中一个普通文件夹。",
+    "normal-folder-required": "智能文件夹不能复制，请选择普通文件夹。",
+    "selection-api-unavailable": "当前 Eagle 版本没有可用的文件夹选择 API。",
+    "selection-read-failed": "无法读取 Eagle 当前选中的文件夹。"
+  }[String(reason || "")] || "当前没有可复制的普通文件夹。";
+}
+
+async function readSelectedFolderForCopy() {
+  if (typeof eagle.folder?.getSelected !== "function") {
+    return { ok: false, reason: "selection-api-unavailable" };
+  }
+  let selected;
+  try {
+    selected = await withTimeout(
+      () => eagle.folder.getSelected(),
+      10000,
+      "Read selected folder for copy"
+    );
+  } catch (error) {
+    console.warn("[photo-taken-sort] Selected folder read failed", error);
+    return { ok: false, reason: "selection-read-failed" };
+  }
+  return normalizeSelectedFolder(selected);
+}
+
+function renderFolderCopySelection(selection = null, loading = false) {
+  const target = document.getElementById("folder-copy-target");
+  const message = document.getElementById("folder-copy-message");
+  const button = document.getElementById("copy-folder-current");
+  if (loading) {
+    if (target) target.textContent = "正在读取 Eagle 当前选中的文件夹...";
+    if (message) message.textContent = "请在 Eagle 侧栏选中一个普通文件夹。";
+  } else if (selection?.ok) {
+    if (target) target.textContent = selection.folderName;
+    if (message) message.textContent =
+      "复制会创建同级副本，保留子文件夹结构，并为已有素材追加同一份文件夹引用。";
+  } else {
+    if (target) target.textContent = "未选择普通文件夹";
+    if (message) message.textContent = folderCopySelectionMessage(selection?.reason);
+  }
+  if (button) {
+    button.disabled = folderCopyUiBusy || loading || !selection?.ok;
+    button.textContent = folderCopyUiBusy
+      ? "正在复制文件夹..."
+      : "复制当前选中文件夹（含内容）";
+  }
+}
+
+async function refreshFolderCopyTarget() {
+  const requestId = ++folderCopyUiRequest;
+  renderFolderCopySelection(null, true);
+  const selection = await readSelectedFolderForCopy();
+  if (requestId !== folderCopyUiRequest) return selection;
+  folderCopyUiSelection = selection;
+  renderFolderCopySelection(selection);
+  return selection;
+}
+
+function publicRenameFallbackReason(reason) {
+  return {
+    "no-folder-selected": "请先在 Eagle 侧栏选中一个普通文件夹。",
+    "single-folder-required": "请只选中一个普通文件夹。",
+    "normal-folder-required": "智能文件夹不能执行人物图或环境图重命名。",
+    "selection-api-unavailable": "当前 Eagle 版本没有文件夹选择 API。",
+    "selection-read-failed": "无法读取当前选中的文件夹。"
+  }[String(reason || "")] || "请选中一个普通文件夹。";
+}
+
+function renderPublicRenameFallbackState(message = "") {
+  const section = document.getElementById("public-rename-fallback");
+  if (!section) return;
+  section.hidden = false;
+  const folderLabel = publicRenameFallbackFolder?.ok
+    ? publicRenameFallbackFolder.folderName
+    : publicRenameFallbackReason(publicRenameFallbackFolder?.reason);
+  setText("public-rename-folder", folderLabel);
+  setText(
+    "public-rename-selection",
+    `${publicRenameFallbackItems.length} 个已选媒体`
+  );
+  setText("public-rename-message", message || "选择图片后点击人物图或环境图重命名。");
+  const people = document.getElementById("public-rename-people");
+  const environment = document.getElementById("public-rename-environment");
+  const canOpen = Boolean(publicRenameFallbackFolder?.ok) &&
+    publicRenameFallbackItems.length > 0;
+  if (people) people.disabled = !canOpen;
+  if (environment) environment.disabled = !canOpen;
+}
+
+function renderPublicRenameFallbackPreview(plan) {
+  publicRenameFallbackPlan = plan || null;
+  setText(
+    "public-rename-preview-summary",
+    plan
+      ? `场景：${plan.sceneName || "—"} · ${plan.entries.length} 个选中媒体 · 待改 ${plan.changes.length} 个`
+      : "尚未生成预览"
+  );
+  const list = document.getElementById("public-rename-preview-list");
+  if (list) {
+    list.replaceChildren();
+    for (const entry of Array.isArray(plan?.entries) ? plan.entries.slice(0, 300) : []) {
+      const row = document.createElement("div");
+      row.className = "public-rename-row";
+      row.textContent = `${entry.oldName} → ${entry.newName}`;
+      list.appendChild(row);
+    }
+  }
+  const preview = document.getElementById("public-rename-preview");
+  if (preview) preview.hidden = !plan;
+  const confirm = document.getElementById("public-rename-confirm");
+  if (confirm) {
+    confirm.disabled = !plan || Boolean(plan.error) || plan.changes.length === 0;
+    confirm.textContent = plan?.changes?.length
+      ? `确认重命名 ${plan.changes.length} 个`
+      : "无需重命名";
+  }
+  if (plan?.error === "scene-name-empty") {
+    setText("public-rename-message", "无法从当前文件夹名称提取场景名。");
+  } else if (!plan?.entries?.length) {
+    setText("public-rename-message", "当前没有可用于预览的媒体。");
+  } else {
+    setText("public-rename-message", "预览确认后才会通过 Eagle 官方 Item API 保存名称。");
+  }
+}
+
+async function refreshPublicRenameFallback() {
+  try {
+    publicRenameFallbackFolder = await readSelectedFolderForCopy();
+  } catch (error) {
+    publicRenameFallbackFolder = { ok: false, reason: "selection-read-failed" };
+  }
+  try {
+    const selected = await eagle.item.getSelected();
+    publicRenameFallbackItems = (Array.isArray(selected) ? selected : [])
+      .filter((item) => backgroundSortRuntime.isMedia(item));
+  } catch (error) {
+    publicRenameFallbackItems = [];
+  }
+  publicRenameFallbackPlan = null;
+  renderPublicRenameFallbackState();
+  renderPublicRenameFallbackPreview(null);
+}
+
+async function openPublicRenameFallbackPreview(group) {
+  publicRenameFallbackGroup = String(group || "");
+  await refreshPublicRenameFallback();
+  if (!publicRenameFallbackFolder?.ok) {
+    renderPublicRenameFallbackState(publicRenameFallbackReason(publicRenameFallbackFolder?.reason));
+    return;
+  }
+  const plan = publicRenameFallbackRuntime.buildPlan(
+    publicRenameFallbackItems,
+    {
+      folderName: publicRenameFallbackFolder.folderName,
+      group: publicRenameFallbackGroup
+    }
+  );
+  renderPublicRenameFallbackPreview(plan);
+}
+
+async function applyPublicRenameFallback() {
+  if (!publicRenameFallbackPlan) return;
+  const group = publicRenameFallbackGroup;
+  const latestItems = await eagle.item.getSelected();
+  const media = (Array.isArray(latestItems) ? latestItems : [])
+    .filter((item) => backgroundSortRuntime.isMedia(item));
+  const latestPlan = publicRenameFallbackRuntime.buildPlan(
+    media,
+    { folderName: publicRenameFallbackFolder?.folderName, group }
+  );
+  const expected = (publicRenameFallbackPlan.entries || [])
+    .map((entry) => `${entry.id}:${entry.oldName}>${entry.newName}`)
+    .join("|");
+  const actual = (latestPlan.entries || [])
+    .map((entry) => `${entry.id}:${entry.oldName}>${entry.newName}`)
+    .join("|");
+  if (expected !== actual) {
+    renderPublicRenameFallbackState("选中项目或名称已变化，请重新生成预览。");
+    renderPublicRenameFallbackPreview(null);
+    return;
+  }
+  const result = await publicRenameFallbackRuntime.applyPlan(latestPlan, media);
+  if (result.ok) {
+    renderPublicRenameFallbackState(`已通过 Eagle 官方 API 重命名 ${result.renamed} 个媒体。`);
+    renderPublicRenameFallbackPreview(null);
+    await refreshPublicRenameFallback();
+  } else {
+    renderPublicRenameFallbackState(`重命名失败：${result.reason}`);
+  }
+}
+
+function publicDeliveryFolderParentId(folder, inheritedParent = "") {
+  const parent = folder?.parent;
+  if (parent && typeof parent === "object") {
+    return String(parent.id || inheritedParent || "");
+  }
+  return String(parent || inheritedParent || "");
+}
+
+function flattenPublicDeliveryFolders(folders) {
+  const flattened = [];
+  const visited = new Set();
+  function visit(folder, inheritedParent = "") {
+    if (!folder?.id) return;
+    const id = String(folder.id);
+    if (visited.has(id)) return;
+    visited.add(id);
+    const normalized = {
+      ...folder,
+      id,
+      parent: publicDeliveryFolderParentId(folder, inheritedParent)
+    };
+    flattened.push(normalized);
+    for (const child of Array.isArray(folder.children) ? folder.children : []) {
+      visit(child, id);
+    }
+  }
+  for (const folder of Array.isArray(folders) ? folders : []) visit(folder);
+  return flattened;
+}
+
+function publicDeliveryFallbackReason(reason) {
+  return {
+    "no-folder-selected": "请先在 Eagle 侧栏选中一个普通总文件夹。",
+    "single-folder-required": "请只选中一个普通总文件夹。",
+    "normal-folder-required": "智能文件夹不能生成交付文案，请选择普通总文件夹。",
+    "selection-api-unavailable": "当前 Eagle 版本没有文件夹选择 API。",
+    "selection-read-failed": "无法读取当前选中的文件夹。"
+  }[String(reason || "")] || "请选中一个普通总文件夹。";
+}
+
+function renderPublicDeliveryFallback(message = "") {
+  const section = document.getElementById("public-delivery-copy-fallback");
+  if (!section) return;
+  section.hidden = false;
+  const folderLabel = publicDeliveryFallbackFolder?.ok
+    ? publicDeliveryFallbackFolder.folderName
+    : publicDeliveryFallbackReason(publicDeliveryFallbackFolder?.reason);
+  setText("public-delivery-folder", folderLabel);
+  const stats = publicDeliveryFallbackStats;
+  setText(
+    "public-delivery-summary",
+    stats
+      ? `${stats.groupCount} 组 · ${stats.groupsWithPeople} 组带人物 · ${stats.groupsWithoutPeople} 组不带人物 · 人物 ${stats.peopleCount} 张 · 环境 ${stats.environmentCount} 张`
+      : "—"
+  );
+  setText(
+    "public-delivery-message",
+    message || (stats
+      ? "已扫描直属子文件夹，可编辑链接和文案后复制。"
+      : "选择普通总文件夹后生成交付文案。")
+  );
+  const link = document.getElementById("public-delivery-link");
+  const text = document.getElementById("public-delivery-text");
+  if (link && typeof localStorage !== "undefined" && !link.value) {
+    try { link.value = deliveryCopyRuntime.normalizeLink(localStorage.getItem("eagle.photoTakenSort.deliveryLink.v1") || ""); } catch {}
+  }
+  if (text && stats) {
+    text.value = deliveryCopyRuntime.renderTemplate(
+      DEFAULT_DELIVERY_COPY_TEMPLATE,
+      stats,
+      link?.value || ""
+    );
+  } else if (text && !stats) {
+    text.value = "";
+  }
+  const generate = document.getElementById("public-delivery-generate");
+  if (generate) {
+    generate.disabled = publicDeliveryFallbackBusy || !publicDeliveryFallbackFolder?.ok;
+    generate.textContent = publicDeliveryFallbackBusy ? "正在扫描..." : "生成交付文案";
+  }
+  const copy = document.getElementById("public-delivery-copy-button");
+  if (copy) copy.disabled = !text?.value?.trim();
+}
+
+async function readPublicDeliveryFallbackScope() {
+  const selected = await readSelectedFolderForCopy();
+  if (!selected.ok) return { folder: selected, stats: null };
+  const allFolders = await withTimeout(
+    () => eagle.folder.getAll(),
+    15000,
+    "Read delivery folder inventory"
+  );
+  const flatFolders = flattenPublicDeliveryFolders(allFolders);
+  const rootId = String(selected.folderId);
+  const groups = flatFolders
+    .filter((folder) => String(folder.parent || "") === rootId)
+    .map((folder) => ({ id: String(folder.id), name: String(folder.name || "未命名文件夹") }));
+  const items = await withTimeout(
+    () => eagle.item.get({ folders: groups.map((group) => group.id) }),
+    60000,
+    `Read delivery folders (${groups.length})`
+  );
+  const itemsByFolder = partitionItemsByFolder(groups, items);
+  return {
+    folder: selected,
+    stats: deliveryCopyRuntime.buildStats({ groups, itemsByFolder })
+  };
+}
+
+async function refreshPublicDeliveryFallback() {
+  publicDeliveryFallbackBusy = true;
+  renderPublicDeliveryFallback("正在扫描当前文件夹的直属子文件夹...");
+  let completionMessage = "";
+  try {
+    const result = await readPublicDeliveryFallbackScope();
+    publicDeliveryFallbackFolder = result.folder;
+    publicDeliveryFallbackStats = result.stats;
+    if (!result.folder?.ok) {
+      completionMessage = publicDeliveryFallbackReason(result.folder?.reason);
+      return;
+    }
+    completionMessage =
+      result.stats?.groupCount
+        ? "已完成扫描，可编辑夸克链接和文案后复制。"
+        : "当前文件夹没有直属子文件夹，人物图和环境图统计为 0。";
+  } catch (error) {
+    publicDeliveryFallbackFolder = { ok: false, reason: "selection-read-failed" };
+    publicDeliveryFallbackStats = null;
+    completionMessage = `交付文案扫描失败：${error?.message || String(error)}`;
+  } finally {
+    publicDeliveryFallbackBusy = false;
+    renderPublicDeliveryFallback(completionMessage);
+  }
+}
+
+async function copyPublicDeliveryFallback() {
+  const text = document.getElementById("public-delivery-text")?.value?.trim() || "";
+  if (!text) return;
+  const link = document.getElementById("public-delivery-link")?.value || "";
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const textarea = document.getElementById("public-delivery-text");
+      textarea.focus();
+      textarea.select();
+      if (!document.execCommand("copy")) throw new Error("clipboard-unavailable");
+    }
+    try { localStorage.setItem("eagle.photoTakenSort.deliveryLink.v1", deliveryCopyRuntime.normalizeLink(link)); } catch {}
+    setText("public-delivery-message", "交付文案已复制到剪贴板，可直接发送给客户。");
+  } catch (error) {
+    setText("public-delivery-message", "复制失败，请手动复制文案内容。");
+  }
+}
+
+function bindPublicDeliveryFallbackUi() {
+  if (publicDeliveryFallbackBound) return;
+  publicDeliveryFallbackBound = true;
+  document.getElementById("public-delivery-generate")?.addEventListener(
+    "click",
+    () => refreshPublicDeliveryFallback()
+  );
+  document.getElementById("public-delivery-copy-button")?.addEventListener(
+    "click",
+    copyPublicDeliveryFallback
+  );
+  document.getElementById("public-delivery-link")?.addEventListener("input", () => {
+    const link = document.getElementById("public-delivery-link")?.value || "";
+    const text = document.getElementById("public-delivery-text");
+    if (text && publicDeliveryFallbackStats) {
+      text.value = deliveryCopyRuntime.renderTemplate(
+        DEFAULT_DELIVERY_COPY_TEMPLATE,
+        publicDeliveryFallbackStats,
+        link
+      );
+    }
+  });
+  document.getElementById("public-delivery-text")?.addEventListener("input", () => {
+    const copy = document.getElementById("public-delivery-copy-button");
+    if (copy) copy.disabled = !document.getElementById("public-delivery-text")?.value?.trim();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") refreshPublicDeliveryFallback();
+  });
+  renderPublicDeliveryFallback();
+}
+
+const PUBLIC_SORT_FIELDS = [
+  ["NAME", "文件名（自然排序）"],
+  ["TAKEN_AT", "拍摄时间"],
+  ["MEDIA_KIND", "媒体类型"],
+  ["EXT", "文件扩展名"],
+  ["IMPORT", "添加日期"],
+  ["MTIME", "修改日期"],
+  ["BTIME", "创建日期"],
+  ["FILESIZE", "文件大小"],
+  ["RESOLUTION", "分辨率"],
+  ["RATING", "星级"],
+  ["DURATION", "时长"]
+];
+
+function publicSortPreviewReason(reason) {
+  return {
+    "no-folder-selected": "请先在 Eagle 侧栏选中一个普通文件夹。",
+    "single-folder-required": "请只选中一个普通文件夹。",
+    "normal-folder-required": "智能文件夹暂不支持独立排序预览。",
+    "selection-api-unavailable": "当前 Eagle 版本没有可用的文件夹选择 API。",
+    "selection-read-failed": "无法读取当前选中的文件夹。"
+  }[String(reason || "")] || "请选中一个普通文件夹。";
+}
+
+function clonePublicSortRules(rules) {
+  return backgroundSortRuntime.normalizeRules(rules).map((rule) => ({
+    ...rule,
+    options: rule.options ? { ...rule.options } : undefined
+  }));
+}
+
+function renderPublicSortPreviewRules() {
+  const list = document.getElementById("public-sort-rules");
+  if (!list) return;
+  list.replaceChildren();
+  publicSortPreviewRules.forEach((rule, index) => {
+    const row = document.createElement("div");
+    row.className = "public-sort-rule";
+    const priority = document.createElement("span");
+    priority.textContent = String(index + 1);
+    const field = document.createElement("select");
+    field.dataset.ruleIndex = String(index);
+    field.dataset.role = "field";
+    PUBLIC_SORT_FIELDS.forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      option.selected = value === rule.field;
+      field.appendChild(option);
+    });
+    const direction = document.createElement("select");
+    direction.dataset.ruleIndex = String(index);
+    direction.dataset.role = "direction";
+    [["asc", "升序"], ["desc", "降序"]].forEach(([value, label]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      option.selected = value === rule.direction;
+      direction.appendChild(option);
+    });
+    const remove = document.createElement("button");
+    remove.className = "button compact";
+    remove.type = "button";
+    remove.dataset.ruleIndex = String(index);
+    remove.dataset.role = "remove";
+    remove.textContent = "删除";
+    remove.disabled = publicSortPreviewRules.length <= 1;
+    row.append(priority, field, direction, remove);
+    list.appendChild(row);
+  });
+}
+
+function renderPublicSortPreview() {
+  const section = document.getElementById("public-sort-preview");
+  if (!section) return;
+  section.hidden = mainBridgeAllowed &&
+    injectionReady &&
+    typeof eagle.photoTakenSort?.execute === "function";
+  const folderLabel = publicSortPreviewFolder?.ok
+    ? publicSortPreviewFolder.folderName
+    : publicSortPreviewReason(publicSortPreviewFolder?.reason);
+  setText("public-sort-folder", folderLabel);
+  setText("public-sort-count", `${publicSortPreviewItems.length} 个媒体`);
+  setText(
+    "public-sort-message",
+    publicSortPreviewFolder?.ok
+      ? "这里显示当前文件夹的排序预览，确认后可复制结果列表。"
+      : "请在 Eagle 侧栏选中一个普通文件夹。"
+  );
+  const list = document.getElementById("public-sort-result-list");
+  if (list) {
+    list.replaceChildren();
+    for (const [index, item] of (publicSortPreviewResult?.orderedItems || [])
+      .slice(0, 500).entries()) {
+      const row = document.createElement("div");
+      row.className = "public-sort-result-row";
+      row.textContent = `${index + 1}. ${String(item?.name || "")}`;
+      list.appendChild(row);
+    }
+  }
+  setText(
+    "public-sort-result-summary",
+    publicSortPreviewResult
+      ? `已按 ${publicSortPreviewResult.rules.length} 级规则排序，显示 ${publicSortPreviewResult.orderedItems.length} 个媒体`
+      : "尚未生成预览"
+  );
+  const canPreview = Boolean(publicSortPreviewFolder?.ok) &&
+    publicSortPreviewItems.length > 0;
+  const previewButton = document.getElementById("public-sort-preview-button");
+  if (previewButton) previewButton.disabled = !canPreview;
+  const copyButton = document.getElementById("public-sort-copy-button");
+  if (copyButton) copyButton.disabled = !publicSortPreviewResult;
+  renderPublicSortPreviewRules();
+}
+
+function publicSortControlsMessage(message = "") {
+  setText(
+    "public-sort-rename-message",
+    message || (publicSortControlsState.autoRenameEnabled
+      ? "自动编号已开启，先生成排序预览再确认。"
+      : "打开自动编号后生成预览。")
+  );
+}
+
+function renderPublicSortControls() {
+  const lock = document.getElementById("public-sort-lock");
+  const manualReset = document.getElementById("public-sort-reset-manual");
+  const autoRename = document.getElementById("public-sort-auto-rename");
+  const preview = document.getElementById("public-sort-rename-preview");
+  const confirm = document.getElementById("public-sort-rename-confirm");
+  const locked = Boolean(publicSortControlsState.locked);
+  if (lock) lock.checked = locked;
+  if (autoRename) autoRename.checked = Boolean(publicSortControlsState.autoRenameEnabled);
+  if (manualReset) manualReset.disabled = locked;
+  if (preview) preview.disabled = locked || !publicSortControlsState.autoRenameEnabled;
+  if (confirm) {
+    confirm.disabled = locked || !publicSortAutoRenamePlan?.changes?.length;
+    confirm.textContent = publicSortAutoRenamePlan?.changes?.length
+      ? `确认自动编号 ${publicSortAutoRenamePlan.changes.length} 个`
+      : "确认自动编号";
+  }
+  publicSortControlsMessage();
+}
+
+function refreshPublicSortControlsState() {
+  publicSortControlsFolderId = String(publicSortPreviewFolder?.folderId || "");
+  publicSortControlsState = publicSortControlsRuntime.readState(publicSortControlsFolderId);
+  publicSortAutoRenamePlan = null;
+  renderPublicSortControls();
+}
+
+function buildPublicSortAutoRenamePlan() {
+  if (!publicSortControlsFolderId || !publicSortControlsState.autoRenameEnabled) {
+    publicSortAutoRenamePlan = null;
+    renderPublicSortControls();
+    return;
+  }
+  const orderedItems = publicSortPreviewResult?.orderedItems || publicSortPreviewItems;
+  publicSortAutoRenamePlan = publicSortControlsRuntime.buildAutoRenamePlan(
+    orderedItems,
+    {
+      folderName: publicSortPreviewFolder?.folderName,
+      state: publicSortControlsState
+    }
+  );
+  if (publicSortAutoRenamePlan.error === "locked") {
+    publicSortControlsMessage("排序已锁定，不能执行自动编号。");
+  } else if (publicSortAutoRenamePlan.error === "auto-rename-disabled") {
+    publicSortControlsMessage("请先打开自动编号。");
+  } else if (publicSortAutoRenamePlan.error === "scene-name-empty") {
+    publicSortControlsMessage("无法从当前文件夹名称生成编号。");
+  } else {
+    publicSortControlsMessage(
+      `已生成自动编号预览，待改 ${publicSortAutoRenamePlan.changes.length} 个。`
+    );
+  }
+  renderPublicSortControls();
+}
+
+async function applyPublicSortAutoRename() {
+  const plan = publicSortAutoRenamePlan;
+  if (!plan?.changes?.length) return;
+  if (!publicSortControlsRuntime.canMutate(publicSortControlsFolderId)) {
+    publicSortControlsMessage("排序已锁定，不能执行自动编号。");
+    return;
+  }
+  const latestItems = await withTimeout(
+    () => eagle.item.get({ folders: [publicSortControlsFolderId] }),
+    20000,
+    "Read auto numbering items"
+  );
+  const itemsById = new Map(
+    (Array.isArray(latestItems) ? latestItems : [])
+      .filter((item) => item?.id)
+      .map((item) => [String(item.id), item])
+  );
+  const phases = backgroundRenameRuntime.buildExecutionPhases(plan.changes);
+  try {
+    for (const entry of phases.temporary) {
+      const item = itemsById.get(String(entry.id));
+      if (!item) throw new Error(`缺少媒体 ${entry.id}`);
+      item.name = entry.newName;
+      await item.save();
+    }
+    for (const entry of phases.final) {
+      const item = itemsById.get(String(entry.id));
+      if (!item) throw new Error(`缺少媒体 ${entry.id}`);
+      item.name = entry.newName;
+      await item.save();
+    }
+    publicSortAutoRenamePlan = null;
+    publicSortControlsMessage(`已完成自动编号 ${plan.changes.length} 个媒体。`);
+    await refreshPublicSortPreview();
+    refreshPublicSortControlsState();
+  } catch (error) {
+    publicSortControlsMessage(`自动编号失败：${error?.message || String(error)}`);
+  }
+}
+
+function persistPublicSortRules() {
+  try {
+    localStorage.setItem(
+      "eagle.photoTakenSort.publicPreviewRules.v1",
+      JSON.stringify(publicSortPreviewRules)
+    );
+  } catch (error) {
+    console.warn("[photo-taken-sort] Unable to save public preview rules", error);
+  }
+}
+
+function loadPublicSortRules() {
+  try {
+    const raw = localStorage.getItem("eagle.photoTakenSort.publicPreviewRules.v1");
+    if (raw) publicSortPreviewRules = clonePublicSortRules(JSON.parse(raw));
+  } catch (error) {
+    publicSortPreviewRules = clonePublicSortRules(backgroundSortRuntime.defaultRules);
+  }
+}
+
+async function refreshPublicSortPreview() {
+  if (typeof eagle.photoTakenSort?.execute === "function") return;
+  loadPublicSortRules();
+  try {
+    publicSortPreviewFolder = await readSelectedFolderForCopy();
+  } catch (error) {
+    publicSortPreviewFolder = { ok: false, reason: "selection-read-failed" };
+  }
+  if (publicSortPreviewFolder?.ok) {
+    try {
+      const items = await withTimeout(
+        () => eagle.item.get({ folders: [publicSortPreviewFolder.folderId] }),
+        20000,
+        "Read public sort preview items"
+      );
+      publicSortPreviewItems = (Array.isArray(items) ? items : []).filter(
+        (item) => Array.isArray(item?.folders)
+          ? item.folders.map(String).includes(String(publicSortPreviewFolder.folderId)) &&
+            backgroundSortRuntime.isMedia(item)
+          : backgroundSortRuntime.isMedia(item)
+      );
+    } catch (error) {
+      publicSortPreviewItems = [];
+      publicSortPreviewFolder = { ok: false, reason: "selection-read-failed" };
+    }
+  } else {
+    publicSortPreviewItems = [];
+  }
+  publicSortPreviewResult = null;
+  renderPublicSortPreview();
+  refreshPublicSortControlsState();
+}
+
+function buildPublicSortPreview() {
+  if (!publicSortPreviewFolder?.ok || !publicSortPreviewItems.length) {
+    renderPublicSortPreview();
+    return;
+  }
+  publicSortPreviewResult = publicSortPreviewRuntime.buildPreview(
+    publicSortPreviewItems,
+    { rules: publicSortPreviewRules }
+  );
+  renderPublicSortPreview();
+  refreshPublicSortControlsState();
+}
+
+async function copyPublicSortPreview() {
+  if (!publicSortPreviewResult) return;
+  const text = publicSortPreviewRuntime.exportLines(publicSortPreviewResult);
+  try {
+    await navigator.clipboard.writeText(text);
+    setText("public-sort-message", "排序结果已复制到剪贴板。主网格顺序保持不变。");
+  } catch (error) {
+    setText("public-sort-message", "复制失败，请在结果列表中手动复制。");
+  }
+}
+
+function bindPublicSortPreviewUi() {
+  if (publicSortPreviewBound) return;
+  publicSortPreviewBound = true;
+  document.getElementById("public-sort-preview-button")?.addEventListener(
+    "click",
+    buildPublicSortPreview
+  );
+  document.getElementById("public-sort-refresh-button")?.addEventListener(
+    "click",
+    refreshPublicSortPreview
+  );
+  document.getElementById("public-sort-copy-button")?.addEventListener(
+    "click",
+    copyPublicSortPreview
+  );
+  document.getElementById("public-sort-lock")?.addEventListener("change", (event) => {
+    publicSortControlsState = publicSortControlsRuntime.updateState(
+      publicSortControlsFolderId,
+      { locked: Boolean(event.target.checked) }
+    );
+    publicSortAutoRenamePlan = null;
+    renderPublicSortControls();
+  });
+  document.getElementById("public-sort-auto-rename")?.addEventListener("change", (event) => {
+    publicSortControlsState = publicSortControlsRuntime.updateState(
+      publicSortControlsFolderId,
+      { autoRenameEnabled: Boolean(event.target.checked) }
+    );
+    publicSortAutoRenamePlan = null;
+    renderPublicSortControls();
+  });
+  document.getElementById("public-sort-reset-manual")?.addEventListener("click", () => {
+    if (publicSortControlsState.locked) {
+      publicSortControlsMessage("排序已锁定，不能恢复自动排序。");
+      return;
+    }
+    publicSortControlsState = publicSortControlsRuntime.updateState(
+      publicSortControlsFolderId,
+      { manualEnabled: false }
+    );
+    publicSortControlsMessage("已恢复自动排序预览。");
+    renderPublicSortControls();
+  });
+  document.getElementById("public-sort-rename-preview")?.addEventListener(
+    "click",
+    buildPublicSortAutoRenamePlan
+  );
+  document.getElementById("public-sort-rename-confirm")?.addEventListener(
+    "click",
+    () => applyPublicSortAutoRename().catch((error) => {
+      publicSortControlsMessage(`自动编号失败：${error?.message || String(error)}`);
+    })
+  );
+  document.getElementById("public-sort-add-rule")?.addEventListener("click", () => {
+    if (publicSortPreviewRules.length >= 8) return;
+    publicSortPreviewRules.push({ field: "NAME", direction: "asc" });
+    persistPublicSortRules();
+    renderPublicSortPreviewRules();
+  });
+  document.getElementById("public-sort-rules")?.addEventListener("change", (event) => {
+    const target = event.target;
+    const index = Number(target?.dataset?.ruleIndex);
+    if (!Number.isInteger(index) || !publicSortPreviewRules[index]) return;
+    if (target.dataset.role === "field") publicSortPreviewRules[index].field = target.value;
+    if (target.dataset.role === "direction") publicSortPreviewRules[index].direction = target.value;
+    publicSortPreviewRules = clonePublicSortRules(publicSortPreviewRules);
+    persistPublicSortRules();
+  });
+  document.getElementById("public-sort-rules")?.addEventListener("click", (event) => {
+    const target = event.target;
+    if (target?.dataset?.role !== "remove") return;
+    const index = Number(target.dataset.ruleIndex);
+    if (!Number.isInteger(index) || publicSortPreviewRules.length <= 1) return;
+    publicSortPreviewRules.splice(index, 1);
+    persistPublicSortRules();
+    renderPublicSortPreviewRules();
+  });
+  renderPublicSortPreview();
+  renderPublicSortControls();
+}
+
+function bindPublicRenameFallbackUi() {
+  if (publicRenameFallbackBound) return;
+  publicRenameFallbackBound = true;
+  document.getElementById("public-rename-people")?.addEventListener(
+    "click",
+    () => openPublicRenameFallbackPreview("1")
+  );
+  document.getElementById("public-rename-environment")?.addEventListener(
+    "click",
+    () => openPublicRenameFallbackPreview("2")
+  );
+  document.getElementById("public-rename-confirm")?.addEventListener(
+    "click",
+    applyPublicRenameFallback
+  );
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") refreshPublicRenameFallback();
+  });
+  renderPublicRenameFallbackState();
+}
+
+async function runFolderCopyFromWindow() {
+  if (folderCopyUiBusy) return;
+  folderCopyUiBusy = true;
+  renderFolderCopySelection(folderCopyUiSelection);
+  try {
+    const selection = await readSelectedFolderForCopy();
+    folderCopyUiSelection = selection;
+    if (!selection.ok) {
+      renderFolderCopySelection(selection);
+      setStatus(folderCopySelectionMessage(selection.reason));
+      return;
+    }
+    renderFolderCopySelection(selection);
+    const result = await createFolderCopy(selection.folderId);
+    if (result.ok) {
+      const message = `已复制“${result.rootName}”，新增 ${result.folderCount} 个文件夹及 ${result.itemCount} 个素材引用。`;
+      setText("folder-copy-message", message);
+      setStatus(message);
+    } else {
+      const message = folderCopySelectionMessage(result.reason);
+      setText("folder-copy-message", message);
+      setStatus(`复制文件夹未执行：${message}`);
+    }
+  } catch (error) {
+    const message = error?.message || String(error);
+    setText("folder-copy-message", `复制文件夹失败：${message}`);
+    setStatus(`复制文件夹失败：${message}`);
+  } finally {
+    folderCopyUiBusy = false;
+    await refreshFolderCopyTarget();
+  }
+}
+
+async function mainLibraryReadiness({ libraryId: targetLibraryId = "" } = {}) {
+  const hostLibraryId = canonicalizeLibraryIdentity(eagle.library?.path || "");
+  const requestedLibraryId = canonicalizeLibraryIdentity(targetLibraryId || hostLibraryId);
+  if (hostLibraryId && requestedLibraryId && hostLibraryId === requestedLibraryId) {
+    return {
+      ready: true,
+      libraryId: requestedLibraryId,
+      reason: "host-library-path-ready",
+      matchedBy: "host-library-path",
+      evidence: {
+        routeReady: false,
+        angularPresent: true,
+        bodyScopePresent: true,
+        gridPresent: true,
+        sidebarPresent: true,
+        libraryMatch: true,
+        bodyIdentityMatch: true,
+        scopedUiIdentityMatch: true
+      },
+      missingReasons: []
+    };
+  }
+  try {
+    const result = await withTimeout(
+      () => executeInMain(`(() => {
       ${canonicalizeLibraryIdentity.toString()}
       ${libraryIdentitiesMatch.toString()}
       ${evaluateMainLibraryReadiness.toString()}
@@ -753,8 +1897,66 @@ async function mainLibraryReadiness({ libraryId: targetLibraryId = "" } = {}) {
         sidebarScopePresent: Boolean(sidebarScope),
         libraryCandidates: candidates
       });
-    })()`);
+    })()`),
+      2_000,
+      "Main library readiness bridge"
+    );
+    recordBootstrapDiagnostic("READINESS_PROBE", {
+      libraryId: String(targetLibraryId || ""),
+      reason: String(result?.reason || ""),
+      matchedBy: String(result?.matchedBy || ""),
+      evidence: result?.evidence || undefined,
+      missingReasons: result?.missingReasons || []
+    });
+    const evidence = result?.evidence || {};
+    if (
+      result?.ready !== true &&
+      evidence.bodyScopePresent === true &&
+      (evidence.gridPresent === true || evidence.sidebarPresent === true) &&
+      (evidence.libraryMatch === true ||
+        evidence.bodyIdentityMatch === true ||
+        evidence.scopedUiIdentityMatch === true)
+    ) {
+      recordBootstrapDiagnostic("HOST_SCOPE_FALLBACK", {
+        libraryId: String(targetLibraryId || ""),
+        reason: "host-scope-fallback",
+        matchedBy: "host-scope-fallback",
+        evidence
+      });
+      return {
+        ...result,
+        ready: true,
+        libraryId: canonicalizeLibraryIdentity(targetLibraryId),
+        reason: "host-scope-fallback",
+        matchedBy: "host-scope-fallback"
+      };
+    }
+    return result;
   } catch (error) {
+    recordBootstrapDiagnostic("READINESS_PROBE", {
+      libraryId: String(targetLibraryId || ""),
+      reason: String(error?.message || error || "readiness-probe-error"),
+      error: String(error?.stack || error || "readiness-probe-error")
+    });
+    if (
+      String(error?.message || error).includes("Main library readiness bridge timeout") &&
+      canonicalizeLibraryIdentity(eagle.library?.path || "") ===
+        canonicalizeLibraryIdentity(targetLibraryId)
+    ) {
+      return {
+        ready: true,
+        libraryId: canonicalizeLibraryIdentity(targetLibraryId),
+        reason: "host-route-fallback-timeout",
+        matchedBy: "host-route-fallback-timeout",
+        evidence: {
+          routeReady: true,
+          bodyScopePresent: true,
+          gridPresent: true,
+          sidebarPresent: true
+        },
+        missingReasons: []
+      };
+    }
     return {
       ready: false,
       hash: "",
@@ -767,12 +1969,23 @@ async function mainLibraryReadiness({ libraryId: targetLibraryId = "" } = {}) {
 // This is the only pre-injection probe. It intentionally uses the public
 // Eagle library identity and does not bridge into the main renderer, touch
 // cache/sidecar files, enumerate items, or create DOM observers.
+function seedExpectedLibraryIdentityFromHost() {
+  if (expectedLibraryIdentity) return expectedLibraryIdentity;
+  const libraryId = String(eagle.library?.path || "");
+  if (!libraryId) return "";
+  expectedLibraryIdentity = path.normalize(libraryId);
+  return expectedLibraryIdentity;
+}
+
 function hostLibraryReadiness() {
   const libraryId = String(eagle.library?.path || "");
   if (!libraryId) {
     return { ready: false, libraryId: "", reason: "library-path-unavailable" };
   }
   const normalizedLibraryId = path.normalize(libraryId);
+  if (!expectedLibraryIdentity) {
+    expectedLibraryIdentity = normalizedLibraryId;
+  }
   if (!expectedLibraryIdentity) {
     return {
       ready: false,
@@ -827,7 +2040,8 @@ async function bootstrapInject({ libraryId, readiness } = {}) {
   await ensureDurableState();
   await readCache();
   activateCacheLibrary(libraryId);
-  await inject();
+  await withTimeout(() => inject(), 15_000, "Sorting bridge injection");
+  recordBootstrapDiagnostic("INJECT_STAGE", { stage: "bootstrap-inject-returned" });
 }
 
 async function activateStartup({ libraryId } = {}) {
@@ -863,7 +2077,18 @@ function ensureStartupReadinessGate() {
   startupReadinessGate = createStartupReadinessGate({
     diagnose: recordBootstrapDiagnostic,
     waitUntilReady: ({ libraryId, signal }) =>
-      mainReadinessWaiter.waitFor({ libraryId, signal }),
+      mainReadinessWaiter.waitFor({ libraryId, signal }).then((verified) => {
+        recordBootstrapDiagnostic("READINESS_VERIFIED", {
+          libraryId: String(verified?.libraryId || libraryId || ""),
+          reason: String(verified?.reason || ""),
+          matchedBy: String(verified?.matchedBy || ""),
+          evidence: verified?.evidence || undefined,
+          missingReasons: verified?.missingReasons || [],
+          attempts: Number(verified?.attempts || 0),
+          elapsedMs: Number(verified?.elapsedMs || 0)
+        });
+        return verified;
+      }),
     inject: bootstrapInject,
     activate: activateStartup
   });
@@ -975,7 +2200,7 @@ function injectionSource(teamStateSelection = null) {
   return `(() => {
     const SORT_KEY = ${JSON.stringify(SORT_KEY)};
     const TAKEN_SORT_KEY = ${JSON.stringify(TAKEN_SORT_KEY)};
-const API_VERSION = 150;
+const API_VERSION = 155;
     const AUTO_RENAME_QUIET_MS = 400;
     const META_KEY = ${JSON.stringify(META_KEY)};
     const RENAME_CANCEL_REQUEST = ${JSON.stringify(renameCancelRequest)};
@@ -992,9 +2217,35 @@ const API_VERSION = 150;
     const LOCK_STORAGE_KEY = "eagle.photoTakenSort.sortingLocks.v3";
     const META_STORAGE_KEY = "eagle.photoTakenSort.metaProfiles.v1";
     const RENAME_STORAGE_KEY = "eagle.photoTakenSort.autoRename.v1";
+    const SORT_INTENT_STORAGE_KEY = "eagle.photoTakenSort.sortIntent.v1";
+    ${LIBRARY_IDENTITY_SOURCE}
+    const canonicalizeLibraryIdentitySafe =
+      typeof canonicalizeLibraryIdentity === "function"
+        ? canonicalizeLibraryIdentity
+        : (value) => {
+            let normalized = String(value || "").trim();
+            if (!normalized) return "";
+            if (normalized.startsWith("file://")) normalized = normalized.slice(7);
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+              try {
+                const decoded = decodeURIComponent(normalized);
+                if (decoded === normalized) break;
+                normalized = decoded;
+              } catch {
+                break;
+              }
+            }
+            normalized = normalized.split(String.fromCharCode(92)).join("/");
+            while (normalized.endsWith("/")) normalized = normalized.slice(0, -1);
+            return normalized;
+          };
     ${EVENT_OWNERSHIP_SOURCE}
     ${RENAME_LIFECYCLE_SOURCE}
     ${HOST_INPUT_ADAPTER_SOURCE}
+    ${NORMAL_POINTER_DRAG_SOURCE}
+    ${HOST_SCOPE_STATE_SOURCE}
+    ${SORT_INTENT_SOURCE}
+    ${HOST_NATIVE_ORDER_SOURCE}
     ${SMART_DRAG_TARGET_RESOLVER_SOURCE}
     ${DRAG_FEEDBACK_CONTROLLER_SOURCE}
     ${COLLECTION_SETTINGS_RENDERER_SOURCE}
@@ -1012,6 +2263,7 @@ const API_VERSION = 150;
       windowId: sortingWindowId,
       hostAppId: "eagle"
     });
+    const hostScopeState = createHostScopeStateRuntime();
     const LABELS = {
       zh_CN: "多级排序",
       zh_TW: "多級排序",
@@ -1081,6 +2333,12 @@ const API_VERSION = 150;
         renameOnce: "重命名 {count} 个",
         renameEnable: "启用并重命名 {count} 个",
         renameEnableNoChanges: "启用自动重命名",
+        selectedPeopleRename: "人物图重命名",
+        selectedEnvironmentRename: "环境图重命名",
+        selectedRenameIdle: "选中图片后可单独重命名",
+        selectedRenameNoSelection: "请先选中图片",
+        selectedRenameDone: "已重命名 {count} 个选中图片",
+        selectedRenameUnavailable: "当前层只显示文件夹，不能重命名图片",
         applyRenameTree: "应用到全部",
         applyRenameTreeConfirm: "为当前文件夹及全部子文件夹开启自动编号，共 {count} 个文件夹？确认后会立即修改所有匹配媒体的 Eagle 名称和实际文件名。",
         renameTreeQueued: "开关已同步 {total} 个文件夹；已提交 {count} 个执行编号，正在后台处理",
@@ -1167,6 +2425,12 @@ const API_VERSION = 150;
         renameOnce: "重新命名 {count} 個",
         renameEnable: "啟用並重新命名 {count} 個",
         renameEnableNoChanges: "啟用自動重新命名",
+        selectedPeopleRename: "人物圖重新命名",
+        selectedEnvironmentRename: "環境圖重新命名",
+        selectedRenameIdle: "選取圖片後可單獨重新命名",
+        selectedRenameNoSelection: "請先選取圖片",
+        selectedRenameDone: "已重新命名 {count} 個選取圖片",
+        selectedRenameUnavailable: "目前層只顯示資料夾，不能重新命名圖片",
         applyRenameTree: "套用到全部",
         applyRenameTreeConfirm: "為目前資料夾及全部子資料夾開啟自動編號，共 {count} 個資料夾？確認後會立即修改所有符合媒體的 Eagle 名稱和實際檔名。",
         renameTreeQueued: "開關已同步 {total} 個資料夾；已提交 {count} 個執行編號，正在背景處理",
@@ -1253,6 +2517,12 @@ const API_VERSION = 150;
         renameOnce: "Rename {count}",
         renameEnable: "Enable and rename {count}",
         renameEnableNoChanges: "Enable automatic rename",
+        selectedPeopleRename: "Rename selected people",
+        selectedEnvironmentRename: "Rename selected environment",
+        selectedRenameIdle: "Select media to rename them separately",
+        selectedRenameNoSelection: "Select media first",
+        selectedRenameDone: "Renamed {count} selected media",
+        selectedRenameUnavailable: "This level only shows folders",
         applyRenameTree: "Apply to all",
         applyRenameTreeConfirm: "Enable automatic numbering for this folder and all descendants ({count} folders)? This immediately changes matching Eagle names and actual filenames.",
         renameTreeQueued: "Enabled {total} folders; queued numbering for {count} folders",
@@ -1435,6 +2705,8 @@ const API_VERSION = 150;
     api.moveDiagnostics = [];
     api.moveDiagnosticSequence = 0;
     api.moveDiagnosticRuntimeId = sortingWindowId + ":" + Date.now();
+    api.deliveryCopyRequest = null;
+    api.deliveryCopyStatus = "idle";
 
     function recordMoveDiagnostic(stage, payload = {}) {
       api.moveDiagnosticSequence += 1;
@@ -1456,7 +2728,10 @@ const API_VERSION = 150;
     // treating a global/root scope as the selected folder.
     function refreshHostScope() {
       const angularRef = window.angular;
-      if (!angularRef || typeof angularRef.element !== "function") return false;
+      if (!angularRef || typeof angularRef.element !== "function") {
+        hostScopeState.markPending("angular-scope-unavailable");
+        return false;
+      }
       const hash = String(window.location.hash || "");
       const routeMatch = hash.match(/[?&](?:folder|smartFolder)=([^&]+)/);
       const viewMatch = hash.match(/[?&]view=([^&]+)/i);
@@ -1473,9 +2748,18 @@ const API_VERSION = 150;
       } catch {
         routeId = String(routeMatch?.[1] || "");
       }
-      if (!routeId && !isGlobalRoute) return false;
+      if (!routeId && !isGlobalRoute) {
+        hostScopeState.markReady("");
+        return false;
+      }
       const roots = [
         document.querySelector("#box-list"),
+        // Eagle keeps the folder-list controller on the sub-folder
+        // container. It is not always reachable from #box-list while the
+        // parent folder view is being restored, so include the native folder
+        // view roots explicitly when rebinding the active host scope.
+        document.querySelector("#sub-folder-container"),
+        document.querySelector("#box-container"),
         document.querySelector("#layout-panel"),
         document.querySelector("#sidebar-item-container"),
         document.body
@@ -1529,6 +2813,7 @@ const API_VERSION = 150;
         }
       }
       if (!winner) {
+        hostScopeState.markPending(routeId || "global");
         if (api.hostScopeDiagnosticRoute !== (routeId || "global")) {
           api.hostScopeDiagnosticRoute = routeId || "global";
           const signatures = Array.from(seen).slice(0, 16).map((scope) =>
@@ -1544,10 +2829,14 @@ const API_VERSION = 150;
         }
         return false;
       }
-      if (winner.scope === bodyScope) return false;
+      if (winner.scope === bodyScope) {
+        hostScopeState.markReady(routeId || "global");
+        return false;
+      }
       const previousKind = currentCollection().kind;
       bodyScope = winner.scope;
       api.bodyScope = bodyScope;
+      hostScopeState.markReady(routeId || "global");
       recordMoveDiagnostic("HOST_SCOPE_REBOUND", {
         routeKind: winner.kind,
         previousKind,
@@ -1573,7 +2862,11 @@ const API_VERSION = 150;
     const smartCollectionHostSnapshotAdapter =
       createSmartCollectionHostSnapshotAdapter();
     ${createRenameRuntime.toString()}
+    ${createSelectedRenameRuntime.toString()}
     const renameRuntime = createRenameRuntime({
+      isMedia: sortRuntime.isMedia
+    });
+    const selectedRenameRuntime = createSelectedRenameRuntime({
       isMedia: sortRuntime.isMedia
     });
     const SORT_MODES = new Set(["native", "automatic", "manual"]);
@@ -1683,6 +2976,23 @@ const API_VERSION = 150;
       } catch {
         return fallback;
       }
+    }
+
+    const sortIntentRuntime = createSortIntentRuntime({
+      pluginKeys: [SORT_KEY, TAKEN_SORT_KEY],
+      initial: parseStoredJson(SORT_INTENT_STORAGE_KEY, {})
+    });
+    let sortIntentPersistedSignature = JSON.stringify(
+      sortIntentRuntime.serialize()
+    );
+
+    function persistSortIntentStore() {
+      const serialized = sortIntentRuntime.serialize();
+      const signature = JSON.stringify(serialized);
+      if (signature === sortIntentPersistedSignature) return false;
+      localStorage.setItem(SORT_INTENT_STORAGE_KEY, signature);
+      sortIntentPersistedSignature = signature;
+      return true;
     }
 
     function importTeamSortState() {
@@ -1894,12 +3204,12 @@ const API_VERSION = 150;
         currentView: bodyScope.currentView,
         locationView: bodyScope.locationView,
         locationHash: window.location.hash,
-        rootDir: bodyScope.rootDir
+        rootDir: canonicalizeLibraryIdentitySafe(bodyScope.rootDir) || "default"
       });
     }
 
     function currentLibraryId() {
-      return String(bodyScope.rootDir || "default");
+      return canonicalizeLibraryIdentitySafe(bodyScope.rootDir) || "default";
     }
 
     function readLockStore() {
@@ -1944,9 +3254,29 @@ const API_VERSION = 150;
         MANUAL_STORAGE_KEY,
         collectionRuntime.emptyStore()
       );
-      return parsed?.version === collectionRuntime.COLLECTION_STATE_VERSION
-        ? parsed
-        : collectionRuntime.emptyStore();
+      if (parsed?.version !== collectionRuntime.COLLECTION_STATE_VERSION) {
+        return collectionRuntime.emptyStore();
+      }
+      const normalized = {
+        ...parsed,
+        libraries: {}
+      };
+      for (const [libraryId, library] of Object.entries(parsed.libraries || {})) {
+        const canonicalId =
+          canonicalizeLibraryIdentitySafe(libraryId) || "default";
+        const target = normalized.libraries[canonicalId] || {
+          folders: {},
+          smartFolders: {},
+          global: null
+        };
+        Object.assign(target.folders, library?.folders || {});
+        Object.assign(target.smartFolders, library?.smartFolders || {});
+        if (library && Object.prototype.hasOwnProperty.call(library, "global")) {
+          target.global = library.global;
+        }
+        normalized.libraries[canonicalId] = target;
+      }
+      return normalized;
     }
 
     function readManualModeStore() {
@@ -2375,9 +3705,15 @@ const API_VERSION = 150;
       lastTransaction: [],
       message: "",
       running: false,
+      // Direct selected/folder saves are synchronous host hand-offs with a
+      // bounded quiet period. Keep a deadline so a lost timer cannot leave
+      // selected rename actions blocked forever. Queue-backed batches remain
+      // busy through their request/status identity below.
+      runningUntil: 0,
       timer: null,
       pendingAfterRun: false,
       pendingManualPlan: null,
+      pendingExplicitRenamePlan: null,
       batchRequest: null,
       batchId: "",
       batchStatus: null,
@@ -2386,6 +3722,7 @@ const API_VERSION = 150;
       visibleMaskTimer: null,
       visibleMaskObserver: null
     };
+    api.selectedRenameMessage = "";
 
     function applyStartupRenameCancel() {
       if (!RENAME_CANCEL_REQUEST) return null;
@@ -2414,6 +3751,19 @@ const API_VERSION = 150;
 
     api.renameCancelResult = applyStartupRenameCancel();
 
+    function renameTaskBusy() {
+      if (!api.rename.running) return false;
+      if (api.rename.batchRequest) return true;
+      if (renameLifecycleRuntime.isActiveForContext(
+        api.rename.batchStatus,
+        currentContextId()
+      )) return true;
+      if (api.rename.runningUntil > Date.now()) return true;
+      api.rename.running = false;
+      api.rename.runningUntil = 0;
+      return false;
+    }
+
     function currentOrder() {
       if (currentCollection().kind === "smart") {
         return bodyScope.currentSmartFolder?.orderBy ||
@@ -2428,21 +3778,72 @@ const API_VERSION = 150;
     function currentIncrease() {
       if (currentCollection().kind === "smart") {
         if (bodyScope.currentSmartFolder?.orderBy) {
-          return bodyScope.currentSmartFolder.sortIncrease !== false;
+          const orderBy = String(bodyScope.currentSmartFolder.orderBy || "");
+          if (isPluginSortKey(orderBy)) {
+            return bodyScope.currentSmartFolder.sortIncrease !== false;
+          }
+          return sortIntentRuntime.increase({
+            ...currentSortIntentContext(),
+            increase: bodyScope.currentSmartFolder.sortIncrease !== false
+          });
         }
         if (bodyScope.currentSortIncrease !== undefined) {
-          return bodyScope.currentSortIncrease !== false;
+          return sortIntentRuntime.increase({
+            ...currentSortIntentContext(),
+            increase: bodyScope.currentSortIncrease !== false
+          });
         }
-        return bodyScope.sortIncrease !== false;
+        return sortIntentRuntime.increase({
+          ...currentSortIntentContext(),
+          increase: bodyScope.sortIncrease !== false
+        });
       }
       if (bodyScope.currentFolder && bodyScope.currentFolder.orderBy) {
-        return bodyScope.currentFolder.sortIncrease !== false;
+        const orderBy = String(bodyScope.currentFolder.orderBy || "");
+        if (isPluginSortKey(orderBy)) {
+          return bodyScope.currentFolder.sortIncrease !== false;
+        }
+        return sortIntentRuntime.increase({
+          ...currentSortIntentContext(),
+          increase: bodyScope.currentFolder.sortIncrease !== false
+        });
       }
-      return bodyScope.sortIncrease !== false;
+      return sortIntentRuntime.increase({
+        ...currentSortIntentContext(),
+        increase: bodyScope.sortIncrease !== false
+      });
     }
 
     function isPluginSortKey(orderBy) {
       return orderBy === SORT_KEY || orderBy === TAKEN_SORT_KEY;
+    }
+
+    function currentSortIntentContext() {
+      const collection = currentCollection();
+      return {
+        libraryId: currentLibraryId(),
+        kind: collection.kind,
+        id: collection.id
+      };
+    }
+
+    function rememberCurrentSortIntent(orderBy, increase = currentIncrease()) {
+      const remembered = sortIntentRuntime.observe({
+        ...currentSortIntentContext(),
+        orderBy,
+        increase
+      });
+      if (remembered) persistSortIntentStore();
+      return remembered;
+    }
+
+    function clearCurrentSortIntent() {
+      const cleared = sortIntentRuntime.clear({
+        ...currentSortIntentContext(),
+        explicitNative: true
+      });
+      if (cleared) persistSortIntentStore();
+      return cleared;
     }
 
     // Legacy folders can retain a native currentFolder.orderBy while the
@@ -2452,15 +3853,27 @@ const API_VERSION = 150;
     // a native value is only a fallback when neither source selects the plugin.
     function effectivePluginOrderBy(hostOrderBy = "") {
       const configuredOrder = currentOrder();
-      if (isPluginSortKey(configuredOrder)) return configuredOrder;
       const scopedOrder = String(bodyScope.currentOrderBy || "");
-      if (isPluginSortKey(scopedOrder)) return scopedOrder;
       const select = document.querySelector(
         '#layout-panel select[ng-change*="changeOrderBy"]'
       );
       const selectedOrder = String(select?.value || "");
-      if (isPluginSortKey(selectedOrder)) return selectedOrder;
-      return hostOrderBy || configuredOrder;
+      const nativeHostSelection = hostOrderBy &&
+        !isPluginSortKey(hostOrderBy) &&
+        !isPluginSortKey(configuredOrder);
+      if (nativeHostSelection) clearCurrentSortIntent();
+      const effectiveOrder = sortIntentRuntime.resolveEffective({
+        ...currentSortIntentContext(),
+        configuredOrder,
+        scopedOrder,
+        selectedOrder,
+        hostOrderBy,
+        increase: currentIncrease()
+      });
+      if (isPluginSortKey(effectiveOrder)) {
+        rememberCurrentSortIntent(effectiveOrder, currentIncrease());
+      }
+      return effectiveOrder;
     }
 
     function isPluginSort(orderBy = effectivePluginOrderBy()) {
@@ -2499,7 +3912,8 @@ const API_VERSION = 150;
     }
 
     function renameLibrary(create = true) {
-      const libraryId = String(bodyScope.rootDir || "default");
+      const libraryId = canonicalizeLibraryIdentitySafe(bodyScope.rootDir) ||
+        "default";
       const library = teamSortStateRuntime.resolveLibraryStore(
         api.renameStore,
         libraryId,
@@ -3228,6 +4642,7 @@ const API_VERSION = 150;
     }
 
     function applySortToCurrentTree() {
+      if (hostScopeState.isPending()) return 0;
       if (currentCollection().kind === "smart") {
         if (folderLocked()) {
           applySortConfigToLockProfile(folderLockProfile(), sortConfigSnapshot());
@@ -3360,9 +4775,10 @@ const API_VERSION = 150;
     const applyRulesToCurrentTree = applySortToCurrentTree;
 
     function applyRenameToCurrentTree() {
+      if (hostScopeState.isPending()) return 0;
       const allFolders = currentFolderTree();
       const sourceContextId = currentContextId();
-      if (allFolders.length === 0 || api.rename.running || folderLocked()) return 0;
+      if (allFolders.length === 0 || renameTaskBusy() || folderLocked()) return 0;
       if (!renameEnabled()) {
         api.rename.batchStatus = {
           state: "idle",
@@ -3554,6 +4970,7 @@ const API_VERSION = 150;
       // they keep one explicit refresh after the batch has fully completed.
       if (result?.mode !== "current-folder") api.refresh?.();
       renderSettings();
+      drainPendingExplicitRenamePlan();
       if (rerunAfterQuietPeriod) {
         scheduleAutoRename("manual-drop-continuation", AUTO_RENAME_QUIET_MS, true);
       }
@@ -3717,6 +5134,7 @@ const API_VERSION = 150;
     }
 
     function activateCustomSort(orderBy = SORT_KEY) {
+      if (hostScopeState.isPending()) return false;
       if (folderLocked()) return false;
       const collection = currentCollection();
       if (collection.kind === "smart") {
@@ -3741,6 +5159,7 @@ const API_VERSION = 150;
 
       bodyScope.currentOrderBy = orderBy;
       bodyScope.currentSortIncrease = currentIncrease();
+      rememberCurrentSortIntent(orderBy, currentIncrease());
       api.selectionVersion = (api.selectionVersion || 0) + 1;
       syncManualContext();
       if (folderLocked()) updateCurrentProtectedSortConfig();
@@ -3759,6 +5178,7 @@ const API_VERSION = 150;
     }
 
     function setCustomIncrease(increase) {
+      if (hostScopeState.isPending()) return currentIncrease();
       if (folderLocked()) return currentIncrease();
       const normalized = increase !== false;
       const collection = currentCollection();
@@ -3777,6 +5197,9 @@ const API_VERSION = 150;
         );
       }
       bodyScope.currentSortIncrease = normalized;
+      if (isPluginSort()) {
+        rememberCurrentSortIntent(effectivePluginOrderBy(), normalized);
+      }
       // Multi-level rule directions are independent. Eagle may reverse the
       // result internally, so sortData compensates without mutating rules.
       if (folderLocked()) updateCurrentProtectedSortConfig();
@@ -3788,10 +5211,17 @@ const API_VERSION = 150;
     if (!api.original.sortData) {
       api.original.sortData = bodyScope.sortData;
       bodyScope.sortData = function(data, orderBy) {
+        if (hostScopeState.isPending()) {
+          return api.original.sortData.call(this, data, orderBy);
+        }
         const effectiveOrderBy = pluginOrderByForHost(orderBy);
         if (!isPluginSort(effectiveOrderBy)) {
+          const nativeResult = api.original.sortData.call(this, data, orderBy);
           return applyHostManualOverlay(
-            api.original.sortData.call(this, data, orderBy),
+            correctNativeHostOrder(nativeResult, {
+              orderBy: effectiveOrderBy,
+              sortIncrease: currentIncrease()
+            }),
             effectiveOrderBy
           );
         }
@@ -3814,11 +5244,21 @@ const API_VERSION = 150;
     if (!api.original.sortRawData) {
       api.original.sortRawData = bodyScope.sortRawData;
       bodyScope.sortRawData = function(orderBy) {
+        if (hostScopeState.isPending()) {
+          return api.original.sortRawData.call(this, orderBy);
+        }
         const effectiveOrderBy = pluginOrderByForHost(orderBy);
         if (!isPluginSort(effectiveOrderBy)) {
           const result = api.original.sortRawData.call(this, orderBy);
-          this.raw = applyHostManualOverlay(
+          const nativeResult = correctNativeHostOrder(
             Array.isArray(result) ? result : this.raw,
+            {
+              orderBy: effectiveOrderBy,
+              sortIncrease: currentIncrease()
+            }
+          );
+          this.raw = applyHostManualOverlay(
+            nativeResult,
             effectiveOrderBy
           );
           return this.raw;
@@ -3848,6 +5288,11 @@ const API_VERSION = 150;
         }
         if (orderBy === SORT_KEY) return activatePhotoSort();
         if (orderBy === TAKEN_SORT_KEY) return activateTakenTimeSort();
+        // Clear the remembered plugin intent before Eagle invokes its native
+        // sorter. The host calls sortData/sortRawData synchronously during
+        // changeOrderBy, so clearing afterward lets the first native callback
+        // be misread as the previous PHOTO_TAKEN mode (R131/R140).
+        clearCurrentSortIntent();
         const result = api.original.changeOrderBy.call(this, orderBy);
         if (folderLocked()) {
           setTimeout(() => {
@@ -3922,6 +5367,12 @@ const API_VERSION = 150;
         ".eagle-photo-rename-preview,.eagle-photo-rename-undo{height:28px;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;font:inherit;padding:0 9px}",
         ".eagle-photo-rename-undo:disabled{opacity:.35}",
         ".eagle-photo-rename-state{padding:0 0 4px 25px;font-size:10px;line-height:1.3;opacity:.55;min-width:0}",
+        ".eagle-photo-selected-rename{display:flex;align-items:center;gap:6px;min-height:30px;padding-left:25px}",
+        ".eagle-photo-selected-rename-label{font-size:11px;opacity:.72;white-space:nowrap}",
+        ".eagle-photo-selected-rename button{margin-left:0;flex:1;min-width:0}",
+        ".eagle-photo-selected-rename-state{padding:0 0 4px 25px;font-size:10px;line-height:1.3;opacity:.55;min-width:0}",
+        ".eagle-photo-delivery-row{display:flex;align-items:center;gap:6px;min-height:30px;padding-left:25px}",
+        ".eagle-photo-delivery-row .eagle-photo-feature-apply{margin-left:0;flex:1}",
         ".eagle-photo-rename-tree-result{font-size:11px;color:var(--color-positive,var(--color-text-secondary));line-height:1.4}",
         ".eagle-photo-taken-meta-value{white-space:nowrap}",
         "#layout-panel .eagle-photo-taken-meta-active .select-content{min-width:150px}",
@@ -3949,6 +5400,10 @@ const API_VERSION = 150;
         ".eagle-photo-rename-foot button{height:30px;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;font:inherit;padding:0 12px}",
         ".eagle-photo-rename-foot button[data-primary='true']{background:var(--color-primary,#1473e6);border-color:transparent;color:#fff}",
         ".eagle-photo-rename-foot button:disabled{opacity:.4}",
+        ".eagle-photo-delivery-dialog{width:min(860px,calc(100vw - 40px))}",
+        ".eagle-photo-delivery-label{display:block;margin:4px 0 6px;font-size:12px;font-weight:600}",
+        ".eagle-photo-delivery-link{width:100%;height:32px;margin-bottom:10px;padding:0 9px;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;font:inherit}",
+        ".eagle-photo-delivery-text{width:100%;min-height:360px;resize:vertical;padding:10px;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;font:inherit;line-height:1.55;box-sizing:border-box}",
         ".eagle-photo-sort-list{display:flex;flex-direction:column;gap:7px}",
         ".eagle-photo-sort-rule{display:grid;grid-template-columns:20px minmax(0,1fr) 70px 24px 24px 24px;gap:4px;align-items:center}",
         ".eagle-photo-sort-rule select{height:28px;min-width:0;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;padding:0 5px;font:inherit;font-size:11px}",
@@ -4161,6 +5616,54 @@ const API_VERSION = 150;
           if (undo) undo.disabled = api.manual.history.length === 0;
           if (reset) {
             reset.disabled = locked || api.manual.relations.length === 0;
+          }
+          const selectedRenameRow = panel.querySelector(
+            ".eagle-photo-selected-rename"
+          );
+          const selectedRenameState = panel.querySelector(
+            ".eagle-photo-selected-rename-state"
+          );
+          if (selectedRenameRow) {
+            const selectedPlan = buildSelectedRenamePlan("1");
+            const canRenameSelected =
+              collectionKind === "normal" &&
+              selectedPlan.error !== "media-collection-required";
+            selectedRenameRow.style.display = "flex";
+            selectedRenameRow.title = canRenameSelected
+              ? ui.selectedRenameIdle
+              : ui.selectedRenameUnavailable;
+            selectedRenameRow.querySelectorAll("button").forEach((button) => {
+              button.disabled = !canRenameSelected;
+              button.textContent = button.classList.contains(
+                "eagle-photo-selected-people-rename"
+              )
+                ? ui.selectedPeopleRename
+                : ui.selectedEnvironmentRename;
+            });
+          }
+          if (selectedRenameState) {
+            selectedRenameState.textContent = api.selectedRenameMessage ||
+              (collectionKind === "normal"
+                ? ui.selectedRenameIdle
+                : ui.selectedRenameUnavailable);
+            selectedRenameState.style.display = "";
+          }
+          const deliveryButton = panel.querySelector(
+            ".eagle-photo-delivery-copy"
+          );
+          if (deliveryButton) {
+            const directFolderCount = collectionKind === "normal" &&
+              bodyScope.currentFolder
+              ? folderLevelRuntime.directChildren(bodyScope.currentFolder).length
+              : 0;
+            const available = collectionKind === "normal" && directFolderCount > 0;
+            deliveryButton.disabled = !available || api.deliveryCopyStatus === "queued";
+            deliveryButton.textContent = api.deliveryCopyStatus === "queued"
+              ? "正在扫描…"
+              : "生成交付文案";
+            deliveryButton.title = available
+              ? "扫描当前文件夹的直属子文件夹并生成可编辑交付文案"
+              : "请打开包含直属子文件夹的总文件夹";
           }
           if (!renameSection) return;
           if (!isCollectionActionsPanel || collectionKind !== "normal") return;
@@ -4622,6 +6125,55 @@ const API_VERSION = 150;
       const renameState = document.createElement("div");
       renameState.className = "eagle-photo-rename-state";
 
+      const selectedRenameRow = document.createElement("div");
+      selectedRenameRow.className = "eagle-photo-selected-rename";
+      const selectedRenameLabel = document.createElement("span");
+      selectedRenameLabel.className = "eagle-photo-selected-rename-label";
+      selectedRenameLabel.textContent = "选中项重命名";
+      const selectedPeopleButton = document.createElement("button");
+      selectedPeopleButton.type = "button";
+      selectedPeopleButton.className =
+        "eagle-photo-feature-apply eagle-photo-selected-people-rename";
+      selectedPeopleButton.textContent = ui.selectedPeopleRename;
+      selectedPeopleButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openSelectedRenamePreview("1");
+      });
+      const selectedEnvironmentButton = document.createElement("button");
+      selectedEnvironmentButton.type = "button";
+      selectedEnvironmentButton.className =
+        "eagle-photo-feature-apply eagle-photo-selected-environment-rename";
+      selectedEnvironmentButton.textContent = ui.selectedEnvironmentRename;
+      selectedEnvironmentButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openSelectedRenamePreview("2");
+      });
+      selectedRenameRow.append(
+        selectedRenameLabel,
+        selectedPeopleButton,
+        selectedEnvironmentButton
+      );
+      const selectedRenameState = document.createElement("div");
+      selectedRenameState.className = "eagle-photo-selected-rename-state";
+
+      const deliveryRow = document.createElement("div");
+      deliveryRow.className = "eagle-photo-delivery-row";
+      const deliveryLabel = document.createElement("span");
+      deliveryLabel.className = "eagle-photo-selected-rename-label";
+      deliveryLabel.textContent = "交付文案";
+      const deliveryButton = document.createElement("button");
+      deliveryButton.type = "button";
+      deliveryButton.className = "eagle-photo-feature-apply eagle-photo-delivery-copy";
+      deliveryButton.textContent = "生成交付文案";
+      deliveryButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        requestDeliveryCopy();
+      });
+      deliveryRow.append(deliveryLabel, deliveryButton);
+
       const sortSection = document.createElement("section");
       sortSection.className =
         "eagle-photo-sort-section eagle-photo-sort-rules-section";
@@ -4645,7 +6197,10 @@ const API_VERSION = 150;
         "eagle-photo-sort-section eagle-photo-sort-rename-section";
       renameSection.append(
         rename,
-        renameState
+        renameState,
+        selectedRenameRow,
+        selectedRenameState,
+        deliveryRow
       );
       api.renameSection = renameSection;
       collectionActions.append(manualSection);
@@ -4756,7 +6311,10 @@ const API_VERSION = 150;
       if (!select.dataset.eaglePhotoTakenBound) {
         select.dataset.eaglePhotoTakenBound = "true";
         select.addEventListener("change", (event) => {
-          if (!isPluginSort(select.value)) return;
+          if (!isPluginSort(select.value)) {
+            clearCurrentSortIntent();
+            return;
+          }
           event.preventDefault();
           event.stopImmediatePropagation();
           if (select.value === TAKEN_SORT_KEY) {
@@ -5118,11 +6676,14 @@ const API_VERSION = 150;
 
     function renderedCardIds() {
       return Array.from(
-        document.querySelectorAll("#box-list .box[data-box-id]")
+        document.querySelectorAll("#box-list .box")
       ).map((box, index) => {
         const rect = box.getBoundingClientRect();
+        const dataId = box.getAttribute("data-box-id") ||
+          box.getAttribute("data-id");
+        const id = dataId || String(box.id || "").replace(/^box-/, "");
         return {
-          id: String(box.getAttribute("data-box-id") || ""),
+          id: String(id || ""),
           index,
           left: rect.left,
           top: rect.top,
@@ -5143,11 +6704,20 @@ const API_VERSION = 150;
           return left.index - right.index;
         })
         .map((entry) => entry.id)
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter((id, index, ids) => ids.indexOf(id) === index);
     }
 
     function resolveCurrentOrderSnapshot(options = {}) {
       const collection = currentCollection();
+      if (hostScopeState.isPending()) {
+        return sortingSystemRuntime.resolveOrder({
+          collection,
+          contextId: currentContextId(),
+          targetKind: "unknown",
+          items: []
+        });
+      }
       if (collection.kind === "global") {
         return sortingSystemRuntime.resolveOrder({
           collection,
@@ -5182,8 +6752,143 @@ const API_VERSION = 150;
       return resolveCurrentOrderSnapshot({ preferRendered: true }).finalItems;
     }
 
+    // Selected media renaming is deliberately separate from the automatic
+    // rename plan below. It never reads or writes direct child folders, and
+    // it only consumes the current normal leaf collection plus Eagle's native
+    // selection.
+    function selectedMediaItemsInCurrentOrder() {
+      const selectedIds = new Set(
+        (Array.isArray(bodyScope.selected) ? bodyScope.selected : [])
+          .map((item) => String(item?.id || ""))
+          .filter(Boolean)
+      );
+      if (!selectedIds.size) return [];
+      return currentRenameItems().filter((item) =>
+        selectedIds.has(String(item?.id || "")) && sortRuntime.isMedia(item)
+      );
+    }
+
+    function buildSelectedRenamePlan(group, sourceItemsOverride = null) {
+      const collection = currentCollection();
+      if (
+        collection.kind !== "normal" ||
+        !bodyScope.currentFolder?.id ||
+        folderLevelRuntime.directChildren(bodyScope.currentFolder).length > 0
+      ) {
+        return {
+          entries: [],
+          changes: [],
+          error: "media-collection-required"
+        };
+      }
+      const sourceItems = Array.isArray(sourceItemsOverride)
+        ? sourceItemsOverride
+        : selectedMediaItemsInCurrentOrder();
+      return selectedRenameRuntime.buildPlan(
+        sourceItems,
+        {
+          folderName: bodyScope.currentFolder.name,
+          group
+        }
+      );
+    }
+
+    function applySelectedRename(group) {
+      if (renameTaskBusy()) return 0;
+      const visibleItems = selectedMediaItemsInCurrentOrder();
+      const plan = buildSelectedRenamePlan(group, visibleItems);
+      if (plan.error === "media-collection-required") {
+        api.selectedRenameMessage = ui.selectedRenameUnavailable;
+        renderSettings();
+        return 0;
+      }
+      if (plan.error === "scene-name-empty") {
+        api.selectedRenameMessage = ui.renameEmptyScene;
+        renderSettings();
+        return 0;
+      }
+      if (!plan.entries.length) {
+        api.selectedRenameMessage = ui.selectedRenameNoSelection;
+        renderSettings();
+        return 0;
+      }
+      const count = applyRenameEntries(plan.changes, {
+        sourceItems: visibleItems
+      });
+      api.selectedRenameMessage = ui.selectedRenameDone.replace(
+        "{count}",
+        String(count)
+      );
+      renderSettings();
+      return count;
+    }
+
+    function requestDeliveryCopy() {
+      const collection = currentCollection();
+      const children = collection.kind === "normal" && bodyScope.currentFolder
+        ? folderLevelRuntime.directChildren(bodyScope.currentFolder)
+        : [];
+      if (
+        collection.kind !== "normal" ||
+        !bodyScope.currentFolder?.id ||
+        children.length === 0
+      ) {
+        api.deliveryCopyStatus = "unavailable";
+        renderSettings();
+        return 0;
+      }
+      if (api.deliveryCopyStatus === "queued") return 0;
+      const id = Date.now().toString(36) + "-" +
+        Math.random().toString(36).slice(2, 9);
+      api.deliveryCopyRequest = {
+        id,
+        contextId: currentContextId(),
+        rootId: String(bodyScope.currentFolder.id),
+        rootName: String(bodyScope.currentFolder.name || "未命名文件夹"),
+        groups: children.map((folder) => ({
+          id: String(folder.id || ""),
+          name: String(folder.name || "未命名文件夹")
+        }))
+      };
+      api.deliveryCopyStatus = "queued";
+      renderSettings();
+      bodyScope.$evalAsync();
+      return children.length;
+    }
+
+    function clearDeliveryCopyRequest(id, status = "idle") {
+      if (api.deliveryCopyRequest?.id !== String(id || "")) return false;
+      api.deliveryCopyRequest = null;
+      api.deliveryCopyStatus = status;
+      renderSettings();
+      return true;
+    }
+
+    function showDeliveryCopyError(message) {
+      api.deliveryCopyRequest = null;
+      api.deliveryCopyStatus = "error";
+      api.deliveryCopyMessage = String(message || "交付文案统计失败");
+      renderSettings();
+      bodyScope.$evalAsync();
+      return true;
+    }
+
     function buildCurrentRenamePlan() {
       const collection = currentCollection();
+      if (hostScopeState.isPending()) {
+        return {
+          contextId: currentContextId(),
+          collectionKind: collection.kind,
+          targetKind: "direct-media",
+          sceneName: "",
+          entries: [],
+          changes: [],
+          groups: { people: 0, environment: 0 },
+          ignoredCount: 0,
+          sourceFolders: [],
+          error: "host-scope-pending"
+        };
+      }
       if (collection.kind === "global") {
         return {
           contextId: currentContextId(),
@@ -5293,8 +6998,11 @@ const API_VERSION = 150;
       if (typeof ayncsImagesChange !== "function") {
         throw new Error("Eagle rename pipeline is unavailable");
       }
+      const sourceItems = Array.isArray(options.sourceItems)
+        ? options.sourceItems
+        : currentItems();
       const items = new Map(
-        currentItems().map((item) => [String(item.id || ""), item])
+        sourceItems.map((item) => [String(item.id || ""), item])
       );
       const changed = [];
       const transaction = [];
@@ -5311,6 +7019,7 @@ const API_VERSION = 150;
       if (!changed.length) return 0;
 
       api.rename.running = true;
+      api.rename.runningUntil = Date.now() + 700;
       if (options.record !== false) api.rename.lastTransaction = transaction;
       ayncsImagesChange(changed);
       try {
@@ -5322,13 +7031,20 @@ const API_VERSION = 150;
       }
       bodyScope.$evalAsync();
       setTimeout(() => {
+        const rerunAfterQuietPeriod = api.rename.pendingAfterRun === true;
+        api.rename.pendingAfterRun = false;
         api.rename.running = false;
+        api.rename.runningUntil = 0;
         api.rename.lastSignature = renameRuntime.signature(
           buildCurrentRenamePlan()
         );
         renderTakenMeta();
         renderSettings();
         bodyScope.$evalAsync();
+        drainPendingExplicitRenamePlan();
+        if (rerunAfterQuietPeriod) {
+          scheduleAutoRename("manual-drop-continuation", AUTO_RENAME_QUIET_MS, true);
+        }
       }, 700);
       return changed.length;
     }
@@ -5349,6 +7065,7 @@ const API_VERSION = 150;
       })).filter((entry) => entry.folder);
       if (!snapshots.length) return 0;
       api.rename.running = true;
+      api.rename.runningUntil = Date.now() + 350;
       try {
         for (const entry of plan.phases.temporary) {
           const folder = folders.get(entry.id);
@@ -5365,15 +7082,18 @@ const API_VERSION = 150;
       } catch (error) {
         for (const snapshot of snapshots) snapshot.folder.name = snapshot.oldName;
         api.rename.running = false;
+        api.rename.runningUntil = 0;
         throw error;
       }
       bodyScope.$evalAsync();
       setTimeout(() => {
         api.rename.running = false;
+        api.rename.runningUntil = 0;
         api.rename.lastSignature = renameRuntime.signature(
           buildCurrentRenamePlan()
         );
         renderSettings();
+        drainPendingExplicitRenamePlan();
       }, 350);
       return snapshots.length;
     }
@@ -5491,9 +7211,10 @@ const API_VERSION = 150;
     }
 
     function queueCurrentRenamePlan(plan) {
+      if (hostScopeState.isPending()) return 0;
       if (
         !plan?.changes?.length ||
-        api.rename.running ||
+        renameTaskBusy() ||
         api.rename.batchRequest ||
         currentCollection().kind !== "normal" ||
         !bodyScope.currentFolder?.id
@@ -5538,8 +7259,19 @@ const API_VERSION = 150;
     }
 
     function applyRenamePlan(plan, options = {}) {
+      if (hostScopeState.isPending()) return 0;
       if (!plan || plan.contextId !== currentContextId()) return 0;
       if (currentCollection().kind !== "normal") return 0;
+      if (renameTaskBusy()) {
+        api.rename.pendingExplicitRenamePlan = {
+          plan,
+          contextId: currentContextId(),
+          enableAfter: options.enableAfter === true
+        };
+        api.rename.message = "上一项重命名正在完成，当前编号已排队";
+        renderSettings();
+        return plan.changes?.length || 0;
+      }
       if (!sortingSystemRuntime.guard("rename", {
         collection: currentCollection(),
         locked: folderLocked(),
@@ -5559,9 +7291,23 @@ const API_VERSION = 150;
       return count;
     }
 
+    function drainPendingExplicitRenamePlan() {
+      const pending = api.rename.pendingExplicitRenamePlan;
+      if (!pending) return false;
+      if (pending.contextId !== currentContextId()) {
+        api.rename.pendingExplicitRenamePlan = null;
+        return false;
+      }
+      if (renameTaskBusy()) return false;
+      api.rename.pendingExplicitRenamePlan = null;
+      return applyRenamePlan(pending.plan, {
+        enableAfter: pending.enableAfter === true
+      }) > 0;
+    }
+
     function undoLastRename() {
       const transaction = api.rename.lastTransaction.slice();
-      if (!transaction.length || api.rename.running) return 0;
+      if (!transaction.length || renameTaskBusy()) return 0;
       setRenameEnabled(false);
       const folderTransaction = transaction.every(
         (entry) => entry.kind === "folder"
@@ -5594,8 +7340,9 @@ const API_VERSION = 150;
 
     function maybeAutoRename() {
       if (
+        hostScopeState.isPending() ||
         !renameEnabled() ||
-        api.rename.running ||
+        renameTaskBusy() ||
         folderLocked() ||
         inheritedRenameExecutionBlocked() ||
         !bodyScope.currentFolder
@@ -5634,6 +7381,7 @@ const API_VERSION = 150;
         "manual-drop-continuation"
       ].includes(cause)) return;
       if (
+        hostScopeState.isPending() ||
         !renameEnabled() ||
         folderLocked() ||
         inheritedRenameExecutionBlocked()
@@ -5642,7 +7390,7 @@ const API_VERSION = 150;
       clearTimeout(api.rename.timer);
       api.rename.timer = setTimeout(() => {
         api.rename.timer = null;
-        if (api.rename.running || api.rename.batchRequest) {
+        if (renameTaskBusy() || api.rename.batchRequest) {
           api.rename.pendingAfterRun = true;
           return;
         }
@@ -5766,9 +7514,227 @@ const API_VERSION = 150;
       return plan;
     }
 
+    function selectedRenamePlanSignature(plan) {
+      return (Array.isArray(plan?.entries) ? plan.entries : [])
+        .map((entry) => String(entry.id) + ":" + String(entry.newName))
+        .join("|");
+    }
+
+    function openSelectedRenamePreview(group) {
+      if (folderLocked() || currentCollection().kind !== "normal") {
+        api.selectedRenameMessage = ui.selectedRenameUnavailable;
+        renderSettings();
+        return null;
+      }
+      closeRenamePreview();
+      const plan = buildSelectedRenamePlan(group);
+      const overlay = document.createElement("div");
+      overlay.className = "eagle-photo-rename-modal";
+      const dialog = document.createElement("div");
+      dialog.className = "eagle-photo-rename-dialog";
+
+      const head = document.createElement("div");
+      head.className = "eagle-photo-rename-head";
+      const title = document.createElement("h2");
+      title.textContent = group === "1" ? ui.selectedPeopleRename :
+        ui.selectedEnvironmentRename;
+      const close = document.createElement("button");
+      close.type = "button";
+      close.textContent = "×";
+      close.title = ui.renameCancel;
+      close.addEventListener("click", closeRenamePreview);
+      head.append(title, close);
+
+      const summary = document.createElement("div");
+      summary.className = "eagle-photo-rename-summary";
+      summary.textContent = "场景：" +
+        String(plan.sceneName || "—") + " · 选中 " +
+        String(plan.entries.length) + " 个 · 待改 " +
+        String(plan.changes.length) + " 个";
+
+      const warning = document.createElement("div");
+      warning.className = "eagle-photo-rename-warning";
+      if (plan.error === "media-collection-required") {
+        warning.textContent = ui.selectedRenameUnavailable;
+      } else if (plan.error === "scene-name-empty") {
+        warning.textContent = ui.renameEmptyScene;
+      } else if (!plan.entries.length) {
+        warning.textContent = ui.selectedRenameNoSelection;
+      } else {
+        warning.textContent =
+          "只重命名当前选中的图片，不会修改未选中的图片，也不会改变文件夹自动编号。";
+      }
+
+      const list = document.createElement("div");
+      list.className = "eagle-photo-rename-list";
+      for (const entry of plan.entries.slice(0, 300)) {
+        const row = document.createElement("div");
+        row.className = "eagle-photo-rename-row";
+        const before = document.createElement("span");
+        before.textContent = entry.oldName;
+        before.title = entry.oldName;
+        const arrow = document.createElement("span");
+        arrow.className = "eagle-photo-rename-arrow";
+        arrow.textContent = "→";
+        const after = document.createElement("span");
+        after.textContent = entry.newName;
+        after.title = entry.newName;
+        row.append(before, arrow, after);
+        list.appendChild(row);
+      }
+
+      const foot = document.createElement("div");
+      foot.className = "eagle-photo-rename-foot";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = ui.renameCancel;
+      cancel.addEventListener("click", closeRenamePreview);
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.dataset.primary = "true";
+      confirm.textContent = "确认重命名 " + String(plan.changes.length) + " 个";
+      confirm.disabled = Boolean(
+        plan.error || !plan.entries.length || !plan.changes.length
+      );
+      confirm.addEventListener("click", () => {
+        const latest = buildSelectedRenamePlan(group);
+        if (selectedRenamePlanSignature(latest) !==
+            selectedRenamePlanSignature(plan)) {
+          openSelectedRenamePreview(group);
+          return;
+        }
+        applySelectedRename(group);
+        closeRenamePreview();
+      });
+      foot.append(cancel, confirm);
+      dialog.append(head, summary, warning, list, foot);
+      overlay.appendChild(dialog);
+      overlay.addEventListener("mousedown", (event) => {
+        if (event.target === overlay) closeRenamePreview();
+      });
+      document.body.appendChild(overlay);
+      return plan;
+    }
+
+    function openDeliveryCopyModal(payload = {}) {
+      closeRenamePreview();
+      const stats = payload.stats || {};
+      const template = String(payload.template || "");
+      const rootName = String(payload.rootName || "当前文件夹");
+      const normalizeLink = (value) => String(value || "")
+        .trim()
+        .replace(/^链接\s*[:：]\s*/u, "");
+      const renderTemplate = (link) => template.replace(
+        /\{(groups|groupsWithPeople|groupsWithoutPeople|peopleCount|environmentCount|totalMedia|quarkLink)\}/g,
+        (_match, key) => String({
+          groups: stats.groupCount || 0,
+          groupsWithPeople: stats.groupsWithPeople || 0,
+          groupsWithoutPeople: stats.groupsWithoutPeople || 0,
+          peopleCount: stats.peopleCount || 0,
+          environmentCount: stats.environmentCount || 0,
+          totalMedia: stats.totalMedia || 0,
+          quarkLink: String(link || "")
+        }[key])
+      );
+      const overlay = document.createElement("div");
+      overlay.className = "eagle-photo-rename-modal eagle-photo-delivery-modal";
+      const dialog = document.createElement("div");
+      dialog.className = "eagle-photo-rename-dialog eagle-photo-delivery-dialog";
+
+      const head = document.createElement("div");
+      head.className = "eagle-photo-rename-head";
+      const title = document.createElement("h2");
+      title.textContent = "生成交付文案";
+      const close = document.createElement("button");
+      close.type = "button";
+      close.textContent = "×";
+      close.title = "关闭";
+      close.addEventListener("click", closeRenamePreview);
+      head.append(title, close);
+
+      const summary = document.createElement("div");
+      summary.className = "eagle-photo-rename-summary";
+      summary.textContent = String(rootName) + " · " +
+        String(stats.groupCount || 0) + " 组 · " +
+        String(stats.groupsWithPeople || 0) + " 组带人物图 · " +
+        String(stats.groupsWithoutPeople || 0) + " 组不带人物图 · 人物 " +
+        String(stats.peopleCount || 0) + " 张 · 环境 " +
+        String(stats.environmentCount || 0) + " 张";
+
+      const warning = document.createElement("div");
+      warning.className = "eagle-photo-rename-warning";
+      warning.textContent = "统计来自当前文件夹的直属子文件夹。链接和文案都可以继续编辑。";
+
+      const linkLabel = document.createElement("label");
+      linkLabel.className = "eagle-photo-delivery-label";
+      linkLabel.textContent = "夸克链接";
+      const linkInput = document.createElement("input");
+      linkInput.type = "url";
+      linkInput.className = "eagle-photo-delivery-link";
+      linkInput.placeholder = "粘贴夸克链接";
+      linkInput.value = normalizeLink(
+        localStorage.getItem("eagle.mediaOrganizer.deliveryCopyLink.v1") || ""
+      );
+
+      const output = document.createElement("textarea");
+      output.className = "eagle-photo-delivery-text";
+      output.spellcheck = false;
+      output.value = renderTemplate(linkInput.value);
+
+      const foot = document.createElement("div");
+      foot.className = "eagle-photo-rename-foot";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "关闭";
+      cancel.addEventListener("click", closeRenamePreview);
+      const regenerate = document.createElement("button");
+      regenerate.type = "button";
+      regenerate.textContent = "按链接更新文案";
+      regenerate.addEventListener("click", () => {
+        output.value = renderTemplate(linkInput.value);
+      });
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.dataset.primary = "true";
+      copy.textContent = "复制文案";
+      copy.addEventListener("click", async () => {
+        const text = output.value;
+        const normalizedLink = normalizeLink(linkInput.value);
+        linkInput.value = normalizedLink;
+        localStorage.setItem("eagle.mediaOrganizer.deliveryCopyLink.v1", normalizedLink);
+        localStorage.setItem("eagle.mediaOrganizer.deliveryCopyDraft.v1", text);
+        try {
+          if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            output.focus();
+            output.select();
+            document.execCommand("copy");
+            output.setSelectionRange(output.value.length, output.value.length);
+          }
+          copy.textContent = "已复制";
+          setTimeout(() => { copy.textContent = "复制文案"; }, 1200);
+        } catch (error) {
+          copy.textContent = "复制失败";
+          console.warn("[photo-taken-sort] Delivery copy failed", error);
+        }
+      });
+      foot.append(cancel, regenerate, copy);
+      dialog.append(head, summary, warning, linkLabel, linkInput, output, foot);
+      overlay.appendChild(dialog);
+      overlay.addEventListener("mousedown", (event) => {
+        if (event.target === overlay) closeRenamePreview();
+      });
+      document.body.appendChild(overlay);
+      api.deliveryCopyRequest = null;
+      api.deliveryCopyStatus = "idle";
+      return true;
+    }
+
     function ensureMenu() {
       ensureStyle();
       if (refreshHostScope()) renderSettings();
+      if (hostScopeState.isPending()) return false;
       ensureSmartCollectionObserver();
       // Eagle may restore a normal-folder route after injection without an
       // Angular watch notification. This schedules one guarded L3 first-frame
@@ -5823,6 +7789,7 @@ const API_VERSION = 150;
 
     function handleSortingHostChange() {
       ensureMenu();
+      if (hostScopeState.isPending()) return false;
       syncManualContext();
       syncMetaContext();
       syncRenameContext();
@@ -5869,6 +7836,9 @@ const API_VERSION = 150;
     api.setRules = (rules) => saveRules(rules);
     api.previewRename = buildCurrentRenamePlan;
     api.openRenamePreview = openRenamePreview;
+    api.openDeliveryCopyModal = openDeliveryCopyModal;
+    api.showDeliveryCopyError = showDeliveryCopyError;
+    api.clearDeliveryCopyRequest = clearDeliveryCopyRequest;
     api.undoLastRename = undoLastRename;
     api.current = () => {
       ensureTeamSortStateForCurrentLibrary();
@@ -5909,6 +7879,8 @@ const API_VERSION = 150;
         renameEnabled: renameEnabled(),
         renameBatchRequest: api.rename.batchRequest,
         renameBatchStatus: renameBatchStatusForCurrentContext(),
+        deliveryCopyRequest: api.deliveryCopyRequest,
+        deliveryCopyStatus: api.deliveryCopyStatus,
         // The main-panel renderer builds rename previews on demand. The
         // background poll must stay lightweight, especially for smart folders.
         renamePlan: null,
@@ -5935,6 +7907,15 @@ const API_VERSION = 150;
         smartSnapshotGeneration: smartSnapshot?.generation || 0,
         teamImportResult: api.teamImportResult,
         metaType: bodyScope.listMetaType || "",
+        directFolderTree:
+          collection.kind === "normal" && bodyScope.currentFolder
+            ? folderLevelRuntime.directChildren(bodyScope.currentFolder).map((folder) => ({
+              id: String(folder.id || ""),
+              name: String(folder.name || "未命名文件夹"),
+              parentId: String(bodyScope.currentFolder.id || ""),
+              depth: 1
+            }))
+            : [],
         itemFingerprint: itemFingerprint(items),
         itemSourceCounts: {
           allData: smartLoading ? -1 : Array.isArray(bodyScope.allData)
@@ -5967,6 +7948,7 @@ const API_VERSION = 150;
     api.renderTakenMeta = renderTakenMeta;
     api.refresh = () => {
       ensureMenu();
+      if (hostScopeState.isPending()) return false;
       if (!isPluginSort()) {
         bodyScope.rebindRefresh?.();
         bodyScope.$evalAsync();
@@ -6040,6 +8022,7 @@ const API_VERSION = 150;
     }
 
     function canHandleManualDrag() {
+      if (hostScopeState.isPending()) return false;
       const availability = currentLevelAvailability();
       return manualEnabled() &&
         availability.targetKind === "direct-media" &&
@@ -6050,15 +8033,55 @@ const API_VERSION = 150;
         }).allowed;
     }
 
+    // Eagle's virtualized cards have used three identity shapes across
+    // releases. Normal drag must keep working when data-box-id is absent.
+    function cardIdFromElement(element) {
+      if (!element) return "";
+      const dataId = element.getAttribute?.("data-box-id") ||
+        element.getAttribute?.("data-id");
+      if (dataId) return String(dataId);
+      return String(element.id || "").replace(/^box-/, "");
+    }
+
+    function cardElementById(id) {
+      const normalizedId = String(id || "");
+      if (!normalizedId) return null;
+      const direct = document.getElementById("box-" + normalizedId);
+      if (direct?.classList?.contains("box") &&
+          cardIdFromElement(direct) === normalizedId) {
+        return direct;
+      }
+      return Array.from(
+        document.querySelectorAll("#box-list .box")
+      ).find((box) => cardIdFromElement(box) === normalizedId) || null;
+    }
+
     function selectedIdsForDrag(sourceId) {
       const visibleSelected = Array.from(
-        document.querySelectorAll("#box-list .box.selected[data-box-id]")
-      ).map((box) => String(box.getAttribute("data-box-id") || ""))
+        document.querySelectorAll("#box-list .box.selected")
+      ).map((box) => cardIdFromElement(box))
         .filter(Boolean);
       if (visibleSelected.includes(String(sourceId || ""))) {
         return visibleSelected;
       }
       return sourceId ? [String(sourceId)] : [];
+    }
+
+    function syncNormalDraggableCards() {
+      if (currentCollection().kind !== "normal" || !manualEnabled() || folderLocked()) {
+        return 0;
+      }
+      let count = 0;
+      document.querySelectorAll("#box-list .box").forEach((box) => {
+        if (box.classList.contains("pinned")) {
+          box.removeAttribute("draggable");
+          return;
+        }
+        if (!cardIdFromElement(box)) return;
+        box.setAttribute("draggable", "true");
+        count += 1;
+      });
+      return count;
     }
 
     const dragFeedbackController = createDragFeedbackController({ document });
@@ -6094,7 +8117,7 @@ const API_VERSION = 150;
       if (directHelper) return directHelper;
       const targetBox = pointTarget?.closest?.(".box");
       if (!targetBox || targetBox.classList.contains("pinned")) return null;
-      const targetId = targetBox.getAttribute("data-box-id");
+      const targetId = cardIdFromElement(targetBox);
       if (!targetId || api.dragState?.selectedIds?.includes(targetId)) {
         return null;
       }
@@ -6102,7 +8125,18 @@ const API_VERSION = 150;
       const side = clientX >= bounds.left + bounds.width / 2
         ? "right"
         : "left";
-      return targetBox.querySelector(".box-sortable-helper." + side);
+      const helper = targetBox.querySelector(".box-sortable-helper." + side);
+      if (helper) return helper;
+      // Some Eagle virtual-card layouts expose the card but omit sortable
+      // helper children. Keep the card as the drop target and carry the side
+      // on a temporary data attribute so the normal commit path can proceed.
+      targetBox.dataset.eaglePhotoDropInsertAfter = String(side === "right");
+      return targetBox;
+    }
+
+    function dropHelperInsertAfter(helper) {
+      return helper?.classList?.contains?.("right") === true ||
+        helper?.dataset?.eaglePhotoDropInsertAfter === "true";
     }
 
     function markDropHelper(helper) {
@@ -6110,14 +8144,15 @@ const API_VERSION = 150;
       dragFeedbackController.update({
         mode: "normal",
         insideGrid: true,
-        targetId: String(targetBox?.getAttribute?.("data-box-id") || ""),
+        targetId: cardIdFromElement(targetBox),
         targetBox,
         helper: helper || null,
-        insertAfter: helper?.classList?.contains?.("right") === true
+        insertAfter: dropHelperInsertAfter(helper)
       });
     }
 
     function manualItemsForDrag() {
+      if (hostScopeState.isPending()) return [];
       return resolveCurrentOrderSnapshot({ preferRendered: true }).finalItems;
     }
 
@@ -6142,8 +8177,8 @@ const API_VERSION = 150;
         const currentIndex = currentIds.indexOf(desiredId);
         if (currentIndex < 0 || currentIndex === index) continue;
         const targetId = currentIds[index];
-        const source = document.getElementById("box-" + desiredId);
-        const target = document.getElementById("box-" + targetId);
+        const source = cardElementById(desiredId);
+        const target = cardElementById(targetId);
         if (!source || !target || grid.moveElementsBefore([source], target, false) === false) {
           return false;
         }
@@ -6246,8 +8281,8 @@ const API_VERSION = 150;
         const sourceIndex = actual.indexOf(sourceId);
         if (sourceIndex < 0) return false;
         if (sourceIndex === index) continue;
-        const source = document.getElementById("box-" + sourceId);
-        const target = document.getElementById("box-" + actual[index]);
+        const source = cardElementById(sourceId);
+        const target = cardElementById(actual[index]);
         if (!source || !target || grid.moveElementsBefore([source], target, false) === false) {
           return false;
         }
@@ -6258,8 +8293,10 @@ const API_VERSION = 150;
     }
 
     function scheduleNormalOrderPresentation() {
+      if (hostScopeState.isPending()) return false;
       const collection = currentCollection();
       if (collection.kind !== "normal") return false;
+      syncNormalDraggableCards();
       if (!isPluginSort()) {
         diagnoseNormalOrderPresentation("SKIP_NOT_PLUGIN", {
           folderOrderBy: String(bodyScope.currentFolder?.orderBy || ""),
@@ -6413,7 +8450,10 @@ const API_VERSION = 150;
           )
         });
         if (presentation.ok) {
-          bodyScope.$evalAsync(() => renderTakenMeta());
+          bodyScope.$evalAsync(() => {
+            renderTakenMeta();
+            renderSettings();
+          });
           const sourceById = new Map(
             sourceItems.map((item) => [String(item?.id || ""), item])
           );
@@ -6450,7 +8490,7 @@ const API_VERSION = 150;
       const selected = new Set(selectedIds);
       const sourceElements = bodyScope.allData
         .filter((item) => selected.has(item.id))
-        .map((item) => document.getElementById("box-" + item.id))
+        .map((item) => cardElementById(item.id))
         .filter(Boolean);
       if (
         sourceElements.length !== selected.size ||
@@ -6494,10 +8534,12 @@ const API_VERSION = 150;
     }
 
     function performManualDrop(event, selectedIds, options = {}) {
+      if (hostScopeState.isPending()) return false;
       if (!canHandleManualDrag()) return false;
-      const helper = event?.target?.closest?.(".box-sortable-helper");
+      const helper = event?.target?.closest?.(".box-sortable-helper") ||
+        event?.target?.closest?.(".box");
       const targetBox = helper?.closest?.(".box");
-      const targetId = targetBox?.getAttribute("data-box-id");
+      const targetId = cardIdFromElement(targetBox);
       const collection = currentCollection();
       // Every drop starts from the complete visible order when Eagle has rendered
       // all target cards. Persisted manual order restores that same view after
@@ -6520,7 +8562,7 @@ const API_VERSION = 150;
             items: visualItems,
             selectedIds,
             targetId,
-            insertAfter: helper.classList.contains("right"),
+            insertAfter: dropHelperInsertAfter(helper),
             locked: folderLocked()
           });
       if (!moveResult.ok) return false;
@@ -7547,6 +9589,9 @@ const API_VERSION = 150;
     }
 
     function observeSmartNativeDrag(method, event, options = {}) {
+      if (hostScopeState.isPending()) {
+        return { handled: false, result: null, target: null };
+      }
       const snapshot = api.hostInputAdapter.snapshot();
       if (
         currentCollection().kind !== "smart" ||
@@ -7616,6 +9661,7 @@ const API_VERSION = 150;
       finishManualDrag(false);
       api.hostInputAdapter?.contextChanged();
       api.hostInputAdapter = createSmartHostInputAdapter();
+      api.normalPointerDrag = createNormalPointerDragRuntime({ thresholdPx: 8 });
       if (api.handlers) {
         for (const [eventName, handler] of Object.entries(api.handlers)) {
           document.removeEventListener(eventName, handler, true);
@@ -7642,7 +9688,7 @@ const API_VERSION = 150;
       const sourceBox = smartSource?.targetBox ||
         event.target?.closest?.(".box");
       const sourceId = smartSource?.targetId ||
-        sourceBox?.getAttribute("data-box-id");
+        cardIdFromElement(sourceBox);
       const dragAllowed = smartCollection
         ? currentCollection().kind === "smart" &&
           manualEnabled() &&
@@ -7678,7 +9724,6 @@ const API_VERSION = 150;
         selectedIds: selectedIdsForDrag(sourceId),
         nativeDrag: true,
         collectionId: currentContextId(),
-        lastHelper: null,
         submitted: false
       };
       api.dragCleanupTimer = setTimeout(finishManualDrag, 30000);
@@ -7715,7 +9760,6 @@ const API_VERSION = 150;
         }
       });
       if (decision.owner !== SORTING) return;
-      if (helper) api.dragState.lastHelper = helper;
       setDropTargetsVisible(true, api.dragState.selectedIds);
       markDropHelper(helper);
       api.dragStats.overs += 1;
@@ -7784,8 +9828,11 @@ const API_VERSION = 150;
       }
       const dragState = api.dragState;
       if (!dragState) return;
-      const helper = dropHelperAtPoint(event.clientX, event.clientY) ||
-        (dragState.lastHelper?.isConnected ? dragState.lastHelper : null);
+      // R39/API151: dragend is only a drop supplement when Eagle reports a
+      // valid final in-grid coordinate. Reusing the last helper after the
+      // pointer leaves Eagle would turn a Finder/desktop drag into an
+      // unintended internal reorder and make the card jump back.
+      const helper = dropHelperAtPoint(event.clientX, event.clientY);
       try {
         submitManualDrop(dragState, helper);
       } finally {
@@ -7793,7 +9840,27 @@ const API_VERSION = 150;
       }
       };
       const pointerDownHandler = (event) => {
+      if (hostScopeState.isPending()) return;
       const collection = currentCollection();
+      if (collection.kind === "normal") {
+        const sourceBox = event.target?.closest?.(".box");
+        const sourceId = cardIdFromElement(sourceBox);
+        if (!sourceId || sourceBox.classList.contains("pinned") || !canHandleManualDrag()) return;
+        api.normalPointerDrag?.down({
+          pointerId: event.pointerId,
+          button: event.button,
+          isPrimary: event.isPrimary,
+          collectionKind: "normal",
+          collectionId: currentContextId(),
+          manualAllowed: true,
+          locked: folderLocked(),
+          sourceId,
+          selectedIds: selectedIdsForDrag(sourceId),
+          clientX: event.clientX,
+          clientY: event.clientY
+        });
+        return;
+      }
       if (collection.kind !== "smart") return;
       const source = resolveSmartDragTarget(event);
       const sourceBox = source.targetBox;
@@ -7812,6 +9879,27 @@ const API_VERSION = 150;
       }));
       };
       const pointerMoveHandler = (event) => {
+      if (hostScopeState.isPending()) return;
+      if (currentCollection().kind === "normal") {
+        const drag = api.normalPointerDrag?.snapshot?.();
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const helper = dropHelperAtPoint(event.clientX, event.clientY);
+        const targetBox = helper?.closest?.(".box") || null;
+        const targetId = cardIdFromElement(targetBox);
+        const result = api.normalPointerDrag.move({
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          insideGrid: Boolean(helper),
+          targetId,
+        insertAfter: dropHelperInsertAfter(helper)
+        });
+        if (result?.crossedThreshold) {
+          setDropTargetsVisible(true, drag.selectedIds);
+          markDropHelper(helper);
+        }
+        return;
+      }
       const snapshot = api.hostInputAdapter.snapshot();
       if (!snapshot.active || snapshot.session?.nativeDragActive) return;
       const target = resolveSmartDragTarget(
@@ -7840,6 +9928,27 @@ const API_VERSION = 150;
       }
       };
       const pointerUpHandler = (event) => {
+      if (hostScopeState.isPending()) return;
+      if (currentCollection().kind === "normal") {
+        const drag = api.normalPointerDrag?.snapshot?.();
+        if (!drag || drag.pointerId !== event.pointerId) return;
+        const helper = dropHelperAtPoint(event.clientX, event.clientY);
+        const targetBox = helper?.closest?.(".box") || null;
+        const targetId = cardIdFromElement(targetBox);
+        const result = api.normalPointerDrag.up({
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          insideGrid: Boolean(helper),
+          targetId,
+          insertAfter: dropHelperInsertAfter(helper)
+        });
+        setDropTargetsVisible(false);
+        if (result?.ok) {
+          performManualDrop({ target: helper }, result.selectedIds);
+        }
+        return;
+      }
       const snapshot = api.hostInputAdapter.snapshot();
       if (!snapshot.active) return;
       const target = resolveSmartDragTarget(
@@ -8065,9 +10174,15 @@ const API_VERSION = 150;
       }
       const orderTreeOutsideSwitches = !!orderTree &&
         !collectionActions?.contains(orderTree);
-      const featureApplyCount = collectionActions?.querySelectorAll(
-        ".eagle-photo-feature-apply"
-      ).length || 0;
+      const featureApplyCount = collectionActions
+        ? Array.from(collectionActions.querySelectorAll(
+          ".eagle-photo-feature-apply"
+        )).filter((button) =>
+          !button.closest(".eagle-photo-selected-rename") &&
+          !button.closest(".eagle-photo-delivery-row")
+        )
+          .length
+        : 0;
       const expectedSwitchCount =
         currentCollection().kind === "smart" ? 2 : 3;
       const expectedFeatureApplyCount =
@@ -8152,9 +10267,10 @@ const API_VERSION = 150;
       if (!canHandleManualDrag()) {
         return { ok: false, reason: "temporary drag inactive" };
       }
+      syncNormalDraggableCards();
       const visualItems = manualItemsForDrag();
       const candidates = visualItems.filter((item) => {
-        const box = document.getElementById("box-" + item.id);
+        const box = cardElementById(item.id);
         return box && !box.classList.contains("pinned");
       });
       if (candidates.length < 2) {
@@ -8170,7 +10286,7 @@ const API_VERSION = 150;
       if (!targetHelper) {
         return { ok: false, reason: "drop target missing" };
       }
-      const sourceBox = document.getElementById("box-" + source.id);
+      const sourceBox = cardElementById(source.id);
       const draggableSource = sourceBox?.querySelector(
         '[draggable="true"]'
       );
@@ -8562,7 +10678,7 @@ const API_VERSION = 150;
       currentOrder: effectivePluginOrderBy(),
       rules: api.rules,
       manualHooked: window.onDropBoxItem === api.original.onDropBoxItem,
-      dragCaptureHooked: Object.keys(api.handlers || {}).length === 11,
+      dragCaptureHooked: Object.keys(api.handlers || {}).length === 12,
       layoutSelfTest: api.runLayoutIntegrationTest(),
       folderLevelSelfTest: api.runFolderLevelIntegrationTest(),
       takenMetaSelfTest: api.runTakenMetaIntegrationTest(),
@@ -8612,17 +10728,25 @@ async function injectIntoMain() {
       : null
   };
   const result = await executeInMain(injectionSource(selection));
+  recordBootstrapDiagnostic("INJECT_MAIN_RETURN", {
+    libraryId: String(result?.libraryId || ""),
+    ok: result?.ok === true,
+    itemCount: Number(result?.itemCount || 0),
+    optionCount: Number(result?.optionCount || 0)
+  });
   teamStateStatus.importResult = result?.teamImportResult || null;
   if (!result || !result.ok) {
     throw new Error(result ? result.reason : "Injection returned no result");
   }
   const sortingFacade = ensureSortingModuleFacade();
+  recordBootstrapDiagnostic("INJECT_STAGE", { stage: "sorting-facade-enable" });
   await sortingFacade.enable({
     windowId: "eagle-main",
     hostAppId: "eagle",
     libraryId: result.libraryId || "",
     collectionId: result.collectionId || ""
   });
+  recordBootstrapDiagnostic("INJECT_STAGE", { stage: "sorting-facade-enabled" });
   if (result.renameCancelResult?.applied) {
     await fs.promises.unlink(renameCancelPath).catch(() => {});
     setStatus(
@@ -8648,8 +10772,11 @@ async function injectIntoMain() {
     setStatus(`团队排序状态未导入：${result.teamImportResult.reason}`);
   }
   injectionReady = true;
+  recordBootstrapDiagnostic("INJECT_STAGE", { stage: "injection-ready" });
   await pushCachedTimestamps();
+  recordBootstrapDiagnostic("INJECT_STAGE", { stage: "cached-timestamps-pushed" });
   await initializeTeamStateSync(selection);
+  recordBootstrapDiagnostic("INJECT_STAGE", { stage: "team-state-sync-initialized" });
   renderTeamStateStatus();
   const testPassed =
     Array.isArray(result.selfTest) &&
@@ -10659,12 +12786,16 @@ function clearFolderTagPreview(message = "") {
 
 function folderTagScopeFromContext(context) {
   const folders = Array.isArray(context?.folderTree) ? context.folderTree : [];
+  const directFolders = Array.isArray(context?.directFolderTree)
+    ? context.directFolderTree
+    : [];
   if (!folders.length) {
     throw new Error("请先在 Eagle 主窗口打开一个普通文件夹");
   }
   return {
     contextId: String(context.contextId || ""),
     folders,
+    directFolders,
     root: folders[0]
   };
 }
@@ -10831,6 +12962,7 @@ async function refreshCurrentFolderTag(context, requestId) {
     if (requestId !== folderTagRefreshRequest) return;
     folderTagScopeData = {
       folders: scope.folders,
+      directFolders: scope.directFolders,
       itemsByFolder,
       contextId: scope.contextId,
       root: scope.root
@@ -11003,6 +13135,18 @@ async function loadTagSuggestions() {
   }
 }
 
+function bindFolderCopyUi() {
+  if (folderCopyUiBound) return;
+  folderCopyUiBound = true;
+  document.getElementById("copy-folder-current")?.addEventListener(
+    "click",
+    runFolderCopyFromWindow
+  );
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") refreshFolderCopyTarget();
+  });
+}
+
 function bindGeoUi() {
   const root = document.body;
   if (!root || root.dataset.geoUiBound === "true") return;
@@ -11173,7 +13317,9 @@ function bindGeoUi() {
   });
   document.addEventListener("visibilitychange", () => {
     folderTagUiActive = document.visibilityState !== "hidden";
-    if (folderTagUiActive) updateFolderTagTarget(true);
+    if (folderTagUiActive) {
+      updateFolderTagTarget(true);
+    }
   });
 }
 
@@ -11291,10 +13437,53 @@ async function flushMoveDiagnostics(entries) {
   lastMoveDiagnosticSequence = newestSequence;
 }
 
+async function handleDeliveryCopyRequest(request, context) {
+  const requestId = String(request?.id || "");
+  if (!requestId || requestId === lastDeliveryCopyRequestId) return;
+  if (String(request.contextId || "") !== String(context?.contextId || "")) return;
+  const groups = Array.isArray(request.groups) ? request.groups : [];
+  if (!groups.length || context?.currentSmartFolderId || !context?.currentFolderId) {
+    await executeInMain(
+      `window.__eaglePhotoTakenSort?.showDeliveryCopyError(${JSON.stringify(
+        "请在普通总文件夹中生成交付文案"
+      )})`
+    );
+    lastDeliveryCopyRequestId = requestId;
+    return;
+  }
+  lastDeliveryCopyRequestId = requestId;
+  try {
+    const items = await withTimeout(
+      () => eagle.item.get({ folders: groups.map((group) => group.id) }),
+      60000,
+      `Read delivery folders (${groups.length})`
+    );
+    const itemsByFolder = partitionItemsByFolder(groups, items);
+    const stats = deliveryCopyRuntime.buildStats({ groups, itemsByFolder });
+    const payload = {
+      requestId,
+      rootName: String(request.rootName || context.currentFolderName || "当前文件夹"),
+      stats,
+      template: DEFAULT_DELIVERY_COPY_TEMPLATE
+    };
+    const serialized = JSON.stringify(payload).replace(/</g, "\\u003c");
+    await executeInMain(
+      `window.__eaglePhotoTakenSort?.openDeliveryCopyModal(${serialized})`
+    );
+  } catch (error) {
+    const message = error?.message || String(error);
+    await executeInMain(
+      `window.__eaglePhotoTakenSort?.showDeliveryCopyError(${JSON.stringify(message)})`
+    );
+    console.warn("[photo-taken-sort] Delivery copy scan failed:", error);
+  }
+}
+
 async function monitor() {
   if (monitorInProgress || !mainBridgeAllowed) return;
   monitorInProgress = true;
   try {
+    seedExpectedLibraryIdentityFromHost();
     if (!injectionReady) {
       const bootstrap = await ensureStartupReadinessGate().observe(
         hostLibraryReadiness()
@@ -11342,6 +13531,9 @@ async function monitor() {
 
     if (context.renameBatchRequest) {
       await handleRenameBatchRequest(context.renameBatchRequest);
+    }
+    if (context.deliveryCopyRequest) {
+      await handleDeliveryCopyRequest(context.deliveryCopyRequest, context);
     }
 
     const contextKey = createScanContextKey(context);
@@ -11441,7 +13633,7 @@ eagle.onPluginCreate((plugin) => {
   failureDiagnosticSignature = "";
   failureDiagnosticAt = 0;
   mainBridgeAllowed = false;
-  expectedLibraryIdentity = "";
+  expectedLibraryIdentity = seedExpectedLibraryIdentityFromHost();
   cachePersistPending = false;
   pendingGeoLibraryIdentity = "";
   metadataRetryDelayMs = 0;
@@ -11476,6 +13668,7 @@ eagle.onPluginCreate((plugin) => {
 
 eagle.onLibraryChanged((libraryPath) => {
   if (!runtimeInstanceAllowed) return;
+  if (typeof libraryPath !== "string" || !libraryPath) return;
   stopRuntimeActivity("library-changed");
   ensureSortingModuleFacade().disable("library-changed").catch((error) => {
     console.warn("[photo-taken-sort] Unable to stop sorting module", error);
@@ -11508,6 +13701,9 @@ eagle.onLibraryChanged((libraryPath) => {
   lastHostInputDiagnosticAdapterId = "";
   lastMoveDiagnosticSequence = 0;
   lastMoveDiagnosticRuntimeId = "";
+  folderCopyUiRequest += 1;
+  folderCopyUiSelection = null;
+  renderFolderCopySelection(null);
 });
 
 eagle.onPluginRun(async () => {
@@ -11526,7 +13722,17 @@ eagle.onPluginRun(async () => {
     return;
   }
   try {
+    seedExpectedLibraryIdentityFromHost();
     setStatus("收到用户打开插件窗口请求");
+    await eagle.window.show();
+    bindFolderCopyUi();
+    bindPublicRenameFallbackUi();
+    bindPublicDeliveryFallbackUi();
+    bindPublicSortPreviewUi();
+    await refreshFolderCopyTarget();
+    await refreshPublicRenameFallback();
+    await refreshPublicDeliveryFallback();
+    await refreshPublicSortPreview();
     if (startPromise) {
       await startPromise;
     }
@@ -11535,7 +13741,6 @@ eagle.onPluginRun(async () => {
     );
     if (bootstrap.phase !== "active" || !injectionReady) {
       setStatus("等待 Eagle Library 完成加载；排序、缓存和元数据服务尚未启动");
-      await eagle.window.show();
       return;
     }
     if (!geoTagService) await initializeGeoTagService();
@@ -11552,7 +13757,6 @@ eagle.onPluginRun(async () => {
     renderTeamStateStatus();
     await loadExceptionList();
     folderTagUiActive = true;
-    await eagle.window.show();
     await updateFolderTagTarget(true);
   } catch (error) {
     setStatus(`重新连接失败：${error.message}`);

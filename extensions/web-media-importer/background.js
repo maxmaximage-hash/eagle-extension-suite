@@ -1,4 +1,4 @@
-importScripts("core.js");
+importScripts("core.js", "provider-adapters.js");
 
 const EAGLE_API = "http://127.0.0.1:41595/api";
 const CACHE_DIR = "Eagle-Web-Media-Cache";
@@ -7,33 +7,72 @@ const LEGACY_QUEUE_KEY = "eagle.webMediaImporter.queues.v1";
 const SETTINGS_KEY = "eagle.webMediaImporter.settings.v2";
 const CREDENTIAL_KEY = "eagle.webMediaImporter.credentials.v2";
 const MENU_PAGE = "save-current-page-media-to-eagle";
-const MENU_MEDIA = "save-current-media-to-eagle";
+const MENU_INSTAGRAM_POST = "save-current-instagram-post-to-eagle";
+const MENU_XIAOHONGSHU_POST = "save-current-xiaohongshu-post-to-eagle";
 const CLEANUP_DELAY_MINUTES = 24 * 60;
 const MEDIA_PROBE_BYTES = 2 * 1024 * 1024;
+const MAX_TRANSCODE_SOURCE_BYTES = 50 * 1024 * 1024;
+const MAX_TRANSCODE_PIXELS = 48 * 1024 * 1024;
 const processingBatches = new Set();
 const processingDownloads = new Set();
 let storageLock = Promise.resolve();
 let credentialLock = Promise.resolve();
+let initializeQueuesPromise = null;
 
 chrome.runtime.onInstalled.addListener(() => {
   installMenus();
-  initializeQueues().catch(() => {});
+  initializeQueuesOnce().catch(() => {});
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  initializeQueues().catch(() => {});
+  initializeQueuesOnce().catch(() => {});
+  refreshActivePageMenuTitle().catch(() => {});
+});
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.get(tabId).then(updatePageMenuTitle).catch(() => {});
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url || changeInfo.status === "complete") updatePageMenuTitle(tab).catch(() => {});
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === MENU_PAGE) return openCollector(tab, { mode: "page" });
-  if (info.menuItemId === MENU_MEDIA) {
-    return openCollector(tab, {
+  if (info.menuItemId === MENU_PAGE) {
+    const request = !info.srcUrl
+      ? { mode: EagleWebMediaProviders.pageActionFor(String(tab?.url || "")).mode }
+      : {
       mode: "selected",
       sourceUrl: String(info.srcUrl || ""),
       selectedKind: String(info.mediaType || "")
-    });
+      };
+    openCollector(tab, request).catch((error) => reportCollectorError(tab, error));
+    return;
+  }
+  if (info.menuItemId === MENU_INSTAGRAM_POST) {
+    openCollector(tab, {
+      mode: "post",
+      sourceUrl: String(info.srcUrl || ""),
+      selectedKind: String(info.mediaType || "")
+    }).catch((error) => reportCollectorError(tab, error));
+    return;
+  }
+  if (info.menuItemId === MENU_XIAOHONGSHU_POST) {
+    openCollector(tab, {
+      mode: "post",
+      sourceUrl: String(info.srcUrl || ""),
+      selectedKind: String(info.mediaType || "")
+    }).catch((error) => reportCollectorError(tab, error));
   }
 });
+
+function reportCollectorError(tab, error) {
+  if (!tab?.id) return;
+  chrome.tabs.sendMessage(tab.id, {
+    type: "web-media-error",
+    error: formatError(error)
+  }).catch(() => {});
+}
 
 chrome.downloads.onChanged.addListener((delta) => {
   if (!delta.state || !["complete", "interrupted"].includes(delta.state.current)) return;
@@ -72,9 +111,38 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
 function installMenus() {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: MENU_PAGE, title: "保存当前帖子/内容至 Eagle…", contexts: ["page"] });
-    chrome.contextMenus.create({ id: MENU_MEDIA, title: "保存当前媒体至 Eagle…", contexts: ["image", "video"] });
+    chrome.contextMenus.create({ id: MENU_PAGE, title: EagleWebMediaProviders.wholeSaveMenuTitle("generic"), contexts: ["page", "link", "image", "video"] });
+    chrome.contextMenus.create({
+      id: MENU_INSTAGRAM_POST,
+      title: "保存当前 Instagram 帖子至 Eagle…",
+      contexts: ["image", "video"],
+      documentUrlPatterns: ["https://www.instagram.com/p/*", "https://instagram.com/p/*", "https://www.instagram.com/reel/*", "https://instagram.com/reel/*"]
+    });
+    chrome.contextMenus.create({
+      id: MENU_XIAOHONGSHU_POST,
+      title: "保存当前小红书整帖至 Eagle…",
+      contexts: ["image", "video"],
+      documentUrlPatterns: ["https://www.xiaohongshu.com/explore/*", "https://xiaohongshu.com/explore/*", "https://www.xiaohongshu.com/discovery/item/*", "https://xiaohongshu.com/discovery/item/*"]
+    });
+    refreshActivePageMenuTitle().catch(() => {});
   });
+}
+
+async function refreshActivePageMenuTitle() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return updatePageMenuTitle(tab);
+}
+
+async function updatePageMenuTitle(tab) {
+  return chrome.contextMenus.update(MENU_PAGE, menuPresentationForTab(tab));
+}
+
+function menuPresentationForTab(tab) {
+  const action = EagleWebMediaProviders.pageActionFor(String(tab?.url || ""));
+  return {
+    title: action.menuTitle,
+    enabled: Boolean(action.contextCollectible ?? action.collectible)
+  };
 }
 
 async function openCollector(tab, payload) {
@@ -94,7 +162,8 @@ async function openCollector(tab, payload) {
 async function openCollectorFromMessage(message) {
   const tabId = Number(message?.tabId);
   if (!Number.isInteger(tabId) || tabId <= 0) throw codedError("TAB_MISSING", "无法确认当前网页");
-  return openCollector(await chrome.tabs.get(tabId), { mode: "page" });
+  const mode = message?.mode === "post" ? "post" : "page";
+  return openCollector(await chrome.tabs.get(tabId), { mode });
 }
 
 async function eagleRequest(path, options = {}) {
@@ -156,6 +225,11 @@ async function initializeQueues() {
     await chrome.storage.local.remove(LEGACY_QUEUE_KEY);
   }
   await recoverQueues();
+}
+
+function initializeQueuesOnce() {
+  if (!initializeQueuesPromise) initializeQueuesPromise = initializeQueues();
+  return initializeQueuesPromise;
 }
 
 async function replaceQueue(queue) {
@@ -335,9 +409,23 @@ async function startDownload(queue, entry) {
     return scheduleNext(queue.id);
   }
   entry = prepared.entry;
+  let downloadUrl = rawUrl;
+  if (shouldTranscodeToJpeg(entry)) {
+    try {
+      downloadUrl = await transcodeImageToJpeg(rawUrl, entry);
+      entry = { ...entry, extension: "jpg", transcodedJpeg: true, mimeHint: "image/jpeg" };
+    } catch (error) {
+      await transition(queue.id, entry.id, {
+        type: "blocked", code: errorCode(error), message: formatError(error)
+      });
+      await clearCredential(entry.requestRef);
+      return scheduleNext(queue.id);
+    }
+  }
   const starting = await transition(queue.id, entry.id, {
     type: "download_starting",
     validatedExtension: entry.extension,
+    transcodedJpeg: entry.transcodedJpeg === true,
     audioStatus: entry.audioStatus,
     mediaCompleteness: entry.mediaCompleteness,
     networkStatus: network.requiresBrowserValidation ? "requires-browser-validation" : "browser-managed"
@@ -350,7 +438,7 @@ async function startDownload(queue, entry) {
   let downloadId;
   try {
     downloadId = await chrome.downloads.download({
-      url: rawUrl,
+      url: downloadUrl,
       filename: `${CACHE_DIR}/${EagleWebMediaCore.buildCacheFilename(entry)}`,
       conflictAction: "uniquify",
       saveAs: false
@@ -379,6 +467,87 @@ async function startDownload(queue, entry) {
     }
     scheduleNext(queue.id);
   }
+}
+
+function shouldTranscodeToJpeg(entry) {
+  if (entry?.type !== "image") return false;
+  const extension = String(entry.extension || "").toLowerCase();
+  return !["jpg", "jpeg"].includes(extension) && entry.mimeHint !== "image/jpeg";
+}
+
+async function transcodeImageToJpeg(rawUrl, entry) {
+  const response = await fetchWithTimeout(rawUrl, {
+    method: "GET", credentials: "omit", cache: "no-store", redirect: "follow"
+  }, 30_000);
+  if (!response.ok) throw codedError("IMAGE_TRANSCODE_FETCH_FAILED", `图片读取失败（${response.status}）`);
+  if (!EagleWebMediaCore.classifyNetworkAccess(entry, response.url || rawUrl).ok) {
+    throw codedError("DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED", "图片转码发生了未授权的跨站或私网跳转");
+  }
+  const mime = String(response.headers.get("content-type") || "").toLowerCase().split(";")[0].trim();
+  if (!mime.startsWith("image/") || mime === "image/svg+xml") {
+    throw codedError("IMAGE_TRANSCODE_SOURCE_INVALID", "图片原文件不是可安全转码的位图");
+  }
+  const maxBytes = Math.min(Number(entry.maxBytes || MAX_TRANSCODE_SOURCE_BYTES), MAX_TRANSCODE_SOURCE_BYTES);
+  const source = await readBoundedResponseBlob(response, maxBytes, mime);
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(source);
+    const pixels = Number(bitmap.width) * Number(bitmap.height);
+    if (!Number.isFinite(pixels) || pixels <= 0 || pixels > MAX_TRANSCODE_PIXELS) {
+      throw codedError("IMAGE_TRANSCODE_DIMENSIONS_INVALID", "图片分辨率超过安全转码上限");
+    }
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) throw codedError("IMAGE_TRANSCODE_UNAVAILABLE", "浏览器无法创建图片转码画布");
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, bitmap.width, bitmap.height);
+    context.drawImage(bitmap, 0, 0);
+    const jpeg = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.92 });
+    if (jpeg.type !== "image/jpeg" || !jpeg.size || jpeg.size > Number(entry.maxBytes || Infinity)) {
+      throw codedError("IMAGE_TRANSCODE_NOT_JPEG", "图片未能生成符合安全限制的 JPG 文件");
+    }
+    return blobToDataUrl(jpeg);
+  } catch (error) {
+    if (error?.code) throw error;
+    throw codedError("IMAGE_TRANSCODE_UNSUPPORTED", "该图片格式无法在浏览器中安全转换为 JPG");
+  } finally {
+    bitmap?.close?.();
+  }
+}
+
+async function readBoundedResponseBlob(response, maxBytes, mime) {
+  const declared = preflightContentLength(response);
+  if (declared > maxBytes) throw codedError("ITEM_SIZE_LIMIT", "图片原文件超过安全转码上限");
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const blob = await response.blob();
+    if (!blob.size || blob.size > maxBytes) throw codedError("ITEM_SIZE_LIMIT", "图片原文件超过安全转码上限");
+    return blob;
+  }
+  const chunks = [];
+  let total = 0;
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw codedError("ITEM_SIZE_LIMIT", "图片原文件超过安全转码上限");
+    }
+    chunks.push(value);
+  }
+  if (!total) throw codedError("IMAGE_TRANSCODE_SOURCE_INVALID", "图片原文件为空");
+  return new Blob(chunks, { type: mime });
+}
+
+async function blobToDataUrl(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return `data:image/jpeg;base64,${btoa(binary)}`;
 }
 
 async function prepareDownloadEntry(entry, rawUrl) {
@@ -555,7 +724,9 @@ async function validateCompletedDownload(queue, entry) {
     await clearCredential(entry.requestRef);
     return scheduleNext(queue.id);
   }
-  const finalNetwork = EagleWebMediaCore.classifyNetworkAccess(entry, item?.finalUrl || item?.url || "");
+  const finalNetwork = entry.transcodedJpeg === true
+    ? { ok: true, mode: "locally-transcoded" }
+    : EagleWebMediaCore.classifyNetworkAccess(entry, item?.finalUrl || item?.url || "");
   if (!finalNetwork.ok) {
     await transition(queue.id, entry.id, {
       type: "blocked", code: "DOWNLOAD_FINAL_ORIGIN_NOT_ALLOWED",
@@ -877,4 +1048,4 @@ function formatError(error) {
 
 // MV3 may recreate the worker without firing runtime.onStartup. This read-only
 // bootstrap makes persisted queues self-healing on every worker incarnation.
-initializeQueues().catch(() => {});
+initializeQueuesOnce().catch(() => {});

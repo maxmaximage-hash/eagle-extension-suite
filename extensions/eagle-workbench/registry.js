@@ -2,24 +2,60 @@
 
 // This registry is deliberately read-only. It is generated from the source
 // manifests at release time and never contains mutable business state.
-const WORKBENCH_VERSION = "1.1";
-const WORKBENCH_DISPLAY_VERSION = "1.1";
+const WORKBENCH_VERSION = "1.4";
+const WORKBENCH_DISPLAY_VERSION = "1.4";
 
 const MODULES = Object.freeze([
   Object.freeze({
-    id: "com.max.eagle-photo-taken-sort",
+    id: "com.max.eagle-photo-taken-sort:sorting",
     manifestPath: "../media-organizer/manifest.json",
-    displayVersion: "2.5",
-    name: "排序与重命名",
+    sourceVersion: "2.5.22-qa.98",
+    displayVersion: "2.6",
+    name: "排序与自动编号",
     packageName: "媒体智能整理",
-    version: "2.5.22-qa.94",
+    version: "2.6",
     category: "核心功能",
     typeLabel: "Eagle 扩展",
-    description: "拍摄时间排序、多级排序、手动顺序、自动编号和安全改名。",
+    description: "拍摄时间排序、多级排序、手动顺序和文件夹自动编号。",
     changelog: [
+      "2.6 版本继续保留原有排序、手动顺序、锁定和自动编号规则。",
+      "排序与重命名业务保持隔离，自动编号只处理 1-/2- 开头的媒体。",
       "修复智能文件夹连续拖动偶发失效，拖动后的顺序可以稳定保存。",
       "修复完整集合顺序与当前可见窗口顺序不同步导致的第二次拖动失败。",
       "连续拖动后保持当前资源库与 MAX 照片集数量不变。",
+    ],
+  }),
+  Object.freeze({
+    id: "com.max.eagle-photo-taken-sort:media-rename",
+    manifestPath: "../media-organizer/manifest.json",
+    sourceVersion: "2.5.22-qa.98",
+    displayVersion: "1.0",
+    name: "人物与环境图重命名",
+    packageName: "媒体智能整理",
+    version: "1.0",
+    category: "核心功能",
+    typeLabel: "Eagle 扩展",
+    description: "按当前顺序将选中的人物图重命名为 1-场景名加连续编号，将选中的环境图重命名为 2-场景名加连续编号。",
+    changelog: [
+      "1.0 支持在插件窗口中预览并确认选中人物图的连续编号。",
+      "1.0 支持在插件窗口中预览并确认选中环境图的连续编号。",
+      "人物图和环境图入口独立于文件夹排序和自动编号。",
+    ],
+  }),
+  Object.freeze({
+    id: "com.max.eagle-photo-taken-sort:delivery-copy",
+    manifestPath: "../media-organizer/manifest.json",
+    sourceVersion: "2.5.22-qa.98",
+    displayVersion: "1.0",
+    name: "交付文案生成",
+    packageName: "媒体智能整理",
+    version: "1.0",
+    category: "核心功能",
+    typeLabel: "Eagle 扩展",
+    description: "扫描直属子文件夹并生成可编辑、可复制的交付文案统计。",
+    changelog: [
+      "1.0 支持统计组数、带人物组数、人物图数量和环境图数量。",
+      "支持编辑夸克链接、文案内容并一键复制。",
     ],
   }),
   Object.freeze({
@@ -41,10 +77,11 @@ const MODULES = Object.freeze([
   Object.freeze({
     id: "com.max.eagle-photo-taken-sort:metadata",
     manifestPath: "../media-organizer/manifest.json",
+    sourceVersion: "2.5.22-qa.98",
     displayVersion: "2.5",
     name: "地点与元数据标签",
     packageName: "媒体智能整理",
-    version: "2.5.22-qa.94",
+    version: "2.5.22-qa.98",
     category: "核心功能",
     typeLabel: "Eagle 扩展",
     description: "GPS/元数据读取、地点审核、人工纠正和文件夹地点标签。",
@@ -87,16 +124,16 @@ const MODULES = Object.freeze([
   Object.freeze({
     id: "com.max.eagle-live-photo-manager",
     manifestPath: "../live-photo-manager/manifest.json",
-    displayVersion: "0.1",
+    displayVersion: "0.2",
     name: "Live Photo 管家",
     packageName: "MAX Live Photo 管家",
-    version: "0.1.0-demo.1",
-    category: "试验功能",
-    typeLabel: "试验功能",
-    description: "识别 JPG/HEIC 与 MOV 配对并提供本地预览和队列。",
+    version: "0.2.0-dev.11",
+    category: "后台服务",
+    typeLabel: "后台服务",
+    description: "为 Eagle 原生 Live Photo 卡片维护配对、台账、缩略图和右键导出；诊断窗口不参与日常浏览。",
     changelog: [
-      "0.1 Demo 支持识别 Live Photo 配对、预览、暂停、取消和失败熔断。",
-      "当前仍是只读试验功能，不写入 Eagle Library，也不修改源文件。",
+      "0.2 开始记录可恢复台账，并支持单项静态图/MOV 本地导出。",
+      "原生网格路线已验证：单个 .livp 在 Eagle 文件夹中显示为一张原生卡片；右键桥接和悬停播放继续开发。",
     ],
   }),
   Object.freeze({

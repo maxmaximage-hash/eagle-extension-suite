@@ -154,6 +154,25 @@ assert.deepStrictEqual(
   ]
 );
 
+// R05 field case: the visible grid is 3,4,1,2. The plan must follow that
+// final screen order and cannot report a continuous name set just because all
+// four ordinals are present.
+const screenshotVisibleOrder = runtime.buildPlan([
+  { id: "shot-3", name: "1-有山不远3", ext: "jpg" },
+  { id: "shot-4", name: "1-有山不远4", ext: "jpg" },
+  { id: "shot-1", name: "1-有山不远1", ext: "jpg" },
+  { id: "shot-2", name: "1-有山不远2", ext: "jpg" }
+], { folderName: "2-有山不远" });
+assert.deepStrictEqual(
+  screenshotVisibleOrder.changes.map((entry) => [entry.id, entry.newName]),
+  [
+    ["shot-3", "1-有山不远1"],
+    ["shot-4", "1-有山不远2"],
+    ["shot-1", "1-有山不远3"],
+    ["shot-2", "1-有山不远4"]
+  ]
+);
+
 // Every preview in a twenty-drop session must consume the latest manual order,
 // including when no item has taken-time metadata.
 let twentyDropVisible = Array.from({ length: 12 }, (_, index) => ({

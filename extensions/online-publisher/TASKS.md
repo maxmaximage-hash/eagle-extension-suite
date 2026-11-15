@@ -1,5 +1,12 @@
 # 任务
 
+## 2026-10-30：MAX Publisher 1.2.7 当前电脑安装与真实窗口验收
+
+- [x] `npm test` 82/82 通过；当前安装包内 manifest 为 `com.max.eagle-online-showcase 1.2.7`，现场 SHA-256 为 `5a42c53a37ce799f0431cf5ce98d4193bf3eac772e7809f4c68eb4f1282017f2`。
+- [x] 旧 1.2.5 目录备份至 `~/Library/Application Support/Eagle/Backups/max-publisher-before-sync-20261030/plugin` 后替换唯一正式安装目录。
+- [x] Eagle 重启后真实打开 Publisher；本地导出、隐私打码、线上水印与发布、字体分类管理、系统设置入口均可见；线上展示标签读到 91 张，状态为等待配置。
+- [ ] 真实图片水印/打码导出和 Cloudflare 发布尚未执行；不以页面启动代替写入或发布验收。
+
 ## 正在进行
 
 - 在真实 Eagle 中完成人工冒烟；1.2.7 安全依赖升级已完成自动验证和独立打包，等待经批准的安装验收。

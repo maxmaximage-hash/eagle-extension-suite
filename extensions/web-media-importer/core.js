@@ -34,6 +34,8 @@
     weibo: ["sinaimg.cn", "weibo.com"],
     bilibili: ["hdslb.com", "bilivideo.com", "bilibili.com"],
     douyin: ["douyinvod.com", "douyinpic.com", "byteimg.com", "douyin.com"],
+    instagram: ["cdninstagram.com", "fbcdn.net", "instagram.com"],
+    xiaohongshu: ["xhscdn.com", "xiaohongshu.com"],
     youtube: ["ytimg.com", "youtube.com"]
   };
 
@@ -149,16 +151,19 @@
     return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, cap) : fallback;
   }
 
-  function normalizePositiveBytes(value, fallback) {
+  const MAX_ITEM_BYTES = 4 * 1024 * 1024 * 1024;
+  const MAX_BATCH_BYTES = 20 * 1024 * 1024 * 1024;
+
+  function normalizePositiveBytes(value, fallback, cap) {
     const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+    return Number.isFinite(parsed) && parsed > 0 ? Math.min(Math.floor(parsed), cap) : fallback;
   }
 
   function normalizeSettings(value = {}) {
     return {
       maxItems: normalizePositiveInteger(value.maxItems, 25, 200),
-      maxItemBytes: normalizePositiveBytes(value.maxItemBytes, 1024 * 1024 * 1024),
-      maxBatchBytes: normalizePositiveBytes(value.maxBatchBytes, 2 * 1024 * 1024 * 1024)
+      maxItemBytes: normalizePositiveBytes(value.maxItemBytes, 1024 * 1024 * 1024, MAX_ITEM_BYTES),
+      maxBatchBytes: normalizePositiveBytes(value.maxBatchBytes, 2 * 1024 * 1024 * 1024, MAX_BATCH_BYTES)
     };
   }
 
@@ -306,6 +311,7 @@
         if (event.downloadId !== undefined) same.downloadId = Number(event.downloadId);
         if (event.path !== undefined) same.path = String(event.path || "");
         if (event.validatedExtension) same.validatedExtension = String(event.validatedExtension);
+        if (event.transcodedJpeg === true) same.transcodedJpeg = true;
         if (event.actualBytes !== undefined) same.actualBytes = Math.max(0, Number(event.actualBytes) || 0);
         if (event.networkStatus) same.networkStatus = String(event.networkStatus);
         if (event.audioStatus) same.audioStatus = String(event.audioStatus);
@@ -320,6 +326,7 @@
       if (event.downloadId !== undefined) next.downloadId = Number(event.downloadId);
       if (event.path !== undefined) next.path = String(event.path || "");
       if (event.validatedExtension) next.validatedExtension = String(event.validatedExtension);
+      if (event.transcodedJpeg === true) next.transcodedJpeg = true;
       if (event.actualBytes !== undefined) next.actualBytes = Math.max(0, Number(event.actualBytes) || 0);
       if (event.networkStatus) next.networkStatus = String(event.networkStatus);
       if (event.audioStatus) next.audioStatus = String(event.audioStatus);
@@ -344,6 +351,7 @@
     if (!Number.isFinite(size) || size <= 0) return { ok: false, reason: "DOWNLOAD_EMPTY" };
     if (entry.maxBytes && size > Number(entry.maxBytes)) return { ok: false, reason: "ITEM_SIZE_LIMIT" };
     const mime = String(item.mime || "").toLowerCase().split(";")[0].trim();
+    if (entry.transcodedJpeg === true && mime !== "image/jpeg") return { ok: false, reason: "TRANSCODE_NOT_JPEG" };
     if (mime === "text/html" || mime === "application/xhtml+xml") return { ok: false, reason: "DOWNLOAD_HTML" };
     if (mime === "application/json" || mime.endsWith("+json")) return { ok: false, reason: "DOWNLOAD_JSON" };
     if (mime === "image/svg+xml") return { ok: false, reason: "ACTIVE_MEDIA_BLOCKED" };
@@ -357,7 +365,11 @@
         return { ok: false, reason: "DOWNLOAD_EXTENSION_MISMATCH" };
       }
     }
-    if (!/^https?:/i.test(String(item.finalUrl || item.url || "https://local.invalid"))) {
+    const completedUrl = String(item.finalUrl || item.url || "");
+    if (entry.transcodedJpeg === true && !/^data:image\/jpeg;base64,/i.test(completedUrl)) {
+      return { ok: false, reason: "TRANSCODE_FINAL_URL_INVALID" };
+    }
+    if (entry.transcodedJpeg !== true && !/^https?:/i.test(completedUrl || "https://local.invalid")) {
       return { ok: false, reason: "DOWNLOAD_FINAL_URL_INVALID" };
     }
     if (!String(item.filename || "")) return { ok: false, reason: "DOWNLOAD_PATH_MISSING" };

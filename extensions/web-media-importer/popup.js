@@ -6,6 +6,19 @@ const maxItemMb = document.getElementById("max-item-mb");
 const maxBatchMb = document.getElementById("max-batch-mb");
 const saveSettings = document.getElementById("save-settings");
 const pageState = document.getElementById("page-state");
+const scanTitle = document.getElementById("scan-title");
+const platformNote = document.getElementById("platform-note");
+let currentPageMode = "page";
+let currentWholeSaveLabel = "保存当前媒体整体";
+
+async function sendRuntimeMessage(message) {
+  try {
+    return await chrome.runtime.sendMessage(message);
+  } catch (error) {
+    const invalidated = /extension context invalidated/i.test(String(error?.message || error));
+    return { ok: false, error: invalidated ? "扩展已更新，请关闭并重新打开弹窗后重试" : String(error?.message || "扩展通信失败") };
+  }
+}
 
 function setStatus(message, tone = "") {
   status.textContent = message;
@@ -14,11 +27,11 @@ function setStatus(message, tone = "") {
 
 savePageButton.addEventListener("click", async () => {
   savePageButton.disabled = true;
-  setStatus("正在识别当前页面媒体…");
+  setStatus(`正在识别${currentWholeSaveLabel.replace(/^保存/, "")}…`);
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id || !/^https?:/i.test(String(tab.url || ""))) throw new Error("请先打开一个普通网页");
-    const result = await chrome.runtime.sendMessage({ type: "open-web-media-collector", tabId: tab.id });
+    const result = await sendRuntimeMessage({ type: "open-web-media-collector", tabId: tab.id, mode: currentPageMode });
     if (!result?.ok) throw new Error(result?.error || "当前页面无法读取媒体");
     setStatus("识别完成，请在页面中选择 Eagle 普通文件夹。", "success");
   } catch (error) {
@@ -30,7 +43,7 @@ savePageButton.addEventListener("click", async () => {
 
 saveSettings.addEventListener("click", async () => {
   saveSettings.disabled = true;
-  const response = await chrome.runtime.sendMessage({
+  const response = await sendRuntimeMessage({
     type: "update-web-media-settings",
     settings: {
       maxItems: Number(maxItems.value),
@@ -43,7 +56,7 @@ saveSettings.addEventListener("click", async () => {
 });
 
 async function loadSettings() {
-  const response = await chrome.runtime.sendMessage({ type: "get-web-media-settings" });
+  const response = await sendRuntimeMessage({ type: "get-web-media-settings" });
   if (!response?.ok) return;
   maxItems.value = response.settings.maxItems;
   maxItemMb.value = Math.round(response.settings.maxItemBytes / 1024 / 1024);
@@ -53,13 +66,19 @@ async function loadSettings() {
 async function loadPageState() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const eligible = Boolean(tab?.id && /^https?:/i.test(String(tab.url || "")));
-  pageState.textContent = eligible ? "当前页面可识别" : "请先打开普通网页";
-  pageState.className = `page-state ${eligible ? "ready" : "blocked"}`;
-  savePageButton.disabled = !eligible;
+  const action = EagleWebMediaProviders.pageActionFor(String(tab?.url || ""));
+  currentPageMode = action.mode;
+  currentWholeSaveLabel = action.label;
+  pageState.textContent = eligible ? action.state : "请先打开普通网页";
+  pageState.className = `page-state ${eligible && action.collectible ? "ready" : "blocked"}`;
+  scanTitle.textContent = currentWholeSaveLabel;
+  savePageButton.textContent = currentWholeSaveLabel;
+  platformNote.textContent = action.note;
+  savePageButton.disabled = !eligible || !action.collectible;
 }
 
 async function refreshQueues() {
-  const response = await chrome.runtime.sendMessage({ type: "web-media-import-status" });
+  const response = await sendRuntimeMessage({ type: "web-media-import-status" });
   queues.replaceChildren();
   if (!response?.ok) return;
   for (const queue of (response.queues || []).slice(0, 5)) {
@@ -76,7 +95,7 @@ async function refreshQueues() {
       retry.textContent = "重试失败项";
       retry.addEventListener("click", async () => {
         retry.disabled = true;
-        const result = await chrome.runtime.sendMessage({ type: "retry-web-media-batch", batchId: queue.id });
+        const result = await sendRuntimeMessage({ type: "retry-web-media-batch", batchId: queue.id });
         setStatus(result?.ok ? "已重新开始失败项。" : (result?.error || "重试失败"), result?.ok ? "success" : "error");
         await refreshQueues();
       });
@@ -88,7 +107,7 @@ async function refreshQueues() {
       recheck.textContent = "重新确认已接收项";
       recheck.addEventListener("click", async () => {
         recheck.disabled = true;
-        const result = await chrome.runtime.sendMessage({ type: "recheck-web-media-batch", batchId: queue.id });
+        const result = await sendRuntimeMessage({ type: "recheck-web-media-batch", batchId: queue.id });
         setStatus(result?.ok
           ? `本轮新增 API 已读回 ${result.confirmed || 0} 项；不会重复导入。`
           : (result?.error || "重新确认失败"), result?.ok ? "success" : "error");
@@ -111,7 +130,7 @@ async function refreshQueues() {
       cancel.textContent = "取消未完成项";
       cancel.addEventListener("click", async () => {
         cancel.disabled = true;
-        const result = await chrome.runtime.sendMessage({ type: "cancel-web-media-batch", batchId: queue.id });
+        const result = await sendRuntimeMessage({ type: "cancel-web-media-batch", batchId: queue.id });
         setStatus(result?.ok ? "未完成项已取消；已被 Eagle 接收的项目不会删除。" : (result?.error || "取消失败"), result?.ok ? "success" : "error");
         await refreshQueues();
       });

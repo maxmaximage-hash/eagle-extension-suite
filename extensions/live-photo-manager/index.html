@@ -16,6 +16,7 @@
       </div>
     </div>
     <div class="toolbar" role="toolbar" aria-label="预览队列">
+      <button type="button" class="button" data-action="choose-source">选择源目录</button>
       <button type="button" class="button primary" data-action="continue-anchor">继续上次</button>
       <button type="button" class="button" data-action="scan">重新扫描</button>
       <button type="button" class="icon-button" data-action="pause" title="暂停队列" aria-label="暂停队列">II</button>
@@ -45,9 +46,9 @@
   </main>
 
   <div id="contextMenu" class="context-menu" hidden>
-    <button type="button" data-export="photos">导入苹果照片（Live）</button>
-    <button type="button" data-export="image">导出静态 JPG</button>
+    <button type="button" data-export="image">导出静态照片（HEIC/JPG）</button>
     <button type="button" data-export="movie">导出 MOV</button>
+    <button type="button" data-export="livp">导出完整 Live Photo（LIVP）</button>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 

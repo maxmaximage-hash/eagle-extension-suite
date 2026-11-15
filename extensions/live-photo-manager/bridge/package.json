@@ -1,0 +1,6 @@
+{
+  "name": "max-live-photo-eagle-bridge",
+  "private": true,
+  "version": "0.1.0",
+  "dependencies": { "@electron/asar": "3.2.13" }
+}

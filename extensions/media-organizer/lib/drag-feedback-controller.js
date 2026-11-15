@@ -43,6 +43,15 @@ function createDragFeedbackController(options = {}) {
     );
   }
 
+  function cardId(card) {
+    if (!card) return "";
+    const dataBoxId = card.getAttribute?.("data-box-id");
+    if (dataBoxId) return String(dataBoxId);
+    const dataId = card.getAttribute?.("data-id");
+    if (dataId) return String(dataId);
+    return String(card.id || "").replace(/^box-/, "");
+  }
+
   function clearScheduledCleanup() {
     for (const timer of cleanupTimers) cancelScheduled(timer);
     cleanupTimers = [];
@@ -123,7 +132,7 @@ function createDragFeedbackController(options = {}) {
     if (projectionMode === "smart") return;
     for (const helper of helpers()) {
       const card = helper.closest?.(".box");
-      const itemId = String(card?.getAttribute?.("data-box-id") || "");
+      const itemId = cardId(card);
       const eligible = visible === true &&
         itemId &&
         !selectedIds.has(itemId) &&

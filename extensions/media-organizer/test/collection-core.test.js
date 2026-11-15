@@ -88,7 +88,7 @@ const smartResults = Array.from({ length: 96 }, (_, index) => ({
   id: `smart-${index}`
 }));
 assert.strictEqual(runtime.scopedItems({
-  currentFolder: { id: "stale-normal" },
+  currentFolder: { id: "normal-route" },
   currentSmartFolder: { id: "smart-1" },
   allData: smartResults,
   raw: wholeLibrary
@@ -101,11 +101,21 @@ assert.strictEqual(runtime.scopedItems({
 }).length, 96, "route-owned smart results must not fall back to the stale folder");
 const normalRouteResults = [{ id: "normal-route-item" }];
 assert.strictEqual(runtime.scopedItems({
-  currentFolder: { id: "stale-normal" },
+  currentFolder: { id: "normal-route" },
   locationHash: "#!?view=folder&folder=normal-route",
   allData: normalRouteResults,
   raw: wholeLibrary
 }), normalRouteResults, "R79: a route-owned normal folder must use only its current-view array");
+assert.deepStrictEqual(
+  runtime.scopedItems({
+    currentFolder: { id: "stale-normal" },
+    locationHash: "#!?view=folder&folder=normal-route",
+    allData: normalRouteResults,
+    raw: wholeLibrary
+  }),
+  [],
+  "R130: a normal route with an unresolved host scope must not expose stale items"
+);
 assert.deepStrictEqual(
   runtime.scopedItems({
     currentFolder: { id: "normal-route" },

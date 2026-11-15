@@ -6,8 +6,11 @@
 **/.wrangler/
 **/*.log
 **/*.eagleplugin
+**/__pycache__/
+*.pyc
 /releases/
 /graphify-out/
+**/graphify-out/
 /docs/acceptance/
 
 # Local QA, recovery and user-data artifacts — never publish these to GitHub.

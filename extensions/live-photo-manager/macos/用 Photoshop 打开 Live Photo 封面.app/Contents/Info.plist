@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key><string>zh_CN</string>
+  <key>CFBundleDisplayName</key><string>用 Photoshop 打开 Live Photo 封面</string>
+  <key>CFBundleExecutable</key><string>live-photo-photoshop</string>
+  <key>CFBundleIdentifier</key><string>com.max.eagle-live-photo-photoshop-handler</string>
+  <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+  <key>CFBundleName</key><string>用 Photoshop 打开 Live Photo 封面</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>Photoshop.icns</string>
+  <key>CFBundleShortVersionString</key><string>0.1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSMinimumSystemVersion</key><string>10.15</string>
+  <key>LSMultipleInstancesProhibited</key><true/>
+  <key>CFBundleDocumentTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleTypeExtensions</key><array><string>livp</string></array>
+      <key>CFBundleTypeIconFile</key><string>Photoshop.icns</string>
+  <key>CFBundleTypeName</key><string>用 Photoshop 打开 Live Photo 封面</string>
+      <key>CFBundleTypeRole</key><string>Editor</string>
+      <key>LSHandlerRank</key><string>Owner</string>
+      <key>LSItemContentTypes</key><array><string>com.max.eagle-live-photo</string></array>
+    </dict>
+  </array>
+  <key>UTExportedTypeDeclarations</key>
+  <array>
+    <dict>
+      <key>UTTypeIdentifier</key><string>com.max.eagle-live-photo</string>
+      <key>UTTypeDescription</key><string>MAX Live Photo package</string>
+      <key>UTTypeConformsTo</key><array><string>public.data</string></array>
+      <key>UTTypeTagSpecification</key>
+      <dict><key>public.filename-extension</key><array><string>livp</string></array><key>public.mime-type</key><string>application/x-max-live-photo</string></dict>
+    </dict>
+  </array>
+</dict>
+</plist>

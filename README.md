@@ -2,7 +2,7 @@
 
 面向 Eagle 4 的团队媒体工作套件：排序与安全改名、GPS/元数据标签、水印与隐私打码、线上展示、Live Photo 管理和 iCloud 搬运台账。它独立于 MORROW；任何跨产品数据交换都只走版本化、只读的契约。
 
-当前源码基线：`媒体智能整理 2.5.22-qa.94 / API148`、`MAX Publisher 1.2.7`、`Eagle 工作台 1.1`。这份仓库只包含源码、测试、说明和界面示例，绝不包含 Eagle `.library`、NAS 素材、运行缓存、恢复资料、`app.asar`、密钥或发布后的用户状态。
+当前源码基线：`媒体智能整理 2.5.22-qa.98`、`MAX Publisher 1.2.7`、`Eagle 工作台 1.4`、`MAX Live Photo 管家 0.2.0-dev.11`、`MAX Live Photo 静态照片信息 0.1.0`、`MAX 头像共享源 1.0.0`。整套同步发布入口是 `scripts/build-eagle-suite-release.sh`，生成包含全部 Eagle 插件和浏览器扩展的版本化发布目录。这份仓库只包含源码、测试、说明和界面示例，绝不包含 Eagle `.library`、NAS 素材、运行缓存、恢复资料、`app.asar`、密钥或发布后的用户状态。
 
 排序主网格所需的 Eagle 通信桥不再依赖“复制另一台电脑的 app.asar”：目标电脑必须按
 `docs/CROSS-COMPUTER-HANDOFF.md` 使用仓库内的重建脚本，在本机 Eagle 4.0.0 原始宿主上
@@ -15,6 +15,7 @@
 - [功能与实现架构](docs/ARCHITECTURE-AND-FEATURE-MAP.md)：每项功能的实现位置、数据边界和同步方式。
 - [模块边界与 Eagle 原生主权](docs/EAGLE-EXTENSION-MODULE-BOUNDARIES.md)：排序、发布、标签三条业务线不得耦合的强制规则。
 - [排序历史回归与验收](extensions/media-organizer/docs/PERMANENT-REGRESSION-CONTRACT.md)：排序修复不能回归的永久门禁。
+- `scripts/build-eagle-suite-release.sh`：生成当前全部插件和浏览器扩展的版本化同步包与 SHA256 清单。
 
 ## 功能地图
 

@@ -184,6 +184,124 @@ test("generic page mode requires a single proven content container", () => {
   assert.equal(result.reason, "CURRENT_CONTENT_NOT_PROVEN");
 });
 
+test("provider labels name supported post scopes and keep a clear generic whole-media fallback", () => {
+  assert.equal(adapters.providerFor("https://www.instagram.com/p/CAROUSEL/"), "instagram");
+  assert.equal(adapters.providerFor("https://www.xiaohongshu.com/explore/abc"), "xiaohongshu");
+  assert.equal(adapters.wholeSaveLabel("instagram"), "保存当前 Instagram 整帖");
+  assert.equal(adapters.wholeSaveLabel("xiaohongshu"), "保存当前小红书整帖");
+  assert.equal(adapters.wholeSaveLabel("generic"), "保存当前媒体整体");
+  assert.equal(adapters.wholeSaveMenuTitle("https://www.xiaohongshu.com/explore/abc"), "保存当前小红书整帖至 Eagle…");
+});
+
+test("page actions do not promise Xiaohongshu or Instagram post saving from a feed", () => {
+  assert.deepEqual(adapters.pageActionFor("https://www.xiaohongshu.com/explore"), {
+    provider: "xiaohongshu",
+    mode: "context-selected",
+    collectible: false,
+    contextCollectible: true,
+    label: "在封面上保存单张图片或视频",
+    menuTitle: "保存右键处的小红书封面至 Eagle…",
+    state: "当前是小红书推荐流",
+    note: "推荐流不能作为整帖范围；在封面上右键可保存这一张图片或视频，打开具体笔记后可保存整帖。"
+  });
+  assert.equal(adapters.pageActionFor("https://www.xiaohongshu.com/explore/abc").collectible, true);
+  assert.deepEqual(adapters.pageActionFor("https://www.instagram.com/"), {
+    provider: "instagram",
+    mode: "context-selected",
+    collectible: false,
+    contextCollectible: true,
+    label: "在封面上保存单张图片或视频",
+    menuTitle: "保存右键处的 Instagram 媒体至 Eagle…",
+    state: "当前是 Instagram 信息流",
+    note: "信息流不能作为整帖范围；在封面上右键可保存这一张图片或视频，打开具体帖子后可保存整帖。"
+  });
+  assert.equal(adapters.pageActionFor("https://www.instagram.com/p/CAROUSEL/").label, "保存当前 Instagram 整帖");
+});
+
+test("Instagram feed accepts one explicit cover selection but not a feed container", () => {
+  const selected = adapters.collect(model("instagram", {
+    pageUrl: "https://www.instagram.com/",
+    explicitSelection: true,
+    containers: [{ id: "instagram-selected-cover", owned: true, candidates: [
+      { url: "https://scontent.cdninstagram.com/cover.webp", kind: "image", role: "content-image", sourceEvidence: "user-selected-media" }
+    ] }]
+  }));
+  const unproven = adapters.collect(model("instagram", {
+    pageUrl: "https://www.instagram.com/",
+    containers: [{ id: "feed-card", owned: true, candidates: [
+      { url: "https://scontent.cdninstagram.com/cover.webp", kind: "image", role: "post-image", sourceEvidence: "dom-media-element" }
+    ] }]
+  }));
+  assert.equal(selected.ok, true);
+  assert.equal(unproven.ok, false);
+  assert.equal(unproven.reason, "CURRENT_CONTENT_NOT_PROVEN");
+});
+
+test("Xiaohongshu feed accepts exactly one explicitly selected cover without enabling a feed scan", () => {
+  const selected = adapters.collect(model("xiaohongshu", {
+    pageUrl: "https://www.xiaohongshu.com/explore",
+    explicitSelection: true,
+    containers: [{ id: "xiaohongshu-selected-cover", owned: true, candidates: [
+      { url: "https://sns-webpic-qc.xhscdn.com/cover.webp", kind: "image", role: "content-image", sourceEvidence: "user-selected-media" }
+    ] }]
+  }));
+  const unproven = adapters.collect(model("xiaohongshu", {
+    pageUrl: "https://www.xiaohongshu.com/explore",
+    containers: [{ id: "feed-card", owned: true, candidates: [
+      { url: "https://sns-webpic-qc.xhscdn.com/cover.webp", kind: "image", role: "post-image", sourceEvidence: "dom-media-element" }
+    ] }]
+  }));
+  assert.equal(selected.ok, true);
+  assert.deepEqual(selected.candidates.map((candidate) => candidate.url), ["https://sns-webpic-qc.xhscdn.com/cover.webp"]);
+  assert.equal(unproven.ok, false);
+  assert.equal(unproven.reason, "XIAOHONGSHU_NOTE_REQUIRED");
+});
+
+test("Xiaohongshu keeps only a proven current post and never falls back to a feed-wide scan", () => {
+  assert.equal(adapters.isXiaohongshuDetailUrl("https://www.xiaohongshu.com/explore/abc"), true);
+  assert.equal(adapters.isXiaohongshuDetailUrl("https://www.xiaohongshu.com/"), false);
+  const accepted = adapters.collect(model("xiaohongshu", {
+    pageUrl: "https://www.xiaohongshu.com/explore/abc",
+    containers: [{ id: "current-note", owned: true, candidates: [
+      { url: "https://sns-webpic-qc.xhscdn.com/current.jpg", kind: "image", role: "post-image" }
+    ] }]
+  }));
+  const rejected = adapters.collect(model("xiaohongshu", {
+    pageUrl: "https://www.xiaohongshu.com/explore/abc",
+    containers: [
+      { id: "feed-a", owned: true, candidates: [] },
+      { id: "feed-b", owned: true, candidates: [] }
+    ]
+  }));
+  assert.equal(accepted.ok, true);
+  assert.equal(accepted.provider, "xiaohongshu");
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.reason, "CURRENT_CONTENT_AMBIGUOUS");
+});
+
+test("Instagram keeps the explicitly selected post separate from the feed and returns its carousel media in order", () => {
+  assert.equal(adapters.providerFor("https://www.instagram.com/p/CAROUSEL/"), "instagram");
+  const result = adapters.collect(model("instagram", {
+    pageUrl: "https://www.instagram.com/p/CAROUSEL/",
+    containers: [
+      { id: "selected-post", owned: true, incompleteCount: 2, candidates: [
+        { url: "https://scontent.cdninstagram.com/a.jpg", kind: "image", role: "post-image" },
+        { url: "https://scontent.cdninstagram.com/b.jpg", kind: "image", role: "post-image" }
+      ] },
+      { id: "recommended-post", owned: false, candidates: [
+        { url: "https://scontent.cdninstagram.com/recommend.jpg", kind: "image", role: "post-image" }
+      ] }
+    ]
+  }));
+  assert.equal(result.ok, true);
+  assert.equal(result.provider, "instagram");
+  assert.equal(result.incompleteCount, 2);
+  assert.deepEqual(result.candidates.map((entry) => entry.url), [
+    "https://scontent.cdninstagram.com/a.jpg",
+    "https://scontent.cdninstagram.com/b.jpg"
+  ]);
+});
+
 test("a direct video from one proven container proceeds to later container probing", () => {
   const result = adapters.collect(model("generic", {
     containers: [{ id: "current", owned: true, candidates: [{
