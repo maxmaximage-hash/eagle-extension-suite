@@ -408,6 +408,7 @@ let folderTagUiActive = false;
 let currentGeoScanContextId = "";
 let activeLocationTag = "";
 let lastDeliveryCopyRequestId = "";
+const cancelledDeliveryCopyRequestIds = new Set();
 let folderCopyInProgress = null;
 let folderCopyUiBusy = false;
 let folderCopyUiRequest = 0;
@@ -1244,6 +1245,22 @@ function flattenPublicDeliveryFolders(folders) {
   return flattened;
 }
 
+function deliveryFolderIds(folder) {
+  const ids = [];
+  const seen = new Set();
+  function visit(entry) {
+    const id = String(entry?.id || "");
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    ids.push(id);
+    for (const child of Array.isArray(entry?.children) ? entry.children : []) {
+      visit(child);
+    }
+  }
+  visit(folder);
+  return ids;
+}
+
 function publicDeliveryFallbackReason(reason) {
   return {
     "no-folder-selected": "请先在 Eagle 侧栏选中一个普通总文件夹。",
@@ -1310,7 +1327,11 @@ async function readPublicDeliveryFallbackScope() {
   const rootId = String(selected.folderId);
   const groups = flatFolders
     .filter((folder) => String(folder.parent || "") === rootId)
-    .map((folder) => ({ id: String(folder.id), name: String(folder.name || "未命名文件夹") }));
+    .map((folder) => ({
+      id: String(folder.id),
+      name: String(folder.name || "未命名文件夹"),
+      itemFolderIds: deliveryFolderIds(folder)
+    }));
   const itemsByFolder = await readDeliveryItemsByFolder(groups);
   return {
     folder: selected,
@@ -1323,30 +1344,36 @@ async function readDeliveryItemsByFolder(groups) {
     .filter((group) => group?.id)
     .map((group) => ({ ...group, id: String(group.id) }));
   if (!normalizedGroups.length) return {};
-  const items = await withTimeout(
-    () => eagle.item.get({ folders: normalizedGroups.map((group) => group.id) }),
-    60000,
-    `Read delivery folders (${normalizedGroups.length})`
+  const itemsByFolder = Object.fromEntries(
+    normalizedGroups.map((group) => [group.id, []])
   );
-  const itemsByFolder = partitionItemsByFolder(normalizedGroups, items);
-  const missingGroups = normalizedGroups.filter(
-    (group) => itemsByFolder[group.id]?.length === 0
+  const queries = normalizedGroups.flatMap((group) => {
+    const folderIds = Array.isArray(group.itemFolderIds) && group.itemFolderIds.length
+      ? group.itemFolderIds.map(String)
+      : [group.id];
+    return Array.from(new Set(folderIds)).map((folderId) => ({
+      groupId: group.id,
+      folderId
+    }));
+  });
+  const entries = await withTimeout(
+    () => mapWithConcurrency(
+      queries,
+      4,
+      async ({ groupId, folderId }) => {
+        const groupItems = await withTimeout(
+          () => eagle.item.get({ folders: [folderId] }),
+          10000,
+          `Read delivery folder ${folderId}`
+        );
+        return [groupId, Array.isArray(groupItems) ? groupItems : []];
+      }
+    ),
+    45000,
+    `Read delivery folders (${queries.length})`
   );
-  if (!missingGroups.length) return itemsByFolder;
-  const fallbackEntries = await mapWithConcurrency(
-    missingGroups,
-    4,
-    async (group) => {
-      const groupItems = await withTimeout(
-        () => eagle.item.get({ folders: [group.id] }),
-        20000,
-        `Read delivery folder ${group.id}`
-      );
-      return [group.id, Array.isArray(groupItems) ? groupItems : []];
-    }
-  );
-  for (const [groupId, groupItems] of fallbackEntries) {
-    itemsByFolder[groupId] = groupItems;
+  for (const [groupId, groupItems] of entries) {
+    itemsByFolder[groupId].push(...groupItems);
   }
   return itemsByFolder;
 }
@@ -2735,6 +2762,7 @@ const API_VERSION = 155;
     api.moveDiagnosticRuntimeId = sortingWindowId + ":" + Date.now();
     api.deliveryCopyRequest = null;
     api.deliveryCopyStatus = "idle";
+    api.deliveryCopyCancelRequest = null;
 
     function recordMoveDiagnostic(stage, payload = {}) {
       api.moveDiagnosticSequence += 1;
@@ -5685,12 +5713,14 @@ const API_VERSION = 155;
               ? folderLevelRuntime.directChildren(bodyScope.currentFolder).length
               : 0;
             const available = collectionKind === "normal" && directFolderCount > 0;
-            deliveryButton.disabled = !available || api.deliveryCopyStatus === "queued";
+            deliveryButton.disabled = !available;
             deliveryButton.textContent = api.deliveryCopyStatus === "queued"
-              ? "正在扫描…"
+              ? "暂停扫描"
               : "生成交付文案";
             deliveryButton.title = available
-              ? "扫描当前文件夹的直属子文件夹并生成可编辑交付文案"
+              ? api.deliveryCopyStatus === "queued"
+                ? "暂停当前扫描，不影响切换到其他文件夹继续扫描"
+                : "扫描当前文件夹的直属子文件夹并生成可编辑交付文案"
               : "请打开包含直属子文件夹的总文件夹";
           }
           if (!renameSection) return;
@@ -6198,7 +6228,11 @@ const API_VERSION = 155;
       deliveryButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        requestDeliveryCopy();
+        if (api.deliveryCopyStatus === "queued") {
+          cancelDeliveryCopyRequest();
+        } else {
+          requestDeliveryCopy();
+        }
       });
       deliveryRow.append(deliveryLabel, deliveryButton);
 
@@ -6875,13 +6909,30 @@ const API_VERSION = 155;
         rootName: String(bodyScope.currentFolder.name || "未命名文件夹"),
         groups: children.map((folder) => ({
           id: String(folder.id || ""),
-          name: String(folder.name || "未命名文件夹")
+          name: String(folder.name || "未命名文件夹"),
+          itemFolderIds: deliveryFolderIds(folder)
         }))
       };
+      api.deliveryCopyCancelRequest = null;
       api.deliveryCopyStatus = "queued";
       renderSettings();
       bodyScope.$evalAsync();
       return children.length;
+    }
+
+    function cancelDeliveryCopyRequest() {
+      const requestId = String(api.deliveryCopyRequest?.id || "");
+      if (!requestId) return false;
+      api.deliveryCopyCancelRequest = {
+        id: Date.now().toString(36) + "-cancel",
+        requestId
+      };
+      api.deliveryCopyRequest = null;
+      api.deliveryCopyStatus = "paused";
+      api.deliveryCopyMessage = "扫描已暂停，可以切换到其他文件夹继续扫描。";
+      renderSettings();
+      bodyScope.$evalAsync();
+      return true;
     }
 
     function clearDeliveryCopyRequest(id, status = "idle") {
@@ -7867,6 +7918,7 @@ const API_VERSION = 155;
     api.openDeliveryCopyModal = openDeliveryCopyModal;
     api.showDeliveryCopyError = showDeliveryCopyError;
     api.clearDeliveryCopyRequest = clearDeliveryCopyRequest;
+    api.cancelDeliveryCopyRequest = cancelDeliveryCopyRequest;
     api.undoLastRename = undoLastRename;
     api.current = () => {
       ensureTeamSortStateForCurrentLibrary();
@@ -7909,6 +7961,7 @@ const API_VERSION = 155;
         renameBatchStatus: renameBatchStatusForCurrentContext(),
         deliveryCopyRequest: api.deliveryCopyRequest,
         deliveryCopyStatus: api.deliveryCopyStatus,
+        deliveryCopyCancelRequest: api.deliveryCopyCancelRequest,
         // The main-panel renderer builds rename previews on demand. The
         // background poll must stay lightweight, especially for smart folders.
         renamePlan: null,
@@ -13468,6 +13521,7 @@ async function flushMoveDiagnostics(entries) {
 async function handleDeliveryCopyRequest(request, context) {
   const requestId = String(request?.id || "");
   if (!requestId || requestId === lastDeliveryCopyRequestId) return;
+  if (cancelledDeliveryCopyRequestIds.has(requestId)) return;
   if (String(request.contextId || "") !== String(context?.contextId || "")) return;
   const groups = Array.isArray(request.groups) ? request.groups : [];
   if (!groups.length || context?.currentSmartFolderId || !context?.currentFolderId) {
@@ -13482,6 +13536,7 @@ async function handleDeliveryCopyRequest(request, context) {
   lastDeliveryCopyRequestId = requestId;
   try {
     const itemsByFolder = await readDeliveryItemsByFolder(groups);
+    if (cancelledDeliveryCopyRequestIds.has(requestId)) return;
     const stats = deliveryCopyRuntime.buildStats({ groups, itemsByFolder });
     const payload = {
       requestId,
@@ -13490,6 +13545,7 @@ async function handleDeliveryCopyRequest(request, context) {
       template: DEFAULT_DELIVERY_COPY_TEMPLATE
     };
     const serialized = JSON.stringify(payload).replace(/</g, "\\u003c");
+    if (cancelledDeliveryCopyRequestIds.has(requestId)) return;
     await executeInMain(
       `window.__eaglePhotoTakenSort?.openDeliveryCopyModal(${serialized})`
     );
@@ -13555,8 +13611,20 @@ async function monitor() {
     if (context.renameBatchRequest) {
       await handleRenameBatchRequest(context.renameBatchRequest);
     }
+    if (context.deliveryCopyCancelRequest?.requestId) {
+      cancelledDeliveryCopyRequestIds.add(
+        String(context.deliveryCopyCancelRequest.requestId)
+      );
+      if (cancelledDeliveryCopyRequestIds.size > 32) {
+        const oldest = cancelledDeliveryCopyRequestIds.values().next().value;
+        cancelledDeliveryCopyRequestIds.delete(oldest);
+      }
+    }
     if (context.deliveryCopyRequest) {
-      await handleDeliveryCopyRequest(context.deliveryCopyRequest, context);
+      void handleDeliveryCopyRequest(context.deliveryCopyRequest, context)
+        .catch((error) => {
+          console.warn("[photo-taken-sort] Delivery copy scan failed:", error);
+        });
     }
 
     const contextKey = createScanContextKey(context);

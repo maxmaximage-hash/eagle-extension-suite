@@ -275,6 +275,16 @@ assert.match(
 );
 assert.match(
   source,
+  /async function readDeliveryItemsByFolder\(groups\)[\s\S]*?eagle\.item\.get\(\{ folders: \[folderId\] \}\)/,
+  "large delivery scans must query one folder id at a time"
+);
+assert.doesNotMatch(
+  source,
+  /eagle\.item\.get\(\{ folders: queryFolderIds \}\)/,
+  "Eagle 4 must not receive a multi-folder array request that can remain pending"
+);
+assert.match(
+  source,
   /section\.hidden = mainBridgeAllowed\s*&&\s*injectionReady\s*&&[\s\S]*?typeof eagle\.photoTakenSort\?\.execute === "function"/,
   "public sort fallback must stay visible whenever the bridge is stale or unavailable"
 );

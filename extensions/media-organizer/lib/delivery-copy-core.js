@@ -92,4 +92,23 @@ function partitionItemsByFolder(groups, items) {
   return result;
 }
 
-module.exports = { createDeliveryCopyRuntime, partitionItemsByFolder };
+function leafFolderGroups(folders, rootId) {
+  const byParent = new Map();
+  for (const folder of Array.isArray(folders) ? folders : []) {
+    if (!folder?.id) continue;
+    const parent = String(folder.parent || "");
+    const list = byParent.get(parent) || [];
+    list.push(folder);
+    byParent.set(parent, list);
+  }
+  function visit(folder) {
+    const children = byParent.get(String(folder.id)) || [];
+    if (!children.length) {
+      return [{ id: String(folder.id), name: String(folder.name || "未命名文件夹") }];
+    }
+    return children.flatMap(visit);
+  }
+  return (byParent.get(String(rootId)) || []).flatMap(visit);
+}
+
+module.exports = { createDeliveryCopyRuntime, partitionItemsByFolder, leafFolderGroups };

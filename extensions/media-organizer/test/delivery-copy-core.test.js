@@ -1,7 +1,11 @@
 "use strict";
 
 const assert = require("assert");
-const { createDeliveryCopyRuntime, partitionItemsByFolder } = require("../lib/delivery-copy-core");
+const {
+  createDeliveryCopyRuntime,
+  partitionItemsByFolder,
+  leafFolderGroups
+} = require("../lib/delivery-copy-core");
 
 const runtime = createDeliveryCopyRuntime({
   isMedia: (item) => ["jpg", "png", "mov"].includes(
@@ -44,6 +48,23 @@ assert.deepStrictEqual(
     environmentCount: 2,
     totalMedia: 4
   }
+);
+
+assert.deepStrictEqual(
+  leafFolderGroups(
+    [
+      { id: "parent", name: "1-黄煌13", parent: "root" },
+      { id: "leaf-a", name: "1-amoo", parent: "parent" },
+      { id: "leaf-b", name: "2-有山不远", parent: "parent" },
+      { id: "direct", name: "2-肖帅18", parent: "root" }
+    ],
+    "root"
+  ),
+  [
+    { id: "leaf-a", name: "1-amoo" },
+    { id: "leaf-b", name: "2-有山不远" },
+    { id: "direct", name: "2-肖帅18" }
+  ]
 );
 
 assert.strictEqual(
