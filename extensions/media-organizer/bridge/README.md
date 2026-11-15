@@ -54,16 +54,3 @@ shasum -a 256 /Applications/Eagle.app/Contents/Resources/app.asar
 任何一项失败都会恢复原始 `app.asar`。启动探测使用本次启动前的日志偏移，旧日志不能满足门禁。恢复后再次执行 SHA-256 和签名校验。事故记录见 `docs/INCIDENT-2026-11-13-EAGLE-ASAR-SIGNATURE-AND-STARTUP.md`。
 
 右键扩展只能使用 Eagle 官方入口或已签名并经过真实原生菜单验收的桥接。直接修改 `app.bundle.js`、未审计 IPC 或绕过签名会触发 Eagle 篡改检查，脚本必须阻断并恢复原始宿主。
-
-## 2026-11-15 恢复后的永久阻断
-
-恢复原始 b04a 宿主后，正式流程不再安装或修改 bridge/app.asar。历史
-`bridge/install-compatible-bridge.sh` 与旧 `releases/install-*.sh` 已永久 fail-closed。
-原始未桥接宿主只允许插件文件安装：
-
-```bash
-./scripts/install-github-release.sh --install-plugin-only
-node test/host-install-safety-contract.test.js
-```
-
-扫描测试发现任何针对 `app.asar` 的 `cp`、`mv`、`ditto` 或覆盖路径都会失败。
