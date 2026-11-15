@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly ROOT="${0:A:h:h}"
-readonly VERSION="20261115-eagle-complete-1"
+readonly VERSION="20261115-eagle-complete-2"
 readonly RELEASE_ROOT="$ROOT/releases/eagle-suite-v$VERSION"
 readonly ASSET_ROOT="$RELEASE_ROOT/assets"
 readonly PLUGIN_ROOT="$RELEASE_ROOT/plugins"
@@ -94,6 +94,21 @@ copy_file "$ROOT/extensions/media-organizer/bridge/bridge-manifest.json" \
   "$ASSET_ROOT/bridge/bridge-manifest.json"
 copy_file "$ROOT/extensions/media-organizer/bridge/README.md" \
   "$ASSET_ROOT/bridge/README.md"
+copy_file "$ROOT/extensions/media-organizer/bridge/package.json" \
+  "$ASSET_ROOT/bridge/package.json"
+copy_file "$ROOT/extensions/media-organizer/bridge/package-lock.json" \
+  "$ASSET_ROOT/bridge/package-lock.json"
+readonly BRIDGED_APP_ASAR="/Applications/Eagle.app/Contents/Resources/app.asar"
+readonly BRIDGED_APP_ASAR_SHA256="4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3"
+if [[ -f "$BRIDGED_APP_ASAR" ]]; then
+  current_bridge_hash=$(sha256 "$BRIDGED_APP_ASAR")
+  if [[ "$current_bridge_hash" == "$BRIDGED_APP_ASAR_SHA256" ]]; then
+    copy_file "$BRIDGED_APP_ASAR" \
+      "$ASSET_ROOT/bridge/Eagle-4.0.0-build23-bridged-app.asar"
+    print -r -- "$current_bridge_hash  Eagle-4.0.0-build23-bridged-app.asar" > \
+      "$ASSET_ROOT/bridge/app.asar.sha256"
+  fi
+fi
 
 cat > "$RELEASE_ROOT/SYNC-INSTRUCTIONS.md" <<EOF
 # Eagle Extension Suite $VERSION
@@ -103,9 +118,9 @@ cat > "$RELEASE_ROOT/SYNC-INSTRUCTIONS.md" <<EOF
 1. 先完全退出 Eagle。
 2. 将 \`plugins/*.eagleplugin\` 解压到 \`~/Library/Application Support/Eagle/Plugins/<插件 ID>/\`，每个压缩包的根目录就是插件目录内容。
 3. 浏览器扩展解压 \`assets/*.zip\` 后，在 Chrome 的扩展管理页加载对应目录。
-4. 需要媒体智能整理主网格桥接时，只运行 \`assets/bridge/rebuild-compatible-bridge.js --check\` 检查本机，确认本机 Eagle 4.0.0 后再按 README 的安装步骤执行。
+4. 需要媒体智能整理主网格桥接时，先在 \`assets/bridge\` 执行 \`npm ci\`，再运行 \`node rebuild-compatible-bridge.js --check\` 检查本机。发布包同时提供经过 SHA256 校验的 Eagle 4.0.0 Build23 桥接宿主资产，只有指纹匹配时才使用它。
 
-包内没有 Eagle Library、NAS 素材、运行状态、诊断日志、备份或 app.asar。
+包内没有 Eagle Library、NAS 素材、运行状态、诊断日志或备份。桥接 app.asar 只作为独立、带 SHA256 的宿主资产提供。
 EOF
 
 cat > "$RELEASE_ROOT/PLUGIN-REGISTRY.json" <<EOF
