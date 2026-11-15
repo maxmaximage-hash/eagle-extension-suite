@@ -5,6 +5,18 @@ function createDeliveryCopyRuntime(options = {}) {
     ? options.isMedia
     : () => true;
 
+  function mediaItem(item) {
+    if (isMedia(item)) return true;
+    const source = `${String(item?.name || "")} ${String(item?.filePath || "")}`.trim().toLowerCase();
+    return /\.(?:jpg|jpeg|png|gif|webp|heic|heif|avif|tif|tiff|bmp|mov|mp4|m4v|avi|mkv|webm)(?:$|[?#\s])/u.test(source);
+  }
+
+  function groupNumber(item) {
+    const source = `${String(item?.name || "")} ${String(item?.filePath || "")}`.trim();
+    const match = source.match(/(?:^|[/\\\s])([0-9]+)\s*[-_.]/u);
+    return match ? Number(match[1]) : null;
+  }
+
   function buildStats(input = {}) {
     const groups = Array.isArray(input.groups) ? input.groups : [];
     const itemsByFolder = input.itemsByFolder || {};
@@ -12,9 +24,12 @@ function createDeliveryCopyRuntime(options = {}) {
       const items = Array.isArray(itemsByFolder[group?.id])
         ? itemsByFolder[group.id]
         : [];
-      const media = items.filter((item) => isMedia(item));
-      const peopleCount = media.filter((item) => /^1-/.test(String(item?.name || ""))).length;
-      const environmentCount = media.filter((item) => /^2-/.test(String(item?.name || ""))).length;
+      const media = items.filter(mediaItem);
+      const peopleCount = media.filter((item) => groupNumber(item) === 1).length;
+      const environmentCount = media.filter((item) => {
+        const number = groupNumber(item);
+        return Number.isFinite(number) && number >= 2;
+      }).length;
       return {
         id: String(group?.id || ""),
         name: String(group?.name || "未命名文件夹"),

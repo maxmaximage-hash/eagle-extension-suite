@@ -60,6 +60,23 @@ assert.strictEqual(
   "链接：https://pan.quark.cn/test"
 );
 
+const prefixStats = runtime.buildStats({
+  groups: [{ id: "prefix" }],
+  itemsByFolder: {
+    prefix: [
+      { name: "1-人物.jpg", ext: "jpg" },
+      { name: "2-环境.jpg", ext: "jpg" },
+      { name: "3-环境.png", ext: "png" },
+      { name: "封面.jpg", ext: "jpg" },
+      { name: "1-人物无扩展名.jpg" },
+      { name: "人物路径.jpg", filePath: "/tmp/1-人物路径.jpg" }
+    ]
+  }
+});
+assert.strictEqual(prefixStats.peopleCount, 3);
+assert.strictEqual(prefixStats.environmentCount, 2);
+assert.strictEqual(prefixStats.totalMedia, 5);
+
 assert.deepStrictEqual(
   partitionItemsByFolder(
     [{ id: "a" }, { id: "b" }],

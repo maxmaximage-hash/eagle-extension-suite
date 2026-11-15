@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly ROOT="${0:A:h:h}"
-readonly VERSION="20261115-eagle-complete-2"
+readonly VERSION="20261115-eagle-complete-3"
 readonly RELEASE_ROOT="$ROOT/releases/eagle-suite-v$VERSION"
 readonly ASSET_ROOT="$RELEASE_ROOT/assets"
 readonly PLUGIN_ROOT="$RELEASE_ROOT/plugins"

@@ -1311,16 +1311,44 @@ async function readPublicDeliveryFallbackScope() {
   const groups = flatFolders
     .filter((folder) => String(folder.parent || "") === rootId)
     .map((folder) => ({ id: String(folder.id), name: String(folder.name || "未命名文件夹") }));
-  const items = await withTimeout(
-    () => eagle.item.get({ folders: groups.map((group) => group.id) }),
-    60000,
-    `Read delivery folders (${groups.length})`
-  );
-  const itemsByFolder = partitionItemsByFolder(groups, items);
+  const itemsByFolder = await readDeliveryItemsByFolder(groups);
   return {
     folder: selected,
     stats: deliveryCopyRuntime.buildStats({ groups, itemsByFolder })
   };
+}
+
+async function readDeliveryItemsByFolder(groups) {
+  const normalizedGroups = (Array.isArray(groups) ? groups : [])
+    .filter((group) => group?.id)
+    .map((group) => ({ ...group, id: String(group.id) }));
+  if (!normalizedGroups.length) return {};
+  const items = await withTimeout(
+    () => eagle.item.get({ folders: normalizedGroups.map((group) => group.id) }),
+    60000,
+    `Read delivery folders (${normalizedGroups.length})`
+  );
+  const itemsByFolder = partitionItemsByFolder(normalizedGroups, items);
+  const missingGroups = normalizedGroups.filter(
+    (group) => itemsByFolder[group.id]?.length === 0
+  );
+  if (!missingGroups.length) return itemsByFolder;
+  const fallbackEntries = await mapWithConcurrency(
+    missingGroups,
+    4,
+    async (group) => {
+      const groupItems = await withTimeout(
+        () => eagle.item.get({ folders: [group.id] }),
+        20000,
+        `Read delivery folder ${group.id}`
+      );
+      return [group.id, Array.isArray(groupItems) ? groupItems : []];
+    }
+  );
+  for (const [groupId, groupItems] of fallbackEntries) {
+    itemsByFolder[groupId] = groupItems;
+  }
+  return itemsByFolder;
 }
 
 async function refreshPublicDeliveryFallback() {
@@ -13453,12 +13481,7 @@ async function handleDeliveryCopyRequest(request, context) {
   }
   lastDeliveryCopyRequestId = requestId;
   try {
-    const items = await withTimeout(
-      () => eagle.item.get({ folders: groups.map((group) => group.id) }),
-      60000,
-      `Read delivery folders (${groups.length})`
-    );
-    const itemsByFolder = partitionItemsByFolder(groups, items);
+    const itemsByFolder = await readDeliveryItemsByFolder(groups);
     const stats = deliveryCopyRuntime.buildStats({ groups, itemsByFolder });
     const payload = {
       requestId,
