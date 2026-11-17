@@ -24,7 +24,7 @@ assert.doesNotMatch(bridgeSource, /TARGET=.*app\.asar/i);
 
 for (const file of releaseInstallers) {
   const source = fs.readFileSync(file, "utf8");
-  if (/qa\.98/.test(file)) {
+  if (/qa\.9[89]/.test(file)) {
     assert.match(source, /--install-plugin-only/);
     assert.match(source, /original-unbridged-plugin-only/);
     assert.doesNotMatch(source, /\b(cp|mv|ditto)\b.*app\.asar/i);

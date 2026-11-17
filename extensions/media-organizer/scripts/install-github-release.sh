@@ -3,12 +3,12 @@ set -euo pipefail
 
 readonly EXPECTED_HOST_VERSION="4.0.0"
 readonly EXPECTED_PLUGIN_ID="com.max.eagle-photo-taken-sort"
-readonly EXPECTED_PLUGIN_VERSION="2.5.22-qa.98"
+readonly EXPECTED_PLUGIN_VERSION="2.5.22-qa.104"
 readonly ORIGINAL_SHA256="b04a2efdb8bc8d06910552f43f38c056e6964c8f74798e1b2849f1bffab8a1bd"
 readonly BRIDGED_SHA256="4f56e0da6854701e41deeb87401e00cbd2d0ba743da0688d35a673f452e067f3"
 readonly SCRIPT_DIR="${0:A:h}"
-readonly ARCHIVE_NAME="媒体智能整理-v2.5.22-qa.98-github.eagleplugin"
-readonly CHECKSUM_NAME="媒体智能整理-v2.5.22-qa.98-github.SHA256SUMS"
+readonly ARCHIVE_NAME="媒体智能整理-v2.5.22-qa.104-github.eagleplugin"
+readonly CHECKSUM_NAME="媒体智能整理-v2.5.22-qa.104-github.SHA256SUMS"
 readonly APP_PATH="${EAGLE_APP_PATH:-/Applications/Eagle.app}"
 readonly HOST_ASAR="$APP_PATH/Contents/Resources/app.asar"
 readonly ARCHIVE="${PLUGIN_ARCHIVE:-$SCRIPT_DIR/$ARCHIVE_NAME}"
@@ -21,6 +21,7 @@ readonly BRIDGE_EVIDENCE="$HOME/Library/Application Support/Eagle/Backups/media-
 
 # bridge/rebuild-compatible-bridge.js remains a read-only historical reference.
 # This installer never invokes it and never writes Eagle app.asar.
+# 历史发行包安装器已永久禁用；当前安装器只处理插件，不修改 Eagle 宿主。
 
 MODE="check"
 

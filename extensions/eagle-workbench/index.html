@@ -12,7 +12,7 @@
         <img src="./logo.svg" alt="Eagle 工作台" />
         <div><h1>Eagle 工作台</h1><p>快速查看各扩展的基本功能、版本和修复记录</p></div>
       </div>
-      <div class="version"><span>工作台</span><strong id="workbenchVersion">1.4</strong></div>
+      <div class="version"><span>工作台</span><strong id="workbenchVersion">2.1</strong></div>
     </header>
     <main>
       <section class="summary" aria-label="工作台说明">
@@ -22,6 +22,60 @@
       <section id="moduleGroups" class="groups" aria-live="polite"></section>
       <p id="message" class="message" role="status"></p>
     </main>
+    <div id="deliveryOverlay" class="dialog-overlay" hidden>
+      <section class="delivery-dialog" role="dialog" aria-modal="true" aria-labelledby="deliveryTitle">
+        <div class="delivery-dialog-head">
+          <div>
+            <h2 id="deliveryTitle">生成交付文案</h2>
+            <p id="deliverySummary" class="delivery-summary">请选择一个普通总文件夹后扫描。</p>
+          </div>
+          <button id="deliveryClose" type="button" aria-label="关闭">×</button>
+        </div>
+        <div class="delivery-toolbar">
+          <label>交付档位
+            <select id="deliveryTemplateSelect"></select>
+          </label>
+          <button id="deliveryNewTemplate" type="button">新建模板</button>
+          <button id="deliverySaveTemplate" type="button">保存模板</button>
+          <button id="deliveryDeleteTemplate" type="button">删除模板</button>
+          <button id="deliveryScan" class="primary" type="button">重新扫描</button>
+        </div>
+        <div class="delivery-grid">
+          <section class="delivery-settings">
+            <h3>模板设置</h3>
+            <div class="delivery-fields">
+              <label>模板名称<input id="deliveryTemplateName" type="text" /></label>
+              <label>标准组数<input id="deliveryStandardGroups" type="number" min="0" /></label>
+              <label>标准带人物组数<input id="deliveryStandardPeopleGroups" type="number" min="0" /></label>
+              <label>标准不带人物组数<input id="deliveryStandardEnvironmentGroups" type="number" min="0" /></label>
+              <label>每组人物图<input id="deliveryPeoplePerGroup" type="number" min="0" /></label>
+              <label>每组环境图<input id="deliveryEnvironmentPerGroup" type="number" min="0" /></label>
+              <label>排版可发组数<input id="deliveryPublishGroups" type="number" min="0" /></label>
+            </div>
+            <label class="delivery-wide-label">模板正文
+              <textarea id="deliveryTemplateBody" spellcheck="false"></textarea>
+            </label>
+            <p class="delivery-hint">可用字段：standardGroups、standardPeopleCount、standardEnvironmentCount、standardTotalCount、standardPublishGroups、actualGroups、actualGroupsWithPeople、actualGroupsWithoutPeople、actualPeopleCount、actualEnvironmentCount、actualTotalCount、quarkLink、folderName。</p>
+          </section>
+          <section class="delivery-result">
+            <h3>扫描结果</h3>
+            <div id="deliveryStats" class="delivery-stats"></div>
+            <label class="delivery-wide-label">夸克链接<input id="deliveryQuarkLink" type="url" placeholder="粘贴夸克链接或整段分享文字" /></label>
+            <label class="delivery-wide-label">可编辑交付文案
+              <textarea id="deliveryText" spellcheck="false"></textarea>
+            </label>
+          </section>
+        </div>
+        <div class="delivery-actions">
+          <button id="deliveryRefreshText" type="button">按当前模板更新文案</button>
+          <button id="deliveryUpdateLink" type="button">按链接更新文案</button>
+          <button id="deliveryCopy" class="primary" type="button">复制文案</button>
+        </div>
+        <p id="deliveryMessage" class="delivery-message" role="status"></p>
+      </section>
+    </div>
+    <script src="./delivery.js"></script>
+    <script src="./delivery-entry.js"></script>
     <script src="./registry.js"></script>
     <script src="./app.js"></script>
   </body>

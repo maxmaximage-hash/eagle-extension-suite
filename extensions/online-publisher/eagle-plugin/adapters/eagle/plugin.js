@@ -497,8 +497,10 @@ async function chooseExportDirectory() {
 
 async function exportLocalItems({ state, onProgress }) {
   ensurePublisher();
-  let selected = previewState.local.items.slice();
-  if (!selected.length) selected = await refreshSelection();
+  // Always re-read the selected Eagle items immediately before export. The
+  // media organizer can finish a two-phase native rename after this preview
+  // window was opened, leaving the cached preview names stale.
+  const selected = await refreshSelection();
   if (!selected.length) throw new Error('请先在 Eagle 中选择需要导出的图片');
   return publisher.exportSelected(state.directory, {
     ...config.localExport,

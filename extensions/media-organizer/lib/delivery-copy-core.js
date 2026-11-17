@@ -28,7 +28,7 @@ function createDeliveryCopyRuntime(options = {}) {
       const peopleCount = media.filter((item) => groupNumber(item) === 1).length;
       const environmentCount = media.filter((item) => {
         const number = groupNumber(item);
-        return Number.isFinite(number) && number >= 2;
+        return number === 2;
       }).length;
       return {
         id: String(group?.id || ""),

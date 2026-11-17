@@ -38,6 +38,29 @@ const runtime = createPublicRenameFallbackRuntime({
   assert.strictEqual(failed.ok, false);
   assert.strictEqual(failed.renamed, 0);
   assert.strictEqual(failingItems[0].name, "IMG_a");
+
+  const conflictItems = [
+    { id: "a", name: "IMG_a", ext: "jpg" },
+    { id: "b", name: "IMG_b", ext: "jpg" },
+    { id: "existing", name: "1-驾雾1", ext: "jpg" }
+  ];
+  const conflictPlan = selected.buildPlan(
+    conflictItems.slice(0, 2),
+    { folderName: "5-驾雾", group: "1" }
+  );
+  let conflictSaveCalls = 0;
+  const conflictRuntime = createPublicRenameFallbackRuntime({
+    buildPlan: selected.buildPlan,
+    saveItem: async () => { conflictSaveCalls += 1; }
+  });
+  const conflict = await conflictRuntime.applyPlan(
+    conflictPlan,
+    conflictItems.slice(0, 2),
+    { availableItems: conflictItems }
+  );
+  assert.strictEqual(conflict.ok, false);
+  assert.match(conflict.reason, /目标名称已被当前文件夹中的其他图片占用/);
+  assert.strictEqual(conflictSaveCalls, 0);
   console.log("public rename fallback core tests passed");
 })().catch((error) => {
   console.error(error);

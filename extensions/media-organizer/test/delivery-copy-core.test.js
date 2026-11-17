@@ -95,8 +95,8 @@ const prefixStats = runtime.buildStats({
   }
 });
 assert.strictEqual(prefixStats.peopleCount, 3);
-assert.strictEqual(prefixStats.environmentCount, 2);
-assert.strictEqual(prefixStats.totalMedia, 5);
+assert.strictEqual(prefixStats.environmentCount, 1);
+assert.strictEqual(prefixStats.totalMedia, 4);
 
 assert.deepStrictEqual(
   partitionItemsByFolder(

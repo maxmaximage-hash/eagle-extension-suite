@@ -107,6 +107,13 @@ test('本地导出页不再显示手动重新读取照片按钮', () => {
   assert.doesNotMatch(pluginHtml, />重新读取当前选中照片</);
 });
 
+test('导出前必须重新读取当前 Eagle 选中项，避免使用重命名前的缓存名称', () => {
+  const match = adapterSource.match(/async function exportLocalItems\(\{ state, onProgress \}\) \{([\s\S]*?)\n\}/);
+  assert.ok(match, '未找到 exportLocalItems');
+  assert.match(match[1], /const selected = await refreshSelection\(\);/);
+  assert.doesNotMatch(match[1], /previewState\.local\.items\.slice\(\)/);
+});
+
 test('滑杆拖动使用逐帧即时投影且不写配置文件', () => {
   const commit = watermarkSource.match(/function commit\(key\) \{([\s\S]*?)\n  \}/);
   assert.ok(commit, '未找到水印字段提交函数');

@@ -2,17 +2,17 @@
 
 // This registry is deliberately read-only. It is generated from the source
 // manifests at release time and never contains mutable business state.
-const WORKBENCH_VERSION = "1.4";
-const WORKBENCH_DISPLAY_VERSION = "1.4";
+const WORKBENCH_VERSION = "2.1";
+const WORKBENCH_DISPLAY_VERSION = "2.1";
 
 const MODULES = Object.freeze([
   Object.freeze({
     id: "com.max.eagle-photo-taken-sort:sorting",
     manifestPath: "../media-organizer/manifest.json",
-    sourceVersion: "2.5.22-qa.98",
+    sourceVersion: "2.5.22-qa.104",
     displayVersion: "2.6",
     name: "排序与自动编号",
-    packageName: "媒体智能整理",
+    packageName: "Eagle 布局面板",
     version: "2.6",
     category: "核心功能",
     typeLabel: "Eagle 扩展",
@@ -28,33 +28,38 @@ const MODULES = Object.freeze([
   Object.freeze({
     id: "com.max.eagle-photo-taken-sort:media-rename",
     manifestPath: "../media-organizer/manifest.json",
-    sourceVersion: "2.5.22-qa.98",
+    sourceVersion: "2.5.22-qa.104",
     displayVersion: "1.0",
     name: "人物与环境图重命名",
-    packageName: "媒体智能整理",
+    packageName: "Eagle 布局面板",
     version: "1.0",
     category: "核心功能",
     typeLabel: "Eagle 扩展",
     description: "按当前顺序将选中的人物图重命名为 1-场景名加连续编号，将选中的环境图重命名为 2-场景名加连续编号。",
     changelog: [
-      "1.0 支持在插件窗口中预览并确认选中人物图的连续编号。",
-      "1.0 支持在插件窗口中预览并确认选中环境图的连续编号。",
+      "1.0 支持在 Eagle 布局面板中预览并确认选中人物图的连续编号。",
+      "1.0 支持在 Eagle 布局面板中预览并确认选中环境图的连续编号。",
       "人物图和环境图入口独立于文件夹排序和自动编号。",
     ],
   }),
   Object.freeze({
     id: "com.max.eagle-photo-taken-sort:delivery-copy",
     manifestPath: "../media-organizer/manifest.json",
-    sourceVersion: "2.5.22-qa.98",
-    displayVersion: "1.0",
+    sourceVersion: "2.5.22-qa.104",
+    displayVersion: "1.6",
     name: "交付文案生成",
-    packageName: "媒体智能整理",
-    version: "1.0",
+    packageName: "Eagle 工作台",
+    entry: { action: "delivery" },
+    version: "1.6",
     category: "核心功能",
     typeLabel: "Eagle 扩展",
-    description: "扫描直属子文件夹并生成可编辑、可复制的交付文案统计。",
+    description: "扫描总文件夹及组内子文件夹并生成可编辑、可复制的交付文案统计。",
     changelog: [
-      "1.0 支持统计组数、带人物组数、人物图数量和环境图数量。",
+      "1.6 支持粘贴整段夸克分享文字，自动提取网址并更新正文链接。",
+      "1.6 链接输入框使用白底深色文字和清晰边框。",
+      "1.5 保留用户换行与编辑内容，更新链接不重排整篇文案。",
+      "1.5 修复模板管理直达入口，后台生成结束后正确释放状态。",
+      "扫描当前文件夹的直属子文件夹，自动填充实际组数、图片数和超额交付数据。",
       "支持编辑夸克链接、文案内容并一键复制。",
     ],
   }),
@@ -77,15 +82,17 @@ const MODULES = Object.freeze([
   Object.freeze({
     id: "com.max.eagle-photo-taken-sort:metadata",
     manifestPath: "../media-organizer/manifest.json",
-    sourceVersion: "2.5.22-qa.98",
-    displayVersion: "2.5",
+    sourceVersion: "2.5.22-qa.104",
+    displayVersion: "2.6",
     name: "地点与元数据标签",
     packageName: "媒体智能整理",
-    version: "2.5.22-qa.98",
+    version: "2.6",
+    entry: { pluginId: "com.max.eagle-photo-taken-sort", label: "打开标签面板" },
     category: "核心功能",
     typeLabel: "Eagle 扩展",
     description: "GPS/元数据读取、地点审核、人工纠正和文件夹地点标签。",
     changelog: [
+      "2.6 标签面板仅保留标签功能，后台启动不再自动弹窗。",
       "2.5 版本将地点与元数据标签和排序业务隔离，互不改变对方的状态。",
       "修复后台元数据读取阻塞 Eagle 原生预览的问题。",
       "自动标签默认关闭，首次开启先建立基线，避免误写已有素材。",

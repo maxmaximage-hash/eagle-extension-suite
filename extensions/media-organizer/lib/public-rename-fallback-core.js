@@ -8,7 +8,29 @@ function createPublicRenameFallbackRuntime(options = {}) {
     ? options.saveItem
     : async (item) => item.save();
 
-  async function applyPlan(plan, items) {
+  function findConflicts(changes, availableItems) {
+    const changingIds = new Set(
+      (Array.isArray(changes) ? changes : [])
+        .map((entry) => String(entry?.id || ""))
+        .filter(Boolean)
+    );
+    const owners = new Map();
+    for (const item of Array.isArray(availableItems) ? availableItems : []) {
+      const id = String(item?.id || "");
+      const name = String(item?.name || "");
+      if (id && name && !owners.has(name)) owners.set(name, id);
+    }
+    return (Array.isArray(changes) ? changes : [])
+      .map((entry) => {
+        const target = String(entry?.newName || "");
+        const ownerId = owners.get(target);
+        if (!target || !ownerId || changingIds.has(ownerId)) return null;
+        return { id: String(entry?.id || ""), newName: target, ownerId };
+      })
+      .filter(Boolean);
+  }
+
+  async function applyPlan(plan, items, options = {}) {
     if (!plan || plan.error) {
       return { ok: false, reason: plan?.error || "rename-plan-unavailable", renamed: 0, rolledBack: 0 };
     }
@@ -23,6 +45,19 @@ function createPublicRenameFallbackRuntime(options = {}) {
         item: byId.get(String(entry.id))
       }))
       .filter((record) => record.item && record.entry.newName);
+    const conflicts = findConflicts(
+      changed.map((record) => record.entry),
+      options.availableItems || items
+    );
+    if (conflicts.length) {
+      return {
+        ok: false,
+        reason: `目标名称已被当前文件夹中的其他图片占用：${conflicts[0].newName}`,
+        conflictNames: conflicts.map((conflict) => conflict.newName),
+        renamed: 0,
+        rolledBack: 0
+      };
+    }
     const saved = [];
     try {
       for (const record of changed) {

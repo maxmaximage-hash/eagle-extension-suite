@@ -122,8 +122,8 @@ for (const requiredRule of [
 }
 
 assert.ok(
-  readme.includes("docs/SORTING-RULES.md"),
-  "README must point to the sole sorting specification"
+  readme.includes("当前面板只保留地域标签相关控件"),
+  "README must document the tag-only media organizer boundary"
 );
 assert.doesNotMatch(
   readme,

@@ -30,10 +30,58 @@ assert.deepStrictEqual(
   ["2-厚生林1", "2-厚生林2"]
 );
 
+// Selected renames must allocate the next free ordinals in the whole
+// current folder.  Reusing `1`/`2` when an unselected item already owns
+// those names makes Eagle show a temporary rename that disappears after a
+// folder switch.
+const occupiedOrdinals = runtime.buildPlan([
+  { id: "selected-a", name: "c", ext: "jpg" },
+  { id: "selected-b", name: "d", ext: "jpg" }
+], {
+  folderName: "2-蓝 blue",
+  group: "2",
+  availableItems: [
+    { id: "selected-a", name: "c", ext: "jpg" },
+    { id: "selected-b", name: "d", ext: "jpg" },
+    { id: "existing-1", name: "2-蓝 blue1", ext: "jpg" },
+    { id: "existing-3", name: "2-蓝 blue3", ext: "jpg" }
+  ]
+});
+assert.deepStrictEqual(
+  occupiedOrdinals.entries.map((entry) => entry.newName),
+  ["2-蓝 blue2", "2-蓝 blue4"]
+);
+
 const unchanged = runtime.buildPlan([
   { id: "p", name: "1-驾雾1", ext: "jpg" }
 ], { folderName: "5-驾雾", group: "1" });
 assert.strictEqual(unchanged.changes.length, 0);
+
+const conflicts = runtime.findConflicts(
+  [
+    { id: "selected", name: "TEST_PERSON_TEMP", ext: "jpg" },
+    { id: "existing", name: "1-驾雾1", ext: "jpg" }
+  ],
+  [{ id: "selected", newName: "1-驾雾1" }]
+);
+assert.deepStrictEqual(conflicts, [{
+  id: "selected",
+  newName: "1-驾雾1",
+  ownerId: "existing"
+}]);
+assert.deepStrictEqual(
+  runtime.findConflicts(
+    [
+      { id: "p1", name: "1-驾雾1", ext: "jpg" },
+      { id: "p2", name: "1-驾雾2", ext: "jpg" }
+    ],
+    [
+      { id: "p1", newName: "1-驾雾2" },
+      { id: "p2", newName: "1-驾雾1" }
+    ]
+  ),
+  []
+);
 
 const invalid = runtime.buildPlan([
   { id: "p", name: "IMG_001", ext: "jpg" }

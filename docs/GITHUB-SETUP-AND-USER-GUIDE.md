@@ -1,17 +1,17 @@
 # Eagle Extension Suite 团队安装、配置与使用指南
 
-更新时间：2026-10-29。面向从 GitHub 获取本仓库、希望在自己的 Mac 上使用 Eagle 扩展的团队成员。
+更新时间：2026-11-17。面向从 GitHub 获取本仓库、希望在自己的 Mac 上使用 Eagle 扩展的团队成员。
 
 ## 你将获得什么
 
 | 功能 | 给谁用 | 是否需要密钥 |
 | --- | --- | --- |
-| 媒体智能整理 | 需要统一排序、手动微调、编号或地点标签的成员 | 否 |
+| 排序 / 编号 / 重命名与地点标签服务 | 布局面板处理排序和名称，独立标签面板处理地点 | 否 |
 | MAX Publisher | 需要水印、隐私打码、导出或线上作品页的成员 | 仅线上发布需要本人 Cloudflare 凭证 |
 | Live Photo 管家 | 需要安全检查 JPG/HEIC + MOV 配对的成员 | 否 |
 | 头像共享源 | 维护指定 Eagle 头像文件夹的管理员 | 否；消费者只读取共享源 |
 | Instagram / 小红书导入器 | 需要将单条公开帖子整理为 Eagle 导入计划的成员 | 否 |
-| Eagle 工作台 | 需要查看每个扩展的产品版本、基本功能和版本修复记录的成员 | 否 |
+| Eagle 工作台 | 统一查看版本、管理功能入口和交付模板的成员 | 否 |
 | iCloud 搬运台账 | 管理 iCloud 素材批次的成员 | 否；当前不执行下载 |
 
 ## 开始前的三件事
@@ -22,59 +22,22 @@
 
 ## 给 Codex 的安装指令
 
-在 Codex 新建任务后，把下面这一段和本 GitHub 仓库链接一起发送即可：
-
 ```text
-请按 Eagle Extension Suite 的 docs/GITHUB-SETUP-AND-USER-GUIDE.md 安装。
-先只读执行预检：确认 Eagle 已退出、版本为 4.0.0、同 ID 插件来源只有一个、
-没有修改 app.asar/.library/NAS 素材的动作。通过后先运行各扩展测试，
-再构建干净发布包。只有预检、测试和包校验全部通过，才安装插件。
-若宿主版本或原始 `app.asar` 指纹不匹配，立即停止并报告；只有通过仓库桥接脚本的精确
-版本/指纹检查，才允许在 Eagle 完全退出后重建桥接，不得绕过检查硬覆盖。
-安装后只读打开目标 Library 做冒烟检查；不拖动、不改名、不导入、不删除。
+请按 docs/CROSS-COMPUTER-HANDOFF.md 同步和安装当前 Eagle 扩展套件。
+先核对当前 manifest、目标 Eagle 4.0.0 宿主兼容性、唯一插件来源和发布包 SHA256。
+工作台 2.1、运行服务 qa.104、交付文案 1.6；不要使用 qa.94 等旧安装器。
+测试和干净包检查通过后使用当前受控插件安装器；宿主兼容流程需本机核验和备份。
+安装后实际点击验证工作台、布局排序/拖动/编号/改名，切换和重启后检查持久化。
+媒体智能整理只显示标签；复制文件夹目前未完成真实验收，不宣称可用。
 ```
 
-这段指令的目的，是让每台电脑都先确认宿主兼容性和唯一插件来源，而不是“能装就装”。
+完整命令与新电脑验收在[跨电脑交接](CROSS-COMPUTER-HANDOFF.md)。当前媒体服务 `2.5.22-qa.104` 的安装器只处理插件；已有兼容宿主使用 `--check` 和 `--install-plugin`，原始未桥接宿主只接受 `--install-plugin-only`。安装器不复制或改写 `app.asar`。
 
-## 安装媒体智能整理
+## 工作台与功能入口
 
-该插件当前源码版本为 `2.5.22-qa.94`，用户界面产品版本为 `2.5`。排序主网格接入依赖经过审计的 Eagle 4.0.0 宿主通信桥。仓库不上传 Eagle 主程序二进制；目标电脑使用 `bridge/rebuild-compatible-bridge.js` 从本机原始 `app.asar` 重建两个固定桥接入口，脚本会先备份并验证原始文件。
+工作台 2.1 是版本、维护和面板管理入口。排序、自动编号和人物/环境图重命名在 Eagle 布局面板；交付文案可在布局面板生成并通过“工作台管理模板”进入设置；工作台首页也可打开交付功能面板。标签窗口只提供地点与元数据标签，复制、排序、改名和交付不再放入其中。
 
-```bash
-git clone https://github.com/maxmaximage-hash/eagle-extension-suite.git
-cd eagle-extension-suite/extensions/media-organizer
-npm ci
-npm test
-zsh scripts/build-github-release.sh
-cd bridge
-npm ci
-node rebuild-compatible-bridge.js --check
-cd ..
-zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --check
-```
-
-桥接检查通过后，完全退出 Eagle，再运行：
-
-```bash
-cd bridge
-node rebuild-compatible-bridge.js --install
-cd ..
-```
-
-随后确认插件预检通过，再安装插件：
-
-```bash
-zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --install-plugin
-```
-
-安装器会拒绝以下情况：宿主版本/审计指纹不匹配、发行包哈希不匹配、Eagle 正在运行、或发现同一插件 ID 的第二份来源。它会为被替换的旧插件创建本机回滚点，但不会读取或修改当前 Library。
-
-### 安装 Eagle 工作台
-
-工作台是只读汇总面板，不接管排序、改名、标签、导入或发布。源码目录运行
-`npm test && npm run package` 后，将生成的 `eagle-workbench-1.1.eagleplugin` 拖入 Eagle
-安装。打开后每张卡片先显示基本功能，再显示当前版本日志；它不显示无效的入口按钮或
-“已安装登记”标签。
+源码工作台运行 `npm test && npm run package` 生成 `eagle-workbench-2.1.eagleplugin`。整套发布包由 `scripts/build-eagle-suite-release.sh` 生成，所有插件的运行版本来自其 manifest，完整清单见包内 `PLUGIN-REGISTRY.json`。
 
 ### 排序怎样同步给团队
 

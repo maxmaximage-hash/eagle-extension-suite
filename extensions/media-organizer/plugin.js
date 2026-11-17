@@ -15,6 +15,7 @@ const {
 const { createSelectedRenameRuntime } = require(
   path.join(initialPluginPath, "lib", "selected-rename-core.js")
 );
+const selectedRenameConflictRuntime = createSelectedRenameRuntime();
 const { createPublicRenameFallbackRuntime } = require(
   path.join(initialPluginPath, "lib", "public-rename-fallback-core.js")
 );
@@ -26,6 +27,9 @@ const {
   partitionItemsByFolder
 } = require(
   path.join(initialPluginPath, "lib", "delivery-copy-core.js")
+);
+const deliveryTemplateRuntime = require(
+  path.join(initialPluginPath, "lib", "delivery-template-core.js")
 );
 const {
   createFolderCopyRuntime,
@@ -160,6 +164,7 @@ const { createRenameCommandQueue } = require(
 const { createRenameLifecycleRuntime } = require(
   path.join(initialPluginPath, "lib", "rename-lifecycle-core.js")
 );
+const renameLifecycleHostRuntime = createRenameLifecycleRuntime();
 const {
   createSortingModuleFacade
 } = require(path.join(initialPluginPath, "lib", "sorting-module-facade.js"));
@@ -298,6 +303,53 @@ const publicSortControlsRuntime = createPublicSortControlsRuntime({
 const deliveryCopyRuntime = createDeliveryCopyRuntime({
   isMedia: backgroundSortRuntime.isMedia
 });
+const SHARED_DELIVERY_CONFIG_PATH = path.join(
+  path.dirname(path.dirname(initialPluginPath)),
+  "PluginData",
+  "com.max.eagle-photo-taken-sort",
+  "delivery-templates.json"
+);
+
+function normalizeSharedDeliveryConfig(input = {}) {
+  const templates = deliveryTemplateRuntime.cloneTemplates(input.templates);
+  const requestedId = String(input.activeTemplateId || "");
+  const activeTemplateId = templates.some((template) => template.id === requestedId)
+    ? requestedId
+    : templates[0]?.id || "";
+  return { version: 1, templates, activeTemplateId };
+}
+
+function readSharedDeliveryConfig() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(SHARED_DELIVERY_CONFIG_PATH, "utf8"));
+    return normalizeSharedDeliveryConfig(parsed);
+  } catch {}
+  try {
+    const raw = window.localStorage?.getItem("eagle.workbench.delivery.templates.v2");
+    const templates = raw ? JSON.parse(raw) : null;
+    return normalizeSharedDeliveryConfig({ templates });
+  } catch {}
+  return normalizeSharedDeliveryConfig();
+}
+
+function writeSharedDeliveryConfig(input) {
+  const config = normalizeSharedDeliveryConfig(input);
+  try {
+    fs.mkdirSync(path.dirname(SHARED_DELIVERY_CONFIG_PATH), { recursive: true });
+    const temporaryPath = `${SHARED_DELIVERY_CONFIG_PATH}.tmp-${Date.now()}`;
+    fs.writeFileSync(temporaryPath, JSON.stringify(config, null, 2), "utf8");
+    fs.renameSync(temporaryPath, SHARED_DELIVERY_CONFIG_PATH);
+  } catch (error) {
+    console.warn("[photo-taken-sort] Shared delivery config write failed", error);
+  }
+  try {
+    window.localStorage?.setItem(
+      "eagle.workbench.delivery.templates.v2",
+      JSON.stringify(config.templates)
+    );
+  } catch {}
+  return config;
+}
 const folderCopyRuntime = createFolderCopyRuntime();
 const backgroundOrderCoordinator = createOrderCoordinator({
   sortRuntime: backgroundSortRuntime
@@ -340,6 +392,10 @@ let diagnosticPath = durableStateLayout.diagnosticPath;
 let renameBackupPath = durableStateLayout.renameBackupPath;
 let renameCancelPath = durableStateLayout.renameCancelPath;
 let renameRecoveryPath = durableStateLayout.renameRecoveryPath;
+let workbenchEntryRequestPath = path.join(
+  durableStateLayout.root,
+  "workbench-entry-request.json"
+);
 let teamSortStatePath = path.join(
   pluginPath,
   "defaults",
@@ -365,7 +421,9 @@ let scanInProgress = null;
 let scanGeneration = 0;
 let latestContextId = "";
 let monitorTimer = null;
+let workbenchEntryMonitorTimer = null;
 let monitorInProgress = false;
+let lastWorkbenchEntryRequestId = "";
 let lastContextKey = "";
 let metadataRetryAt = 0;
 let metadataRetryDelayMs = 0;
@@ -391,6 +449,7 @@ let cachePersistPending = false;
 let pendingGeoLibraryIdentity = "";
 let renameRecoveryInProgress = null;
 let lastRenameRecoveryRequestId = "";
+let lastSelectedRenameRequestId = "";
 let geoTagService = null;
 let geoPollTimer = null;
 let geoPollInProgress = false;
@@ -408,6 +467,8 @@ let folderTagUiActive = false;
 let currentGeoScanContextId = "";
 let activeLocationTag = "";
 let lastDeliveryCopyRequestId = "";
+let lastDeliveryTemplateSelectionId = "";
+let lastDeliveryWorkbenchRequestId = "";
 const cancelledDeliveryCopyRequestIds = new Set();
 let folderCopyInProgress = null;
 let folderCopyUiBusy = false;
@@ -417,6 +478,7 @@ let folderCopyUiBound = false;
 let publicRenameFallbackBound = false;
 let publicRenameFallbackItems = [];
 let publicRenameFallbackFolder = null;
+let publicRenameFallbackFolderItems = [];
 let publicRenameFallbackPlan = null;
 let publicRenameFallbackGroup = "";
 let publicDeliveryFallbackBound = false;
@@ -435,6 +497,7 @@ let publicSortPreviewResult = null;
 let publicSortControlsFolderId = "";
 let publicSortControlsState = publicSortControlsRuntime.normalizeState();
 let publicSortAutoRenamePlan = null;
+let featurePanelFocusRefreshBound = false;
 
 // All delayed work that can outlive a Library route is cancelled through this
 // single boundary. Generation changes make already-running async scans stale;
@@ -1150,18 +1213,36 @@ function renderPublicRenameFallbackPreview(plan) {
   }
 }
 
-async function refreshPublicRenameFallback() {
+async function refreshPublicRenameFallback(selectedOverride = null) {
   try {
     publicRenameFallbackFolder = await readSelectedFolderForCopy();
   } catch (error) {
     publicRenameFallbackFolder = { ok: false, reason: "selection-read-failed" };
   }
   try {
-    const selected = await eagle.item.getSelected();
+    const selected = selectedOverride || await eagle.item.getSelected();
     publicRenameFallbackItems = (Array.isArray(selected) ? selected : [])
       .filter((item) => backgroundSortRuntime.isMedia(item));
   } catch (error) {
     publicRenameFallbackItems = [];
+  }
+  try {
+    const folderId = String(publicRenameFallbackFolder?.folder?.id ||
+      publicRenameFallbackFolder?.folderId || "");
+    const folderItems = folderId && typeof eagle.item?.get === "function"
+      ? await withTimeout(
+        () => eagle.item.get({ folders: [folderId] }),
+        30000,
+        `Read rename folder ${folderId}`
+      )
+      : [];
+    publicRenameFallbackFolderItems = (Array.isArray(folderItems)
+      ? folderItems
+      : [])
+      .filter((item) => backgroundSortRuntime.isMedia(item));
+  } catch (error) {
+    // A missing folder snapshot must not silently approve a conflicting rename.
+    publicRenameFallbackFolderItems = [];
   }
   publicRenameFallbackPlan = null;
   renderPublicRenameFallbackState();
@@ -1170,7 +1251,7 @@ async function refreshPublicRenameFallback() {
 
 async function openPublicRenameFallbackPreview(group) {
   publicRenameFallbackGroup = String(group || "");
-  await refreshPublicRenameFallback();
+  await refreshPublicRenameFallback(publicRenameFallbackItems);
   if (!publicRenameFallbackFolder?.ok) {
     renderPublicRenameFallbackState(publicRenameFallbackReason(publicRenameFallbackFolder?.reason));
     return;
@@ -1189,8 +1270,11 @@ async function applyPublicRenameFallback() {
   if (!publicRenameFallbackPlan) return;
   const group = publicRenameFallbackGroup;
   const latestItems = await eagle.item.getSelected();
-  const media = (Array.isArray(latestItems) ? latestItems : [])
+  const latestMedia = (Array.isArray(latestItems) ? latestItems : [])
     .filter((item) => backgroundSortRuntime.isMedia(item));
+  const media = latestMedia.length >= publicRenameFallbackItems.length
+    ? latestMedia
+    : publicRenameFallbackItems;
   const latestPlan = publicRenameFallbackRuntime.buildPlan(
     media,
     { folderName: publicRenameFallbackFolder?.folderName, group }
@@ -1206,11 +1290,38 @@ async function applyPublicRenameFallback() {
     renderPublicRenameFallbackPreview(null);
     return;
   }
-  const result = await publicRenameFallbackRuntime.applyPlan(latestPlan, media);
+  let availableItems = publicRenameFallbackFolderItems;
+  try {
+    const folderId = String(publicRenameFallbackFolder?.folder?.id ||
+      publicRenameFallbackFolder?.folderId || "");
+    if (folderId && typeof eagle.item?.get === "function") {
+      const latestFolderItems = await withTimeout(
+        () => eagle.item.get({ folders: [folderId] }),
+        30000,
+        `Read rename folder ${folderId}`
+      );
+      availableItems = (Array.isArray(latestFolderItems)
+        ? latestFolderItems
+        : [])
+        .filter((item) => backgroundSortRuntime.isMedia(item));
+    }
+  } catch (error) {
+    renderPublicRenameFallbackState("无法读取当前文件夹的最新素材，未提交重命名，请重试。");
+    return;
+  }
+  if (media.length > 0 && availableItems.length === 0) {
+    renderPublicRenameFallbackState("当前文件夹素材读取为空，未提交重命名，请重试。");
+    return;
+  }
+  const result = await publicRenameFallbackRuntime.applyPlan(
+    latestPlan,
+    media,
+    { availableItems }
+  );
   if (result.ok) {
     renderPublicRenameFallbackState(`已通过 Eagle 官方 API 重命名 ${result.renamed} 个媒体。`);
     renderPublicRenameFallbackPreview(null);
-    await refreshPublicRenameFallback();
+    await refreshPublicRenameFallback(media);
   } else {
     renderPublicRenameFallbackState(`重命名失败：${result.reason}`);
   }
@@ -1867,7 +1978,12 @@ function bindPublicRenameFallbackUi() {
     applyPublicRenameFallback
   );
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "hidden") refreshPublicRenameFallback();
+    if (document.visibilityState !== "hidden") {
+      // Eagle changes focus to the plugin child window after launch. Reading
+      // the native selection again here collapses a previous multi-selection
+      // to the focused item, so keep the snapshot captured before show().
+      refreshPublicRenameFallback(publicRenameFallbackItems);
+    }
   });
   renderPublicRenameFallbackState();
 }
@@ -2270,10 +2386,24 @@ function injectionSource(teamStateSelection = null) {
     reason: "no-state-file"
   };
   const teamSortSource = teamStateSelection?.source || "none";
+  const deliveryTemplateRuntimeSource = [
+    "const deliveryTemplateRuntime = (() => {",
+    `  const DEFAULT_TEMPLATE_BODY = ${JSON.stringify(deliveryTemplateRuntime.DEFAULT_TEMPLATE_BODY)};`,
+    `  const DEFAULT_TEMPLATES = ${JSON.stringify(deliveryTemplateRuntime.DEFAULT_TEMPLATES)};`,
+    "  function number(value) { const parsed = Number(value); return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : 0; }",
+    `  ${deliveryTemplateRuntime.normalizeTemplate.toString()}`,
+    `  ${deliveryTemplateRuntime.normalizeQuarkLink.toString()}`,
+    `  ${deliveryTemplateRuntime.deliveryValues.toString()}`,
+    `  ${deliveryTemplateRuntime.renderTemplate.toString()}`,
+    `  ${deliveryTemplateRuntime.updateQuarkLink.toString()}`,
+    "  return { DEFAULT_TEMPLATE_BODY, DEFAULT_TEMPLATES, normalizeQuarkLink, deliveryValues, renderTemplate, updateQuarkLink };",
+    "})();"
+  ].join("\n");
   return `(() => {
+    ${deliveryTemplateRuntimeSource}
     const SORT_KEY = ${JSON.stringify(SORT_KEY)};
     const TAKEN_SORT_KEY = ${JSON.stringify(TAKEN_SORT_KEY)};
-const API_VERSION = 155;
+const API_VERSION = 158;
     const AUTO_RENAME_QUIET_MS = 400;
     const META_KEY = ${JSON.stringify(META_KEY)};
     const RENAME_CANCEL_REQUEST = ${JSON.stringify(renameCancelRequest)};
@@ -2781,6 +2911,8 @@ const API_VERSION = 155;
     api.deliveryCopyRequest = null;
     api.deliveryCopyStatus = "idle";
     api.deliveryCopyCancelRequest = null;
+    api.deliveryTemplateSelection = null;
+    api.deliveryWorkbenchRequest = null;
 
     function recordMoveDiagnostic(stage, payload = {}) {
       api.moveDiagnosticSequence += 1;
@@ -2943,6 +3075,7 @@ const API_VERSION = 155;
     const selectedRenameRuntime = createSelectedRenameRuntime({
       isMedia: sortRuntime.isMedia
     });
+    const selectedRenameConflictRuntime = createSelectedRenameRuntime();
     const SORT_MODES = new Set(["native", "automatic", "manual"]);
     ${orderIdOf.toString().replace("function idOf", "function idOf")}
     ${orderUniqueIds.toString().replace("function uniqueIds", "function uniqueIds")}
@@ -3789,6 +3922,7 @@ const API_VERSION = 155;
       pendingManualPlan: null,
       pendingExplicitRenamePlan: null,
       batchRequest: null,
+      selectedBatchRequest: null,
       batchId: "",
       batchStatus: null,
       visibleContextId: "",
@@ -3827,6 +3961,22 @@ const API_VERSION = 155;
 
     function renameTaskBusy() {
       if (!api.rename.running) return false;
+      if (renameLifecycleRuntime.isStale(api.rename.batchStatus)) {
+        api.rename.batchRequest = null;
+        api.rename.selectedBatchRequest = null;
+        api.rename.batchStatus = {
+          state: "retryable-failure",
+          sourceContextId: api.rename.batchStatus?.sourceContextId || currentContextId(),
+          message: "上一个编号任务没有返回结果，已释放锁定，可以重新执行"
+        };
+        api.rename.running = false;
+        api.rename.pendingAfterRun = false;
+        api.rename.pendingExplicitRenamePlan = null;
+        finishVisibleRenameMask(false);
+        api.rename.message = api.rename.batchStatus.message;
+        renderSettings();
+        return false;
+      }
       if (api.rename.batchRequest) return true;
       if (renameLifecycleRuntime.isActiveForContext(
         api.rename.batchStatus,
@@ -4069,6 +4219,22 @@ const API_VERSION = 155;
     function syncRenameContext() {
       const contextId = currentContextId();
       if (api.rename.contextId === contextId) return false;
+      const reset = renameLifecycleRuntime.resetForContext(
+        api.rename.batchStatus,
+        contextId
+      );
+      if (reset.changed) {
+        api.rename.batchRequest = null;
+        api.rename.selectedBatchRequest = null;
+        api.rename.batchId = "";
+        api.rename.batchStatus = reset.state;
+        api.rename.running = false;
+        api.rename.runningUntil = 0;
+        api.rename.pendingAfterRun = false;
+        api.rename.pendingManualPlan = null;
+        api.rename.pendingExplicitRenamePlan = null;
+        finishVisibleRenameMask(false);
+      }
       clearTimeout(api.rename.timer);
       api.rename.timer = null;
       api.rename.contextId = contextId;
@@ -4304,6 +4470,7 @@ const API_VERSION = 155;
 
     function syncManualContext() {
       const contextId = currentContextId();
+      resetSelectedRenameForContext(contextId);
       let contextChanged = false;
       if (api.manual.contextId !== contextId) {
         contextChanged = true;
@@ -4370,6 +4537,36 @@ const API_VERSION = 155;
         scheduleSmartHostObservation();
       }
       return contextId;
+    }
+
+    // A selected-media request belongs to the folder in which the user
+    // opened the action. If Eagle navigates before the request is completed,
+    // retaining its running state blocks every later folder and leaves the
+    // panel saying that the previous request is still being written. Clear
+    // that context-bound state as soon as the active collection changes.
+    function resetSelectedRenameForContext(contextId) {
+      const normalizedContextId = String(contextId || "");
+      const status = api.rename.batchStatus || {};
+      const statusContextId = String(status.sourceContextId || "");
+      const isSelectedRename = status.kind === "selected-media" ||
+        api.rename.selectedBatchRequest?.mode === "selected-media";
+      if (!isSelectedRename || !statusContextId ||
+          statusContextId === normalizedContextId) {
+        return false;
+      }
+      api.rename.selectedBatchRequest = null;
+      api.rename.batchId = "";
+      api.rename.batchStatus = {
+        state: "idle",
+        sourceContextId: normalizedContextId,
+        message: ""
+      };
+      api.rename.running = false;
+      api.rename.runningUntil = 0;
+      api.rename.message = "";
+      api.selectedRenameMessage = "";
+      finishVisibleRenameMask(false);
+      return true;
     }
 
     function activeManualOrder() {
@@ -4935,6 +5132,8 @@ const API_VERSION = 155;
       api.rename.batchStatus = {
         state: "queued",
         sourceContextId,
+        queuedAt: Date.now(),
+        lastActivityAt: Date.now(),
         message: ui.renameTreeQueued.replace(
           "{count}",
           String(folders.length)
@@ -4959,6 +5158,8 @@ const API_VERSION = 155;
       api.rename.batchStatus = {
         state: "running",
         sourceContextId: request.sourceContextId,
+        startedAt: Date.now(),
+        lastActivityAt: Date.now(),
         message: ui.renameTreeRunning
       };
       api.rename.running = renameLifecycleRuntime.isActiveForContext(
@@ -4968,6 +5169,35 @@ const API_VERSION = 155;
       api.rename.message = currentContextId() === request.sourceContextId
         ? ui.renameTreeRunning
         : "";
+      renderSettings();
+      return request;
+    }
+
+    function claimSelectedRenameBatch(id) {
+      if (
+        !api.rename.selectedBatchRequest ||
+        api.rename.selectedBatchRequest.id !== id
+      ) {
+        return null;
+      }
+      const request = api.rename.selectedBatchRequest;
+      api.rename.selectedBatchRequest = null;
+      api.rename.batchStatus = {
+        state: "running",
+        kind: "selected-media",
+        sourceContextId: request.sourceContextId,
+        startedAt: Date.now(),
+        lastActivityAt: Date.now(),
+        message: "正在写入选中图片的实际文件名"
+      };
+      api.rename.running = renameLifecycleRuntime.isActiveForContext(
+        api.rename.batchStatus,
+        currentContextId()
+      );
+      api.rename.message = currentContextId() === request.sourceContextId
+        ? api.rename.batchStatus.message
+        : "";
+      api.selectedRenameMessage = api.rename.batchStatus.message;
       renderSettings();
       return request;
     }
@@ -4991,6 +5221,7 @@ const API_VERSION = 155;
       api.rename.batchStatus = {
         state: "running",
         sourceContextId: api.rename.batchStatus?.sourceContextId || "",
+        lastActivityAt: Date.now(),
         message,
         progress: { ...progress, current, total, percent }
       };
@@ -5032,10 +5263,12 @@ const API_VERSION = 155;
         // failed command's signature claiming a task that did not complete.
         api.rename.lastSignature = "";
         setTimeout(() => finishVisibleRenameMask(false), 250);
-      } else if (!rerunAfterQuietPeriod) {
-        finishVisibleRenameMask(true);
       } else {
-        renderVisibleRenameMask();
+        // Commit the verified native names into the active Eagle cards even
+        // when another automatic pass was queued during this run. Leaving the
+        // mask virtual in that case makes the grid show old names while fresh
+        // Eagle item reads and exports use the new names.
+        finishVisibleRenameMask(true);
       }
       // Native item renames already update the active Eagle cards. Rebinding the
       // entire current folder here invalidates thumbnail URLs while Eagle is
@@ -5048,6 +5281,43 @@ const API_VERSION = 155;
       if (rerunAfterQuietPeriod) {
         scheduleAutoRename("manual-drop-continuation", AUTO_RENAME_QUIET_MS, true);
       }
+      return true;
+    }
+
+    function completeSelectedRenameBatch(id, result) {
+      if (api.rename.batchId !== id) return false;
+      const failed = Number(result?.failed || 0);
+      const count = Number(result?.renamed || 0);
+      const message = failed
+        ? "选中项重命名失败" +
+          (result?.error ? "：" + String(result.error) : "")
+        : ui.selectedRenameDone.replace("{count}", String(count));
+      api.rename.batchStatus = {
+        state: failed ? "partial" : "done",
+        kind: "selected-media",
+        sourceContextId: api.rename.batchStatus?.sourceContextId || "",
+        finishedAt: Date.now(),
+        message,
+        result
+      };
+      api.rename.running = false;
+      api.rename.runningUntil = 0;
+      if (!failed && Array.isArray(result?.transaction)) {
+        api.rename.lastTransaction = result.transaction.map((entry) => ({
+          kind: "media",
+          id: String(entry.id || ""),
+          oldName: String(entry.oldName || ""),
+          newName: String(entry.newName || "")
+        }));
+      }
+      const sameContext = currentContextId() ===
+        api.rename.batchStatus.sourceContextId;
+      api.rename.message = sameContext ? message : "";
+      api.selectedRenameMessage = sameContext ? message : "";
+      if (failed) finishVisibleRenameMask(false);
+      else finishVisibleRenameMask(true);
+      renderSettings();
+      bodyScope.$evalAsync();
       return true;
     }
 
@@ -5064,6 +5334,7 @@ const API_VERSION = 155;
       api.rename.batchStatus = {
         ...(api.rename.batchStatus || {}),
         state: "accepted",
+        lastActivityAt: Date.now(),
         message: "已确认进入编号队列"
       };
       api.rename.message = currentContextId() ===
@@ -5476,7 +5747,9 @@ const API_VERSION = 155;
         ".eagle-photo-rename-foot button:disabled{opacity:.4}",
         ".eagle-photo-delivery-dialog{width:min(860px,calc(100vw - 40px))}",
         ".eagle-photo-delivery-label{display:block;margin:4px 0 6px;font-size:12px;font-weight:600}",
-        ".eagle-photo-delivery-link{width:100%;height:32px;margin-bottom:10px;padding:0 9px;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;font:inherit}",
+        ".eagle-photo-delivery-dialog .eagle-photo-delivery-link{width:100%;height:36px;margin-bottom:10px;padding:0 10px;border:1px solid #94a3b8!important;border-radius:5px;background:#fff!important;color:#1e293b!important;-webkit-text-fill-color:#1e293b!important;font:inherit;box-sizing:border-box}",
+        ".eagle-photo-delivery-dialog .eagle-photo-delivery-link::placeholder{color:#64748b!important;-webkit-text-fill-color:#64748b!important;opacity:1}",
+        ".eagle-photo-delivery-dialog .eagle-photo-delivery-link:focus{border-color:#2387e8!important;outline:2px solid rgba(35,135,232,.2);outline-offset:1px}",
         ".eagle-photo-delivery-text{width:100%;min-height:360px;resize:vertical;padding:10px;border:1px solid rgba(128,128,128,.32);border-radius:5px;background:var(--color-bg-input,rgba(128,128,128,.12));color:inherit;font:inherit;line-height:1.55;box-sizing:border-box}",
         ".eagle-photo-sort-list{display:flex;flex-direction:column;gap:7px}",
         ".eagle-photo-sort-rule{display:grid;grid-template-columns:20px minmax(0,1fr) 70px 24px 24px 24px;gap:4px;align-items:center}",
@@ -5732,13 +6005,9 @@ const API_VERSION = 155;
             const available = Boolean(bodyScope.currentFolder?.id) &&
               directFolderCount > 0;
             deliveryButton.disabled = !available;
-            deliveryButton.textContent = api.deliveryCopyStatus === "queued"
-              ? "暂停扫描"
-              : "生成交付文案";
+            deliveryButton.textContent = "生成交付文案";
             deliveryButton.title = available
-              ? api.deliveryCopyStatus === "queued"
-                ? "暂停当前扫描，不影响切换到其他文件夹继续扫描"
-                : "扫描当前文件夹的直属子文件夹并生成可编辑交付文案"
+              ? "打开当前文件夹的交付文案"
               : "请打开包含直属子文件夹的总文件夹";
           }
           if (!renameSection) return;
@@ -6246,11 +6515,7 @@ const API_VERSION = 155;
       deliveryButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (api.deliveryCopyStatus === "queued") {
-          cancelDeliveryCopyRequest();
-        } else {
-          requestDeliveryCopy();
-        }
+        requestDeliveryCopy();
       });
       deliveryRow.append(deliveryLabel, deliveryButton);
 
@@ -6835,13 +7100,21 @@ const API_VERSION = 155;
     // Selected media renaming is deliberately separate from the automatic
     // rename plan below. It never reads or writes direct child folders, and
     // it only consumes the current normal leaf collection plus Eagle's native
-    // selection.
+    // selection. Eagle's Angular selection array can lag one digest behind
+    // the blue card selection, so include the native card selection as a
+    // synchronized fallback at the point the user opens the action.
     function selectedMediaItemsInCurrentOrder() {
-      const selectedIds = new Set(
-        (Array.isArray(bodyScope.selected) ? bodyScope.selected : [])
-          .map((item) => String(item?.id || ""))
-          .filter(Boolean)
-      );
+      const selectedIds = new Set();
+      for (const item of Array.isArray(bodyScope.selected)
+        ? bodyScope.selected
+        : []) {
+        const id = String(item?.id || "");
+        if (id) selectedIds.add(id);
+      }
+      document.querySelectorAll("#box-list .box.selected").forEach((box) => {
+        const id = cardIdFromElement(box);
+        if (id) selectedIds.add(id);
+      });
       if (!selectedIds.size) return [];
       return currentRenameItems().filter((item) =>
         selectedIds.has(String(item?.id || "")) && sortRuntime.isMedia(item)
@@ -6868,15 +7141,35 @@ const API_VERSION = 155;
         sourceItems,
         {
           folderName: bodyScope.currentFolder.name,
-          group
+          group,
+          // Plan against the complete current folder so selected renames
+          // allocate free ordinals instead of briefly creating a duplicate
+          // name that Eagle later restores on folder refresh.
+          availableItems: currentRenameItems()
         }
       );
+    }
+
+    function applySelectedRenameConflictGuard(plan) {
+      if (!plan || plan.error || !plan.changes?.length) return plan;
+      const conflicts = selectedRenameConflictRuntime.findConflicts(
+        currentRenameItems(),
+        plan.changes
+      );
+      if (!conflicts.length) return plan;
+      return {
+        ...plan,
+        error: "target-name-conflict",
+        conflictName: conflicts[0].newName
+      };
     }
 
     function applySelectedRename(group) {
       if (renameTaskBusy()) return 0;
       const visibleItems = selectedMediaItemsInCurrentOrder();
-      const plan = buildSelectedRenamePlan(group, visibleItems);
+      const plan = applySelectedRenameConflictGuard(
+        buildSelectedRenamePlan(group, visibleItems)
+      );
       if (plan.error === "media-collection-required") {
         api.selectedRenameMessage = ui.selectedRenameUnavailable;
         renderSettings();
@@ -6887,19 +7180,24 @@ const API_VERSION = 155;
         renderSettings();
         return 0;
       }
+      if (plan.error === "target-name-conflict") {
+        api.selectedRenameMessage =
+          "目标名称已被当前文件夹中的其他图片占用：" + plan.conflictName;
+        renderSettings();
+        return 0;
+      }
       if (!plan.entries.length) {
         api.selectedRenameMessage = ui.selectedRenameNoSelection;
         renderSettings();
         return 0;
       }
-      const count = applyRenameEntries(plan.changes, {
+      const count = queueSelectedRenamePlan(plan, {
         sourceItems: visibleItems
       });
-      api.selectedRenameMessage = ui.selectedRenameDone.replace(
-        "{count}",
-        String(count)
-      );
-      renderSettings();
+      if (!count) {
+        api.selectedRenameMessage = "选中项重命名未提交，可重试";
+        renderSettings();
+      }
       return count;
     }
 
@@ -6916,9 +7214,29 @@ const API_VERSION = 155;
         renderSettings();
         return 0;
       }
-      if (api.deliveryCopyStatus === "queued") return 0;
+      if (api.deliveryCopyStatus === "queued" &&
+          api.deliveryCopyRequest?.contextId === currentContextId()) {
+        return children.length;
+      }
       const id = Date.now().toString(36) + "-" +
         Math.random().toString(36).slice(2, 9);
+      const itemFolderIdsFor = (folder) => {
+        const ids = [];
+        const seen = new Set();
+        const visit = (entry) => {
+          const folderId = String(entry?.id || "");
+          if (!folderId || seen.has(folderId)) return;
+          seen.add(folderId);
+          ids.push(folderId);
+          for (const child of Array.isArray(entry?.children)
+            ? entry.children
+            : []) {
+            visit(child);
+          }
+        };
+        visit(folder);
+        return ids;
+      };
       api.deliveryCopyRequest = {
         id,
         contextId: currentContextId(),
@@ -6927,7 +7245,7 @@ const API_VERSION = 155;
         groups: children.map((folder) => ({
           id: String(folder.id || ""),
           name: String(folder.name || "未命名文件夹"),
-          itemFolderIds: deliveryFolderIds(folder)
+          itemFolderIds: itemFolderIdsFor(folder)
         }))
       };
       api.deliveryCopyCancelRequest = null;
@@ -6960,12 +7278,35 @@ const API_VERSION = 155;
       return true;
     }
 
-    function showDeliveryCopyError(message) {
+    function showDeliveryCopyError(message, requestId = "", contextId = "") {
+      if (requestId && api.deliveryCopyRequest?.id !== String(requestId)) return false;
+      if (contextId && contextId !== currentContextId()) {
+        clearDeliveryCopyRequest(requestId);
+        return false;
+      }
       api.deliveryCopyRequest = null;
       api.deliveryCopyStatus = "error";
-      api.deliveryCopyMessage = String(message || "交付文案统计失败");
+      api.deliveryCopyMessage = String(message || "交付文案暂时无法生成，请重试");
       renderSettings();
       bodyScope.$evalAsync();
+      window.alert("生成交付文案失败：" + api.deliveryCopyMessage);
+      return true;
+    }
+
+    function requestDeliveryWorkbench(templateId) {
+      if (api.deliveryWorkbenchRequest) return false;
+      api.deliveryWorkbenchRequest = {
+        id: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 9),
+        templateId: String(templateId || ""),
+        contextId: currentContextId()
+      };
+      return true;
+    }
+
+    function clearDeliveryWorkbenchRequest(id, message = "") {
+      if (api.deliveryWorkbenchRequest?.id !== String(id || "")) return false;
+      api.deliveryWorkbenchRequest = null;
+      if (message) window.alert("模板管理暂时无法打开：" + message);
       return true;
     }
 
@@ -7354,6 +7695,84 @@ const API_VERSION = 155;
       return plan.changes.length;
     }
 
+    // Selected people/environment renames use the verified native commit
+    // path. The old path only mutated the visible cards and fire-and-forgot
+    // Eagle's save, so a refresh could restore the old metadata name.
+    function queueSelectedRenamePlan(plan, options = {}) {
+      if (hostScopeState.isPending()) return 0;
+      if (
+        !plan?.changes?.length ||
+        renameTaskBusy() ||
+        api.rename.batchRequest ||
+        api.rename.selectedBatchRequest ||
+        currentCollection().kind !== "normal" ||
+        !bodyScope.currentFolder?.id
+      ) {
+        return 0;
+      }
+      const sourceContextId = currentContextId();
+      const sourceItems = Array.isArray(options.sourceItems)
+        ? options.sourceItems
+        : selectedMediaItemsInCurrentOrder();
+      const itemById = new Map(
+        sourceItems.map((item) => [String(item?.id || ""), item])
+      );
+      const entries = plan.changes.map((entry) => {
+        const item = itemById.get(String(entry.id));
+        const oldName = String(entry.oldName || item?.name || "");
+        return {
+          id: String(entry.id),
+          oldName,
+          newName: String(entry.newName || ""),
+          expectedMetadataName: oldName
+        };
+      }).filter((entry) => entry.id && entry.oldName && entry.newName);
+      if (!entries.length) return 0;
+      const id = Date.now().toString(36) + "-" +
+        Math.random().toString(36).slice(2, 9);
+      beginVisibleRenameMask({
+        ...plan,
+        contextId: sourceContextId,
+        changes: entries
+      });
+      const request = {
+        id,
+        mode: "selected-media",
+        sourceContextId,
+        collectionId: String(bodyScope.currentFolder.id),
+        folderId: String(bodyScope.currentFolder.id),
+        folderName: String(bodyScope.currentFolder.name || ""),
+        snapshotVersion: String(api.manual.revision || Date.now()),
+        snapshotIdentity: sourceContextId + ":selected:" +
+          entries.map((entry) => entry.id).join(","),
+        signature: entries.map((entry) =>
+          String(entry.id) + ":" + String(entry.oldName) + "->" +
+          String(entry.newName)
+        ).join("|"),
+        folders: [{
+          id: String(bodyScope.currentFolder.id),
+          name: String(bodyScope.currentFolder.name || "")
+        }],
+        entries
+      };
+      api.rename.batchId = id;
+      api.rename.selectedBatchRequest = request;
+      api.rename.batchStatus = {
+        state: "queued",
+        kind: "selected-media",
+        sourceContextId,
+        queuedAt: Date.now(),
+        lastActivityAt: Date.now(),
+        message: "已提交选中项重命名，正在写入文件名"
+      };
+      api.rename.running = true;
+      api.rename.message = api.rename.batchStatus.message;
+      api.selectedRenameMessage = api.rename.batchStatus.message;
+      renderSettings();
+      bodyScope.$evalAsync();
+      return entries.length;
+    }
+
     function applyRenamePlan(plan, options = {}) {
       if (hostScopeState.isPending()) return 0;
       if (!plan || plan.contextId !== currentContextId()) return 0;
@@ -7623,7 +8042,9 @@ const API_VERSION = 155;
         return null;
       }
       closeRenamePreview();
-      const plan = buildSelectedRenamePlan(group);
+      const plan = applySelectedRenameConflictGuard(
+        buildSelectedRenamePlan(group)
+      );
       const overlay = document.createElement("div");
       overlay.className = "eagle-photo-rename-modal";
       const dialog = document.createElement("div");
@@ -7654,6 +8075,9 @@ const API_VERSION = 155;
         warning.textContent = ui.selectedRenameUnavailable;
       } else if (plan.error === "scene-name-empty") {
         warning.textContent = ui.renameEmptyScene;
+      } else if (plan.error === "target-name-conflict") {
+        warning.textContent =
+          "目标名称已被当前文件夹中的其他图片占用：" + plan.conflictName;
       } else if (!plan.entries.length) {
         warning.textContent = ui.selectedRenameNoSelection;
       } else {
@@ -7713,25 +8137,21 @@ const API_VERSION = 155;
     }
 
     function openDeliveryCopyModal(payload = {}) {
+      if (payload.requestId && api.deliveryCopyRequest?.id !== String(payload.requestId)) return false;
+      if (payload.contextId && payload.contextId !== currentContextId()) {
+        clearDeliveryCopyRequest(payload.requestId);
+        return false;
+      }
       closeRenamePreview();
       const stats = payload.stats || {};
-      const template = String(payload.template || "");
       const rootName = String(payload.rootName || "当前文件夹");
-      const normalizeLink = (value) => String(value || "")
-        .trim()
-        .replace(/^链接\s*[:：]\s*/u, "");
-      const renderTemplate = (link) => template.replace(
-        /\{(groups|groupsWithPeople|groupsWithoutPeople|peopleCount|environmentCount|totalMedia|quarkLink)\}/g,
-        (_match, key) => String({
-          groups: stats.groupCount || 0,
-          groupsWithPeople: stats.groupsWithPeople || 0,
-          groupsWithoutPeople: stats.groupsWithoutPeople || 0,
-          peopleCount: stats.peopleCount || 0,
-          environmentCount: stats.environmentCount || 0,
-          totalMedia: stats.totalMedia || 0,
-          quarkLink: String(link || "")
-        }[key])
-      );
+      let config = payload.deliveryConfig || {
+        templates: deliveryTemplateRuntime.DEFAULT_TEMPLATES,
+        activeTemplateId: deliveryTemplateRuntime.DEFAULT_TEMPLATES[0]?.id || ""
+      };
+      let activeTemplate = config.templates.find(
+        (template) => template.id === config.activeTemplateId
+      ) || config.templates[0];
       const overlay = document.createElement("div");
       overlay.className = "eagle-photo-rename-modal eagle-photo-delivery-modal";
       const dialog = document.createElement("div");
@@ -7750,16 +8170,45 @@ const API_VERSION = 155;
 
       const summary = document.createElement("div");
       summary.className = "eagle-photo-rename-summary";
-      summary.textContent = String(rootName) + " · " +
-        String(stats.groupCount || 0) + " 组 · " +
-        String(stats.groupsWithPeople || 0) + " 组带人物图 · " +
-        String(stats.groupsWithoutPeople || 0) + " 组不带人物图 · 人物 " +
-        String(stats.peopleCount || 0) + " 张 · 环境 " +
-        String(stats.environmentCount || 0) + " 张";
+      const renderSummary = () => {
+        const values = deliveryTemplateRuntime.deliveryValues(
+          activeTemplate,
+          stats,
+          rootName,
+          linkInput.value
+        );
+        summary.textContent = String(rootName) + " · " +
+          String(values.actualGroups) + " 组 · " +
+          String(values.actualGroupsWithPeople) + " 组带人物图 · " +
+          String(values.actualGroupsWithoutPeople) + " 组不带人物图 · 人物 " +
+          String(values.actualPeopleCount) + " 张 · 环境 " +
+          String(values.actualEnvironmentCount) + " 张";
+      };
 
       const warning = document.createElement("div");
       warning.className = "eagle-photo-rename-warning";
-      warning.textContent = "统计来自当前文件夹的直属子文件夹。链接和文案都可以继续编辑。";
+      warning.textContent = "模板选择与 Eagle 工作台共用；工作台可新建、编辑、保存和删除模板。";
+
+      const templateRow = document.createElement("div");
+      templateRow.className = "eagle-photo-delivery-template-row";
+      const templateLabel = document.createElement("label");
+      templateLabel.textContent = "交付档位";
+      const templateSelect = document.createElement("select");
+      templateSelect.className = "eagle-photo-delivery-template-select";
+      for (const template of config.templates) {
+        const option = document.createElement("option");
+        option.value = template.id;
+        option.textContent = template.name;
+        option.selected = template.id === activeTemplate.id;
+        templateSelect.appendChild(option);
+      }
+      const manage = document.createElement("button");
+      manage.type = "button";
+      manage.textContent = "工作台管理模板";
+      manage.addEventListener("click", () => {
+        requestDeliveryWorkbench(activeTemplate.id);
+      });
+      templateRow.append(templateLabel, templateSelect, manage);
 
       const linkLabel = document.createElement("label");
       linkLabel.className = "eagle-photo-delivery-label";
@@ -7767,15 +8216,59 @@ const API_VERSION = 155;
       const linkInput = document.createElement("input");
       linkInput.type = "url";
       linkInput.className = "eagle-photo-delivery-link";
-      linkInput.placeholder = "粘贴夸克链接";
-      linkInput.value = normalizeLink(
-        localStorage.getItem("eagle.mediaOrganizer.deliveryCopyLink.v1") || ""
+      linkInput.placeholder = "粘贴夸克链接或整段分享文字";
+      linkInput.value = deliveryTemplateRuntime.normalizeQuarkLink(
+        window.localStorage?.getItem("eagle.workbench.delivery.link.v1") || ""
       );
 
       const output = document.createElement("textarea");
       output.className = "eagle-photo-delivery-text";
       output.spellcheck = false;
-      output.value = renderTemplate(linkInput.value);
+      let previousRenderedLink = linkInput.value;
+      const renderOutput = () => {
+        const link = deliveryTemplateRuntime.normalizeQuarkLink(linkInput.value) ||
+          (linkInput.value.trim() ? previousRenderedLink : "");
+        const values = deliveryTemplateRuntime.deliveryValues(
+          activeTemplate,
+          stats,
+          rootName,
+          link
+        );
+        output.value = deliveryTemplateRuntime.renderTemplate(activeTemplate.body, values);
+        previousRenderedLink = link;
+        renderSummary();
+      };
+      const updateOutputLink = () => {
+        const raw = linkInput.value;
+        const link = deliveryTemplateRuntime.normalizeQuarkLink(raw);
+        if (raw.trim() && !link) return;
+        linkInput.value = link;
+        output.value = deliveryTemplateRuntime.updateQuarkLink(
+          output.value, previousRenderedLink, link
+        );
+        previousRenderedLink = link;
+      };
+      templateSelect.addEventListener("change", () => {
+        activeTemplate = config.templates.find(
+          (template) => template.id === templateSelect.value
+        ) || config.templates[0];
+        config.activeTemplateId = activeTemplate.id;
+        api.deliveryTemplateSelection = {
+          id: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8),
+          templateId: activeTemplate.id,
+          contextId: currentContextId()
+        };
+        renderOutput();
+      });
+      linkInput.addEventListener("input", updateOutputLink);
+      linkInput.addEventListener("paste", (event) => {
+        const link = deliveryTemplateRuntime.normalizeQuarkLink(event.clipboardData?.getData("text/plain") || "");
+        if (!link) return;
+        event.preventDefault();
+        linkInput.value = link;
+        updateOutputLink();
+      });
+      renderOutput();
 
       const foot = document.createElement("div");
       foot.className = "eagle-photo-rename-foot";
@@ -7786,19 +8279,17 @@ const API_VERSION = 155;
       const regenerate = document.createElement("button");
       regenerate.type = "button";
       regenerate.textContent = "按链接更新文案";
-      regenerate.addEventListener("click", () => {
-        output.value = renderTemplate(linkInput.value);
-      });
+      regenerate.addEventListener("click", updateOutputLink);
       const copy = document.createElement("button");
       copy.type = "button";
       copy.dataset.primary = "true";
       copy.textContent = "复制文案";
       copy.addEventListener("click", async () => {
         const text = output.value;
-        const normalizedLink = normalizeLink(linkInput.value);
+        const normalizedLink = deliveryTemplateRuntime.normalizeQuarkLink(linkInput.value) ||
+          (linkInput.value.trim() ? previousRenderedLink : "");
         linkInput.value = normalizedLink;
-        localStorage.setItem("eagle.mediaOrganizer.deliveryCopyLink.v1", normalizedLink);
-        localStorage.setItem("eagle.mediaOrganizer.deliveryCopyDraft.v1", text);
+        try { window.localStorage?.setItem("eagle.workbench.delivery.link.v1", normalizedLink); } catch {}
         try {
           if (navigator.clipboard?.writeText) {
             await navigator.clipboard.writeText(text);
@@ -7816,7 +8307,7 @@ const API_VERSION = 155;
         }
       });
       foot.append(cancel, regenerate, copy);
-      dialog.append(head, summary, warning, linkLabel, linkInput, output, foot);
+      dialog.append(head, summary, warning, templateRow, linkLabel, linkInput, output, foot);
       overlay.appendChild(dialog);
       overlay.addEventListener("mousedown", (event) => {
         if (event.target === overlay) closeRenamePreview();
@@ -7824,6 +8315,18 @@ const API_VERSION = 155;
       document.body.appendChild(overlay);
       api.deliveryCopyRequest = null;
       api.deliveryCopyStatus = "idle";
+      renderSettings();
+      bodyScope.$evalAsync();
+      return true;
+    }
+
+    function clearDeliveryTemplateSelection(id) {
+      if (!api.deliveryTemplateSelection) return false;
+      if (
+        String(id || "") &&
+        String(api.deliveryTemplateSelection.id || "") !== String(id)
+      ) return false;
+      api.deliveryTemplateSelection = null;
       return true;
     }
 
@@ -7913,8 +8416,10 @@ const API_VERSION = 155;
     api.applyMetaToCurrentTree = applyMetaToCurrentTree;
     api.applyRenameToCurrentTree = applyRenameToCurrentTree;
     api.claimRenameBatch = claimRenameBatch;
+    api.claimSelectedRenameBatch = claimSelectedRenameBatch;
     api.updateRenameBatchProgress = updateRenameBatchProgress;
       api.completeRenameBatch = completeRenameBatch;
+      api.completeSelectedRenameBatch = completeSelectedRenameBatch;
       api.acknowledgeRenameEnqueue = acknowledgeRenameEnqueue;
       api.rejectRenameEnqueue = rejectRenameEnqueue;
       api.restoreRenameBatch = restoreRenameBatch;
@@ -7933,6 +8438,8 @@ const API_VERSION = 155;
     api.previewRename = buildCurrentRenamePlan;
     api.openRenamePreview = openRenamePreview;
     api.openDeliveryCopyModal = openDeliveryCopyModal;
+    api.clearDeliveryTemplateSelection = clearDeliveryTemplateSelection;
+    api.clearDeliveryWorkbenchRequest = clearDeliveryWorkbenchRequest;
     api.showDeliveryCopyError = showDeliveryCopyError;
     api.clearDeliveryCopyRequest = clearDeliveryCopyRequest;
     api.cancelDeliveryCopyRequest = cancelDeliveryCopyRequest;
@@ -7975,10 +8482,13 @@ const API_VERSION = 155;
         metaBatchMessage: api.metaBatchMessage,
         renameEnabled: renameEnabled(),
         renameBatchRequest: api.rename.batchRequest,
+        selectedRenameRequest: api.rename.selectedBatchRequest,
         renameBatchStatus: renameBatchStatusForCurrentContext(),
         deliveryCopyRequest: api.deliveryCopyRequest,
         deliveryCopyStatus: api.deliveryCopyStatus,
         deliveryCopyCancelRequest: api.deliveryCopyCancelRequest,
+        deliveryTemplateSelection: api.deliveryTemplateSelection,
+        deliveryWorkbenchRequest: api.deliveryWorkbenchRequest,
         // The main-panel renderer builds rename previews on demand. The
         // background poll must stay lightweight, especially for smart folders.
         renamePlan: null,
@@ -10917,7 +11427,72 @@ async function injectIntoMain() {
 }
 
 async function getCurrentContext() {
-  return executeInMain(`window.__eaglePhotoTakenSort?.current?.() || null`);
+  let mainContext = null;
+  try {
+    mainContext = await executeInMain(
+      "window.__eaglePhotoTakenSort?.current?.() || null"
+    );
+  } catch (error) {
+    console.warn("[photo-taken-sort] Main context snapshot unavailable", error);
+  }
+  const selected = await readSelectedFolderForCopy();
+  if (!selected?.ok) {
+    return {
+      ...(mainContext && typeof mainContext === "object" ? mainContext : {}),
+      contextId: String(mainContext?.contextId || ""),
+      mainContextId: String(mainContext?.contextId || ""),
+      currentFolderId: String(mainContext?.currentFolderId || ""),
+      currentFolderName: "",
+      folderTree: [],
+      directFolderTree: [],
+      items: Array.isArray(mainContext?.items) ? mainContext.items : []
+    };
+  }
+  const allFolders = await withTimeout(
+    () => eagle.folder.getAll(),
+    15000,
+    "Read folder inventory for tag scan"
+  );
+  const folders = Array.isArray(allFolders) ? allFolders : [];
+  const byId = new Map(folders.map((folder) => [String(folder?.id || ""), folder]));
+  const root = byId.get(String(selected.folderId)) || selected.folder;
+  if (!root?.id) throw new Error("无法读取当前文件夹");
+  const rootId = String(root.id);
+  const childrenByParent = new Map();
+  for (const folder of folders) {
+    const parentId = String(folder?.parent || "");
+    if (!childrenByParent.has(parentId)) childrenByParent.set(parentId, []);
+    childrenByParent.get(parentId).push(folder);
+  }
+  const directFolderTree = childrenByParent.get(rootId) || [];
+  const folderTree = [];
+  const queue = [root];
+  const visited = new Set();
+  while (queue.length) {
+    const folder = queue.shift();
+    const id = String(folder?.id || "");
+    if (!id || visited.has(id)) continue;
+    visited.add(id);
+    folderTree.push(folder);
+    for (const child of childrenByParent.get(id) || []) queue.push(child);
+  }
+  const tagContextId = `tag-folder:${rootId}`;
+  const mainContextFolderId = String(mainContext?.currentFolderId || "");
+  const mainContextId = mainContextFolderId === rootId
+    ? String(mainContext?.contextId || "")
+    : "";
+  return {
+    ...(mainContext && typeof mainContext === "object" ? mainContext : {}),
+    // Keep the tag-scanning identity stable for the folder scope while also
+    // carrying the injected window's collection identity for rename requests.
+    contextId: tagContextId,
+    mainContextId,
+    currentFolderId: rootId,
+    currentFolderName: String(root.name || selected.folderName || "当前文件夹"),
+    folderTree,
+    directFolderTree,
+    items: Array.isArray(mainContext?.items) ? mainContext.items : []
+  };
 }
 
 async function pushTimestamps(values) {
@@ -10986,10 +11561,25 @@ async function claimMainRenameBatch(id) {
   );
 }
 
+async function claimMainSelectedRenameBatch(id) {
+  return executeInMain(
+    `window.__eaglePhotoTakenSort?.claimSelectedRenameBatch?.(` +
+      `${JSON.stringify(id)}) || null`
+  );
+}
+
 async function completeMainRenameBatch(id, result) {
   const serialized = JSON.stringify(result).replace(/</g, "\\u003c");
   return executeInMain(
     `window.__eaglePhotoTakenSort?.completeRenameBatch?.(` +
+      `${JSON.stringify(id)},${serialized}) || false`
+  );
+}
+
+async function completeMainSelectedRenameBatch(id, result) {
+  const serialized = JSON.stringify(result).replace(/</g, "\\u003c");
+  return executeInMain(
+    `window.__eaglePhotoTakenSort?.completeSelectedRenameBatch?.(` +
       `${JSON.stringify(id)},${serialized}) || false`
   );
 }
@@ -11369,6 +11959,84 @@ async function executeSafeRenameChanges(request, plan, itemsById) {
   return plan.changes.length;
 }
 
+async function executeSelectedRenameChanges(changes, itemsById, label) {
+  const completed = [];
+  const records = Array.isArray(changes) ? changes : [];
+  const operationLabel = String(label || "Selected rename");
+  try {
+    for (const entry of records) {
+      const item = itemsById.get(String(entry?.id || ""));
+      if (!item || typeof item.save !== "function") {
+        throw new Error(`${operationLabel}: item ${entry?.id || ""} has no save API`);
+      }
+      const oldName = String(entry?.oldName || "");
+      const newName = String(entry?.newName || "");
+      if (!oldName || !newName || oldName === newName) {
+        throw new Error(`${operationLabel}: invalid rename for ${entry?.id || ""}`);
+      }
+      if (String(item.name || "") !== oldName) {
+        throw new Error(
+          `${operationLabel}: item ${entry.id} changed before save: ` +
+          `${item.name} != ${oldName}`
+        );
+      }
+
+      item.name = newName;
+      await withTimeout(
+        () => item.save(),
+        30000,
+        `${operationLabel} ${entry.id}`
+      );
+
+      const deadline = Date.now() + 30000;
+      let verified = false;
+      let lastState = null;
+      while (Date.now() < deadline) {
+        try {
+          lastState = await readRenameDiskState(item);
+          const oldPaths = renameItemPaths(item, oldName);
+          verified =
+            lastState.rawNames.length === 1 &&
+            lastState.rawNames[0] === newName &&
+            lastState.metadataName === newName &&
+            !(await pathExists(oldPaths.rawPath));
+          if (verified) break;
+        } catch {}
+        await new Promise((resolve) => setTimeout(resolve, 120));
+      }
+      if (!verified) {
+        throw new Error(
+          `${operationLabel} verification failed for ${entry.id}; ` +
+          `raw=${lastState?.rawNames?.join(",") || "unavailable"}, ` +
+          `metadata=${lastState?.metadataName || "unavailable"}`
+        );
+      }
+      completed.push({ item, oldName, newName });
+    }
+    return completed.length;
+  } catch (error) {
+    let rollbackFailures = 0;
+    for (const record of completed.slice().reverse()) {
+      try {
+        record.item.name = record.oldName;
+        await withTimeout(
+          () => record.item.save(),
+          30000,
+          `${operationLabel} rollback ${record.item.id}`
+        );
+      } catch {
+        rollbackFailures += 1;
+      }
+    }
+    if (rollbackFailures) {
+      throw new Error(
+        `${error?.message || String(error)}; rollback failures: ${rollbackFailures}`
+      );
+    }
+    throw error;
+  }
+}
+
 async function writeRenameRecoveryRequest(request) {
   const temporaryPath = `${renameRecoveryPath}.tmp`;
   await fs.promises.writeFile(
@@ -11694,6 +12362,154 @@ async function processRenameBatch(request) {
       `${result.skippedConflicts} 个共享冲突已跳过`
   );
   return result;
+}
+
+async function processSelectedRenameRequest(request) {
+  const folderId = String(request?.folderId || "");
+  const entries = Array.isArray(request?.entries) ? request.entries : [];
+  if (!folderId || !entries.length) {
+    throw new Error("选中项重命名请求缺少文件夹或图片");
+  }
+  const entryIds = entries
+    .map((entry) => String(entry?.id || ""))
+    .filter(Boolean);
+  let directItems = [];
+  // Selected rename must not wait for a full-folder enumeration. On large
+  // NAS folders that call can block the plugin event loop long enough for the
+  // UI request to look permanently queued. Read only the selected items first
+  // and keep the folder query as a compatibility fallback for older Eagle.
+  if (typeof eagle.item?.getByIds === "function") {
+    try {
+      const fetched = await withTimeout(
+        () => eagle.item.getByIds(entryIds),
+        10000,
+        `Read selected rename items ${folderId}`
+      );
+      const byId = new Map(
+        (Array.isArray(fetched) ? fetched : fetched ? [fetched] : [])
+          .map((item) => [String(item?.id || ""), item])
+          .filter(([id]) => id)
+      );
+      if (entryIds.every((id) => byId.has(id))) {
+        directItems = entryIds.map((id) => byId.get(id));
+      }
+    } catch (error) {
+      console.warn("[photo-taken-sort] Selected item lookup fallback", error);
+    }
+  }
+  if (directItems.length !== entryIds.length) {
+    const items = await withTimeout(
+      () => eagle.item.get({ folders: [folderId] }),
+      30000,
+      `Read selected rename folder ${folderId}`
+    );
+    directItems = backgroundCollectionRuntime.directFolderItems(items, folderId);
+  }
+  const itemsById = new Map(
+    directItems.map((item) => [String(item?.id || ""), item])
+  );
+  const changes = entries.map((entry) => {
+    const item = itemsById.get(String(entry?.id || ""));
+    if (!item) throw new Error(`选中项 ${entry?.id || ""} 已不在当前文件夹`);
+    const oldName = String(entry.oldName || "");
+    const newName = String(entry.newName || "");
+    if (!oldName || !newName || oldName === newName) {
+      throw new Error(`选中项 ${entry?.id || ""} 的重命名内容无效`);
+    }
+    if (String(item.name || "") !== oldName) {
+      throw new Error(
+        `选中项 ${entry.id} 在提交前已变化：${item.name} != ${oldName}`
+      );
+    }
+    return {
+      id: String(entry.id),
+      oldName,
+      newName,
+      expectedMetadataName: String(entry.expectedMetadataName || oldName)
+    };
+  });
+  const conflicts = selectedRenameConflictRuntime.findConflicts(
+    directItems,
+    changes
+  );
+  if (conflicts.length) {
+    const first = conflicts[0];
+    throw new Error(
+      `目标名称已被当前文件夹中的其他图片占用：${first.newName}`
+    );
+  }
+  const plan = { changes };
+  await writeRenameBatchBackup({
+    ...request,
+    folders: Array.isArray(request.folders) && request.folders.length
+      ? request.folders
+      : [{ id: folderId, name: String(request.folderName || "") }]
+  }, plan);
+  await updateMainRenameBatchProgress(request.id, {
+    stage: "saving",
+    phase: "selected",
+    current: 0,
+    total: changes.length * 2
+  });
+  // Selected people/environment renames must use the same verified native
+  // commit pipeline as automatic numbering.  Eagle's background metadata
+  // queue requires the explicit oldName/name/newName tuple to move the real
+  // file and update metadata.json; a UI-only in-memory rename can disappear
+  // after switching folders.
+  const renamed = await executeSafeRenameChanges(
+    request,
+    { changes },
+    itemsById
+  );
+  return {
+    mode: "selected-media",
+    folders: 1,
+    renamed,
+    failed: 0,
+    skippedConflicts: 0,
+    unchanged: 0,
+    transaction: changes.map((entry) => ({
+      id: String(entry.id),
+      oldName: String(entry.oldName),
+      newName: String(entry.newName)
+    }))
+  };
+}
+
+async function handleSelectedRenameRequest(request, context) {
+  const requestId = String(request?.id || "");
+  if (!requestId || requestId === lastSelectedRenameRequestId) return false;
+  if (!renameLifecycleHostRuntime.isSameFolderContext(
+    request.sourceContextId,
+    context?.contextId,
+    request?.folderId || context?.currentFolderId,
+    context?.mainContextId
+  )) {
+    return false;
+  }
+  const claimed = await claimMainSelectedRenameBatch(requestId);
+  if (!claimed) return false;
+  // Only mark a request as consumed after the main-window claim succeeds.
+  // A transient bridge failure before the claim must remain retryable; marking
+  // it here would leave the UI in the queued state forever.
+  lastSelectedRenameRequestId = requestId;
+  try {
+    const result = await processSelectedRenameRequest(claimed);
+    await completeMainSelectedRenameBatch(requestId, result);
+    return true;
+  } catch (error) {
+    const message = error?.message || String(error);
+    console.error("[photo-taken-sort] Selected rename failed", error);
+    await completeMainSelectedRenameBatch(requestId, {
+      mode: "selected-media",
+      folders: 1,
+      renamed: 0,
+      failed: 1,
+      skippedConflicts: 0,
+      error: message
+    }).catch(() => {});
+    return false;
+  }
 }
 
 async function executeRenameCommand(command) {
@@ -13249,19 +14065,6 @@ function bindGeoUi() {
   const root = document.body;
   if (!root || root.dataset.geoUiBound === "true") return;
   root.dataset.geoUiBound = "true";
-  document.getElementById("publish-team-state")?.addEventListener(
-    "click",
-    publishTeamState
-  );
-  document.getElementById("export-team-state")?.addEventListener(
-    "click",
-    exportTeamState
-  );
-  document.getElementById("import-team-state")?.addEventListener(
-    "click",
-    importTeamState
-  );
-  renderTeamStateStatus();
   document.getElementById("geo-enabled")?.addEventListener("change", async (event) => {
     await geoTagService?.setGlobalEnabled(event.target.checked);
     renderGeoSnapshot();
@@ -13535,17 +14338,93 @@ async function flushMoveDiagnostics(entries) {
   lastMoveDiagnosticSequence = newestSequence;
 }
 
+async function handleDeliveryWorkbenchRequest(request) {
+  const requestId = String(request?.id || "");
+  if (!requestId || requestId === lastDeliveryWorkbenchRequestId) return false;
+  lastDeliveryWorkbenchRequestId = requestId;
+  let failure = "";
+  try {
+    // Ordinary service plugins do not have parentID in the current Eagle host.
+    // The existing bridge evaluates in the host plugin module, whose native
+    // singleton owns installedPluginMaps and openPluginById.
+    const templateId = String(request.templateId || "");
+    const config = readSharedDeliveryConfig();
+    if (config.templates.some((template) => template.id === templateId)) {
+      writeSharedDeliveryConfig({ ...config, activeTemplateId: templateId });
+    }
+    const root = path.dirname(SHARED_DELIVERY_CONFIG_PATH);
+    const requestPath = path.join(root, "delivery-workbench-request.json");
+    const temporaryPath = requestPath + ".tmp-" + requestId;
+    await fs.promises.mkdir(root, { recursive: true });
+    await fs.promises.writeFile(temporaryPath, JSON.stringify({
+      version: 1,
+      id: requestId,
+      action: "manage-delivery-templates",
+      templateId,
+      requestedAt: new Date().toISOString()
+    }), "utf8");
+    await fs.promises.rename(temporaryPath, requestPath);
+    await executeInMain(`(() => {
+      const pluginId = "com.max.eagle-workbench";
+      if (typeof pluginModule === "undefined" ||
+          typeof pluginModule.openPluginById !== "function") {
+        throw new Error("无法取得 Eagle 工作台入口，请重试");
+      }
+      if (!pluginModule.installedPluginMaps?.[pluginId]) {
+        throw new Error("Eagle 工作台未安装，请检查当前插件安装");
+      }
+      if (pluginModule.isPluginDisabled?.(pluginId)) {
+        throw new Error("Eagle 工作台已停用，请先启用工作台");
+      }
+      pluginModule.openPluginById(pluginId, { entry: "manage-delivery-templates" });
+      return true;
+    })()`);
+  } catch (error) {
+    failure = error?.message || String(error);
+    console.warn("[photo-taken-sort] Workbench template launch failed:", error);
+  }
+  await executeInMain(
+    `window.__eaglePhotoTakenSort?.clearDeliveryWorkbenchRequest(${JSON.stringify(requestId)}, ${JSON.stringify(failure)})`
+  );
+  return !failure;
+}
+
+async function handleDeliveryTemplateSelection(request, context) {
+  const requestId = String(request?.id || "");
+  if (!requestId || requestId === lastDeliveryTemplateSelectionId) return;
+  if (!renameLifecycleHostRuntime.isSameFolderContext(
+    request.contextId,
+    context?.contextId,
+    context?.currentFolderId,
+    context?.mainContextId
+  )) return;
+  const templateId = String(request.templateId || "");
+  if (!templateId) return;
+  const config = readSharedDeliveryConfig();
+  if (!config.templates.some((template) => template.id === templateId)) return;
+  lastDeliveryTemplateSelectionId = requestId;
+  writeSharedDeliveryConfig({ ...config, activeTemplateId: templateId });
+  await executeInMain(
+    `window.__eaglePhotoTakenSort?.clearDeliveryTemplateSelection(${JSON.stringify(requestId)})`
+  );
+}
+
 async function handleDeliveryCopyRequest(request, context) {
   const requestId = String(request?.id || "");
   if (!requestId || requestId === lastDeliveryCopyRequestId) return;
   if (cancelledDeliveryCopyRequestIds.has(requestId)) return;
-  if (String(request.contextId || "") !== String(context?.contextId || "")) return;
+  if (!renameLifecycleHostRuntime.isSameFolderContext(
+    request.contextId,
+    context?.contextId,
+    request?.rootId || context?.currentFolderId,
+    context?.mainContextId
+  )) return;
   const groups = Array.isArray(request.groups) ? request.groups : [];
   if (!groups.length || !context?.currentFolderId) {
     await executeInMain(
       `window.__eaglePhotoTakenSort?.showDeliveryCopyError(${JSON.stringify(
         "请在普通总文件夹中生成交付文案"
-      )})`
+      )}, ${JSON.stringify(requestId)}, ${JSON.stringify(request.contextId)})`
     );
     lastDeliveryCopyRequestId = requestId;
     return;
@@ -13557,9 +14436,11 @@ async function handleDeliveryCopyRequest(request, context) {
     const stats = deliveryCopyRuntime.buildStats({ groups, itemsByFolder });
     const payload = {
       requestId,
+      contextId: String(request.contextId || ""),
       rootName: String(request.rootName || context.currentFolderName || "当前文件夹"),
       stats,
-      template: DEFAULT_DELIVERY_COPY_TEMPLATE
+      template: DEFAULT_DELIVERY_COPY_TEMPLATE,
+      deliveryConfig: readSharedDeliveryConfig()
     };
     const serialized = JSON.stringify(payload).replace(/</g, "\\u003c");
     if (cancelledDeliveryCopyRequestIds.has(requestId)) return;
@@ -13569,16 +14450,57 @@ async function handleDeliveryCopyRequest(request, context) {
   } catch (error) {
     const message = error?.message || String(error);
     await executeInMain(
-      `window.__eaglePhotoTakenSort?.showDeliveryCopyError(${JSON.stringify(message)})`
+      `window.__eaglePhotoTakenSort?.showDeliveryCopyError(${JSON.stringify(message)}, ${JSON.stringify(requestId)}, ${JSON.stringify(request.contextId)})`
     );
     console.warn("[photo-taken-sort] Delivery copy scan failed:", error);
   }
+}
+
+async function consumeWorkbenchEntryRequest() {
+  let request;
+  try {
+    request = JSON.parse(
+      await fs.promises.readFile(workbenchEntryRequestPath, "utf8")
+    );
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      console.warn("[photo-taken-sort] Workbench entry request unreadable:", error);
+    }
+    return false;
+  }
+  const requestId = String(request?.id || "");
+  if (
+    request?.version !== 1 ||
+    requestId === "" ||
+    requestId === lastWorkbenchEntryRequestId ||
+    String(request?.pluginId || "") !== CANONICAL_PLUGIN_DIRECTORY
+  ) {
+    return false;
+  }
+  lastWorkbenchEntryRequestId = requestId;
+  await fs.promises.unlink(workbenchEntryRequestPath).catch(() => {});
+  if (await ensurePanelVisible()) {
+    setStatus("已从 Eagle 工作台打开媒体智能整理");
+    return true;
+  }
+  return false;
+}
+
+function startWorkbenchEntryMonitor() {
+  if (workbenchEntryMonitorTimer) return;
+  workbenchEntryMonitorTimer = setInterval(() => {
+    if (!mainBridgeAllowed) return;
+    void consumeWorkbenchEntryRequest().catch((error) => {
+      console.warn("[photo-taken-sort] Workbench entry request failed:", error);
+    });
+  }, 500);
 }
 
 async function monitor() {
   if (monitorInProgress || !mainBridgeAllowed) return;
   monitorInProgress = true;
   try {
+    await consumeWorkbenchEntryRequest();
     seedExpectedLibraryIdentityFromHost();
     if (!injectionReady) {
       const bootstrap = await ensureStartupReadinessGate().observe(
@@ -13587,6 +14509,52 @@ async function monitor() {
       if (bootstrap.phase !== "active" || !injectionReady) return;
     }
     await processApprovedRenameRecovery();
+
+    // Handle selected people/environment rename before the context snapshot
+    // performs the slower folder inventory read. Large NAS folders can make
+    // getSelected()/folder.getAll() take several seconds; the rename request
+    // itself only needs the injected main-window context and its folder ID.
+    let mainRequestContext = null;
+    try {
+      mainRequestContext = await executeInMain(
+        "window.__eaglePhotoTakenSort?.current?.() || null"
+      );
+    } catch (error) {
+      console.warn(
+        "[photo-taken-sort] Main rename request snapshot unavailable",
+        error
+      );
+    }
+    if (mainRequestContext?.selectedRenameRequest) {
+      const mainContextId = String(mainRequestContext.contextId || "");
+      const lightweightContext = {
+        ...mainRequestContext,
+        contextId: mainContextId,
+        mainContextId,
+        currentFolderId: String(mainRequestContext.currentFolderId || "")
+      };
+      void handleSelectedRenameRequest(
+        mainRequestContext.selectedRenameRequest,
+        lightweightContext
+      ).catch((error) => {
+        console.warn(
+          "[photo-taken-sort] Early selected rename request failed:",
+          error
+        );
+      });
+    }
+    // Delivery requests are read-only and can start from the lightweight
+    // main-window snapshot before the slower folder inventory is refreshed.
+    if (mainRequestContext?.deliveryWorkbenchRequest) {
+      void handleDeliveryWorkbenchRequest(mainRequestContext.deliveryWorkbenchRequest)
+        .catch((error) => console.warn("[photo-taken-sort] Workbench launch failed:", error));
+    }
+    if (mainRequestContext?.deliveryCopyRequest) {
+      void handleDeliveryCopyRequest(mainRequestContext.deliveryCopyRequest, {
+        ...mainRequestContext,
+        mainContextId: String(mainRequestContext.contextId || "")
+      }).catch((error) => console.warn("[photo-taken-sort] Early delivery request failed:", error));
+    }
     const context = await getCurrentContext();
     if (!context) return;
     await flushHostInputDiagnostics(context.hostInputDiagnostics);
@@ -13601,7 +14569,7 @@ async function monitor() {
     ensureSortingModuleFacade().setCollectionContext({
       windowId: "eagle-main",
       hostAppId: "eagle",
-      collectionId: context.contextId || ""
+      collectionId: context.mainContextId || context.contextId || ""
     });
     syncFolderTagContext(context);
 
@@ -13628,6 +14596,14 @@ async function monitor() {
     if (context.renameBatchRequest) {
       await handleRenameBatchRequest(context.renameBatchRequest);
     }
+    if (context.selectedRenameRequest) {
+      void handleSelectedRenameRequest(
+        context.selectedRenameRequest,
+        context
+      ).catch((error) => {
+        console.warn("[photo-taken-sort] Selected rename request failed:", error);
+      });
+    }
     if (context.deliveryCopyCancelRequest?.requestId) {
       cancelledDeliveryCopyRequestIds.add(
         String(context.deliveryCopyCancelRequest.requestId)
@@ -13636,6 +14612,14 @@ async function monitor() {
         const oldest = cancelledDeliveryCopyRequestIds.values().next().value;
         cancelledDeliveryCopyRequestIds.delete(oldest);
       }
+    }
+    if (context.deliveryTemplateSelection) {
+      void handleDeliveryTemplateSelection(
+        context.deliveryTemplateSelection,
+        context
+      ).catch((error) => {
+        console.warn("[photo-taken-sort] Delivery template selection failed:", error);
+      });
     }
     if (context.deliveryCopyRequest) {
       void handleDeliveryCopyRequest(context.deliveryCopyRequest, context)
@@ -13718,6 +14702,34 @@ async function start() {
   clearInterval(monitorTimer);
   monitorTimer = null;
   await monitor();
+  // Keep the service monitor alive after the one-shot startup pass. Without
+  // this timer a selected rename request remains queued until another
+  // lifecycle event (such as switching folders) happens to call monitor().
+  await activateStartup({
+    libraryId: eagle.library?.path || expectedLibraryIdentity
+  });
+}
+
+async function ensurePanelVisible() {
+  try {
+    await eagle.window.show();
+    return true;
+  } catch (error) {
+    console.warn("[photo-taken-sort] Unable to show media organizer panel:", error);
+    return false;
+  }
+}
+
+async function bindFeaturePanelsSafely() {
+  if (!featurePanelFocusRefreshBound) {
+    featurePanelFocusRefreshBound = true;
+    window.addEventListener("focus", () => {
+      if (document.visibilityState === "hidden") return;
+      void bindFeaturePanelsSafely();
+      if (folderTagUiActive) void updateFolderTagTarget(true);
+    });
+  }
+
 }
 
 eagle.onPluginCreate((plugin) => {
@@ -13733,6 +14745,12 @@ eagle.onPluginCreate((plugin) => {
   renameBackupPath = durableStateLayout.renameBackupPath;
   renameCancelPath = durableStateLayout.renameCancelPath;
   renameRecoveryPath = durableStateLayout.renameRecoveryPath;
+  workbenchEntryRequestPath = path.join(
+    durableStateLayout.root,
+    "workbench-entry-request.json"
+  );
+  clearInterval(workbenchEntryMonitorTimer);
+  workbenchEntryMonitorTimer = null;
   durableStateMigrated = false;
   lastHostInputDiagnosticSequence = 0;
   lastHostInputDiagnosticAdapterId = "";
@@ -13763,6 +14781,7 @@ eagle.onPluginCreate((plugin) => {
     serviceStartTimer = setTimeout(async () => {
       try {
         mainBridgeAllowed = true;
+        startWorkbenchEntryMonitor();
         await start();
       } catch (error) {
         setStatus(`启动失败：${error.message}`);
@@ -13826,24 +14845,16 @@ eagle.onPluginRun(async () => {
   startupWindowRequestHandled = true;
   if (automaticServiceStart) {
     if (startPromise) await startPromise;
-    setStatus("排序服务已自动启动");
     return;
   }
   try {
     seedExpectedLibraryIdentityFromHost();
     setStatus("收到用户打开插件窗口请求");
-    await eagle.window.show();
-    bindFolderCopyUi();
-    bindPublicRenameFallbackUi();
-    bindPublicDeliveryFallbackUi();
-    bindPublicSortPreviewUi();
-    await refreshFolderCopyTarget();
-    await refreshPublicRenameFallback();
-    await refreshPublicDeliveryFallback();
-    await refreshPublicSortPreview();
+    await ensurePanelVisible();
     if (startPromise) {
       await startPromise;
     }
+    await bindFeaturePanelsSafely();
     const bootstrap = await ensureStartupReadinessGate().observe(
       hostLibraryReadiness()
     );
@@ -13868,6 +14879,6 @@ eagle.onPluginRun(async () => {
     await updateFolderTagTarget(true);
   } catch (error) {
     setStatus(`重新连接失败：${error.message}`);
-    await eagle.window.show();
+    await ensurePanelVisible();
   }
 });

@@ -1,11 +1,18 @@
 {
   "id": "com.max.eagle-workbench",
-  "version": "1.4",
+  "version": "2.1",
   "platform": "all",
   "arch": "all",
   "name": "Eagle 工作台",
   "logo": "/logo.svg",
-  "keywords": ["工作台", "版本", "排序", "水印", "标签", "导入"],
+  "keywords": [
+    "工作台",
+    "版本",
+    "排序",
+    "水印",
+    "标签",
+    "导入"
+  ],
   "devTools": false,
   "main": {
     "serviceMode": false,

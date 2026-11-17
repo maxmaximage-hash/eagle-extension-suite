@@ -30,8 +30,28 @@ const manifest = JSON.parse(fs.readFileSync(
 ));
 assert.strictEqual(manifest.main.serviceMode, true);
 assert.strictEqual(manifest.main.keepAlive, true);
-assert.strictEqual(manifest.main.childWindow, true);
+assert.strictEqual(manifest.main.childWindow, false);
 assert.strictEqual(manifest.main.frame, true);
+assert.match(
+  source,
+  /async function ensurePanelVisible\(\)[\s\S]*?eagle\.window\.show\(\)/,
+  "service panel visibility must use one guarded lifecycle helper"
+);
+const tagPanelBindings = source.match(
+  /async function bindFeaturePanelsSafely\(\) \{([\s\S]*?)\n\}/
+);
+assert.ok(tagPanelBindings, "tag panel binding must remain inspectable");
+assert.match(tagPanelBindings[1], /updateFolderTagTarget\(true\)/);
+assert.doesNotMatch(
+  tagPanelBindings[1],
+  /bindFolderCopyUi|bindPublicRenameFallbackUi|bindPublicDeliveryFallbackUi|bindPublicSortPreviewUi/,
+  "the tag panel must not bind another product's UI"
+);
+assert.doesNotMatch(
+  source.replace(/async function ensurePanelVisible\(\)[\s\S]*?\n\}/, ""),
+  /eagle\.window\.show\(\)/,
+  "feature handlers must not call the window API directly"
+);
 assert.match(
   source,
   /function stopRuntimeActivity\(reason\)/,
@@ -40,9 +60,9 @@ assert.match(
 assert.match(
   source,
   /stopRuntimeActivity\("library-changed"\)/,
-  "library changes must cancel all delayed runtime work"
+  "library changes must cancel the sorting runtime"
 );
-assert.match(source, /const API_VERSION = 155/);
+assert.match(source, /const API_VERSION = 158/);
 assert.match(
   source,
   /function diagnoseNormalOrderPresentation\(stage, payload = \{\}\)/,
@@ -195,104 +215,14 @@ assert.match(
   "R132: renderSettings must run in the verified normal presentation callback"
 );
 assert.match(source, /createItemResourceResolver/);
-assert.match(source, /createFolderCopyRuntime/);
-assert.match(source, /function createFolderCopy/);
-assert.match(source, /eagle\.folder\.getSelected\(\)/);
-assert.match(source, /normalizeSelectedFolder/);
-assert.match(source, /copy-folder-current/);
-assert.match(
-  source,
-  /await eagle\.window\.show\(\);[\s\S]*?bindFolderCopyUi\(\);[\s\S]*?refreshFolderCopyTarget\(\);/,
-  "folder copy window entry must remain available before optional sorting bridge readiness"
+require("./tag-only-panel-contract.test.js");
+const tagOnlyPluginRunSource = source.match(
+  /eagle\.onPluginRun\(async \(\) => \{([\s\S]*?)\n\}\);/
 );
-assert.match(source, /eagle\.folder\.create/);
-assert.match(source, /eagle\.item\.get\(\{ folders: \[sourceFolderId\] \}\)/);
-assert.match(source, /item\.folders = change\.folders/);
-assert.match(source, /normal-folder-required/);
-assert.doesNotMatch(source, /function installFolderCopyMenuBridge\(\)/);
-assert.doesNotMatch(source, /CONTEXTMENU\.OPEN/);
-assert.doesNotMatch(source, /pluginModule\.broadcast\("library-changed", \{/);
-assert.doesNotMatch(source, /__eagleFolderCopyAction/);
-assert.doesNotMatch(source, /eagle\.onFolderCopyAction/);
-assert.match(indexSource, /id="copy-folder-current"/);
-assert.match(indexSource, /复制当前选中文件夹（含内容）/);
+assert.ok(tagOnlyPluginRunSource, "plugin run entry must remain inspectable");
+assert.match(tagOnlyPluginRunSource[1], /bindFeaturePanelsSafely\(\);/);
 assert.match(source, /if \(typeof libraryPath !== "string" \|\| !libraryPath\) return/);
 assert.match(source, /eagle\.item\.getById/);
-assert.match(
-  source,
-  /交付标准 12组，5组人像精拍，7组不带人氛围环境[\s\S]*?每组 3 张人物共 15 张，10 张环境共 120 张，共计 135 张/,
-  "delivery template must use the current 12-group standard"
-);
-assert.match(
-  source,
-  /排版最低可发 14 组[\s\S]*?发布频率可以1周1条[\s\S]*?发布时间以场景时间发生时间为佳/,
-  "delivery template must use the current publishing guidance"
-);
-assert.doesNotMatch(
-  source,
-  /openDeliveryCopyModal[\s\S]*?deliveryCopyRuntime\.normalizeLink/,
-  "injected delivery modal must not depend on the plugin-process runtime"
-);
-assert.match(
-  indexSource,
-  /id="public-delivery-copy-fallback"/,
-  "unbridged plugin window must expose a delivery-copy fallback section"
-);
-assert.match(
-  indexSource,
-  /id="public-delivery-link"[\s\S]*?id="public-delivery-text"/,
-  "delivery fallback must expose editable Quark link and message"
-);
-assert.match(
-  source,
-  /function refreshPublicDeliveryFallback\(\)/,
-  "delivery fallback must refresh from the official Eagle APIs"
-);
-assert.doesNotMatch(
-  source,
-  /async function refreshPublicRenameFallback\(\) \{\s*if \(typeof eagle\.photoTakenSort\?\.execute === "function"\) return;/,
-  "rename fallback must remain available when a stale bridge object is present"
-);
-assert.doesNotMatch(
-  source,
-  /async function refreshPublicDeliveryFallback\(\) \{\s*if \(typeof eagle\.photoTakenSort\?\.execute === "function"\) return;/,
-  "delivery fallback must remain available when a stale bridge object is present"
-);
-assert.match(
-  source,
-  /function renderPublicRenameFallbackState\(message = ""\) \{[\s\S]*?section\.hidden = false;/,
-  "rename fallback section must stay visible in the plugin window"
-);
-assert.match(
-  source,
-  /function renderPublicDeliveryFallback\(message = ""\) \{[\s\S]*?section\.hidden = false;/,
-  "delivery fallback section must stay visible in the plugin window"
-);
-assert.match(
-  source,
-  /deliveryCopyRuntime\.buildStats\(\{ groups, itemsByFolder \}\)/,
-  "delivery fallback must reuse the delivery stats runtime"
-);
-assert.match(
-  source,
-  /async function readDeliveryItemsByFolder\(groups\)[\s\S]*?eagle\.item\.get\(\{ folders: \[folderId\] \}\)/,
-  "large delivery scans must query one folder id at a time"
-);
-assert.doesNotMatch(
-  source,
-  /eagle\.item\.get\(\{ folders: queryFolderIds \}\)/,
-  "Eagle 4 must not receive a multi-folder array request that can remain pending"
-);
-assert.match(
-  source,
-  /section\.hidden = mainBridgeAllowed\s*&&\s*injectionReady\s*&&[\s\S]*?typeof eagle\.photoTakenSort\?\.execute === "function"/,
-  "public sort fallback must stay visible whenever the bridge is stale or unavailable"
-);
-assert.match(
-  source,
-  /public-delivery-copy-button/,
-  "delivery fallback must provide a copy action"
-);
 assert.match(
   source,
   /fetchItems: \(query\) => withTimeout\(\s*\(\) => eagle\.item\.get\(query\)/,
@@ -330,6 +260,11 @@ assert.match(source, /createStartupReadinessGate/);
 assert.match(source, /createMainLibraryReadinessWaiter/);
 assert.match(source, /maxAttempts: 40/);
 assert.match(source, /maxIntervalMs: 5_000/);
+assert.match(
+  source,
+  /async function start\(\)[\s\S]*?await activateStartup\(/,
+  "selected rename requests must have a live monitor after startup"
+);
 assert.match(source, /backoffFactor: 2/);
 assert.match(source, /maxElapsedMs: 180_000/);
 assert.match(source, /waitUntilReady: \(\{ libraryId, signal \}\)/);
@@ -448,10 +383,17 @@ const pluginRunSource = source.match(
 assert.ok(pluginRunSource, "plugin run lifecycle should be present");
 assert.match(pluginRunSource[1], /const automaticServiceStart/);
 assert.match(pluginRunSource[1], /Date\.now\(\) - pluginCreatedAt < 10000/);
-assert.match(
-  pluginRunSource[1],
-  /if \(automaticServiceStart\) \{[\s\S]*?排序服务已自动启动[\s\S]*?return;/
+const automaticServiceBranch = pluginRunSource[1].match(
+  /if \(automaticServiceStart\) \{([\s\S]*?)\n  \}/
 );
+assert.ok(automaticServiceBranch, "automatic service branch must remain inspectable");
+assert.match(automaticServiceBranch[1], /startPromise[\s\S]*?return;/);
+assert.doesNotMatch(
+  automaticServiceBranch[1],
+  /ensurePanelVisible|window\.show|initializeGeoTagService/,
+  "automatic sorting service startup must not open or initialize the tag window"
+);
+assert.match(pluginRunSource[1], /bindFeaturePanelsSafely\(\)/);
 assert.match(pluginRunSource[1], /initializeGeoTagService/);
 assert.match(pluginRunSource[1], /setInterval\(runGeoPoll, 8000\)/);
 
@@ -579,37 +521,32 @@ assert.match(
   "monitor timer may begin only after ACTIVE"
 );
 assert.match(source, /if \(monitorInProgress \|\| !mainBridgeAllowed\) return/);
-assert.match(source, /serviceStartTimer = setTimeout\(async \(\) => \{/);
-assert.match(source, /\}, 0\)/);
-assert.doesNotMatch(source, /libraryStabilizeTimer|\}, 2000\)/);
 assert.match(
   source,
-  /if \(!injectionReady\) \{\s+const bootstrap = await ensureStartupReadinessGate\(\)\.observe\(\s+hostLibraryReadiness\(\)\s+\);\s+if \(bootstrap\.phase !== "active" \|\| !injectionReady\) return;/s
+  /serviceStartTimer = setTimeout\(async \(\) => \{[\s\S]*?mainBridgeAllowed = true;[\s\S]*?await start\(\);/,
+  "service-mode media organizer must start the sorting service"
 );
-const preInjectionSource = source.match(
-  /function hostLibraryReadiness\(\) \{([\s\S]*?)\n\}/
-);
-assert.ok(preInjectionSource, "host readiness probe should be present");
-assert.doesNotMatch(
-  preInjectionSource[1],
-  /executeInMain|readCache|currentItems|filtereds|allData|setInterval|setTimeout/,
-  "pre-ready probe must remain a public, zero-I/O host signal"
-);
-assert.match(
-  preInjectionSource[1],
-  /if \(!expectedLibraryIdentity\)[\s\S]*?library-change-unobserved/s,
-  "a public library path alone is not sufficient startup evidence"
-);
-assert.doesNotMatch(
-  pluginRunSource[1],
-  /else \{\s+await inject\(\);\s+\}/s,
-  "opening the panel must not bypass the startup gate"
-);
+assert.match(pluginRunSource[1], /ensurePanelVisible\(\)/);
 assert.match(
   pluginRunSource[1],
-  /const bootstrap = await ensureStartupReadinessGate\(\)\.observe\([\s\S]*?hostLibraryReadiness\(\)/s,
-  "panel activation must honor the same startup gate"
+  /await bindFeaturePanelsSafely\(\);/,
+  "panel feature initialization must be isolated from startup"
 );
+assert.match(source, /async function bindFeaturePanelsSafely\(\)/);
+assert.match(
+  source,
+  /window\.addEventListener\("focus", \(\) => \{[\s\S]*?void bindFeaturePanelsSafely\(\);/,
+  "returning to the detached panel must refresh feature context"
+);
+assert.doesNotMatch(
+  source,
+  /(?:bindFolderCopyUi|bindPublicRenameFallbackUi|bindPublicDeliveryFallbackUi|bindPublicSortPreviewUi)\(\);/,
+  "removed non-tag UI must not retain initialization calls"
+);
+assert.match(pluginRunSource[1], /if \(!geoTagService\) await initializeGeoTagService\(\)/);
+assert.match(pluginRunSource[1], /await updateFolderTagTarget\(true\)/);
+assert.match(source, /async function getCurrentContext\(\)/);
+assert.doesNotMatch(source, /libraryStabilizeTimer|\}, 2000\)/);
 assert.match(source, /pendingSmartScanIdentity/);
 assert.match(source, /smartContextStable/);
 assert.doesNotMatch(
@@ -1015,8 +952,13 @@ assert.match(
 );
 assert.match(
   selectedRenameSource[1],
-  /applyRenameEntries\(plan\.changes,\s*\{\s*sourceItems:\s*visibleItems\s*\}\)/s,
-  "selected rename commit must reuse the same visible item snapshot"
+  /queueSelectedRenamePlan\(plan,\s*\{\s*sourceItems:\s*visibleItems\s*\}\)/s,
+  "selected rename must submit the visible snapshot to the verified native queue"
+);
+assert.doesNotMatch(
+  selectedRenameSource[1],
+  /applyRenameEntries\(/,
+  "selected rename must not only mutate the grid optimistically"
 );
 assert.match(
   selectedRenameSource[1],
@@ -1482,6 +1424,11 @@ assert.match(
   source,
   /if \(result\?\.mode !== "current-folder"\) api\.refresh\?\.\(\)/
 );
+assert.match(
+  source,
+  /else \{[\s\S]*?finishVisibleRenameMask\(true\);[\s\S]*?if \(result\?\.mode !== "current-folder"\)/,
+  "verified current-folder renames must commit names into the visible Eagle cards"
+);
 const renameBatchHandler = source.match(
   /async function handleRenameBatchRequest\(request\) \{([\s\S]*?)\n\}/
 );
@@ -1492,6 +1439,36 @@ assert.doesNotMatch(
   "current-folder numbering must not trigger a second full grid refresh"
 );
 assert.match(source, /: queueCurrentRenamePlan\(plan\)/);
+assert.match(source, /async function handleSelectedRenameRequest\(request, context\)/);
+assert.match(source, /async function processSelectedRenameRequest\(request\)/);
+assert.match(source, /claimSelectedRenameBatch/);
+assert.match(source, /completeSelectedRenameBatch/);
+assert.match(
+  source,
+  /typeof eagle\.item\?\.getByIds === "function"[\s\S]*?Read selected rename items/,
+  "selected rename must fetch the selected IDs before falling back to a full folder read"
+);
+assert.match(
+  source,
+  /const claimed = await claimMainSelectedRenameBatch\(requestId\);[\s\S]*?lastSelectedRenameRequestId = requestId;/,
+  "a selected rename request must remain retryable until the main window claim succeeds"
+);
+assert.match(
+  source,
+  /Main rename request snapshot unavailable[\s\S]*?mainRequestContext\?\.selectedRenameRequest[\s\S]*?handleSelectedRenameRequest\(/,
+  "selected rename requests must be dispatched before slow folder inventory reads"
+);
+assert.match(
+  source,
+  /async function processSelectedRenameRequest\([\s\S]*?executeSafeRenameChanges\(\s*request,\s*\{\s*changes\s*\},\s*itemsById\s*\)/,
+  "selected people/environment rename must commit through the verified native rename pipeline"
+);
+assert.doesNotMatch(
+  source.match(/async function processSelectedRenameRequest\([\s\S]*?\n}\n\nasync function handleSelectedRenameRequest/)[0],
+  /executeSelectedRenameChanges\(|item\.save\(\)/,
+  "selected rename requests must not use the transient item.save path"
+);
+assert.match(source, /executeSafeRenameChanges\(request, plan, itemsById\)/);
 assert.match(source, /async function executeSafeRenameChanges\(/);
 assert.match(source, /backgroundRenameRuntime\.buildExecutionPhases\(/);
 assert.match(source, /async function dispatchNativeRenameBatch\(/);
@@ -1511,7 +1488,7 @@ assert.match(renamePhaseSource[0], /entries\.slice\(index, index \+ batchSize\)/
 assert.match(renamePhaseSource[0], /await dispatchNativeRenameBatch\(/);
 assert.match(source, /async function rollbackRenameItems\(/);
 const safeRenameSource = source.match(
-  /function renameItemPaths\([\s\S]*?\nasync function processRenameBatch\(/
+  /function renameItemPaths\([\s\S]*?\nasync function executeSelectedRenameChanges\(/
 );
 assert.ok(safeRenameSource, "native safe rename implementation should be present");
 assert.match(safeRenameSource[0], /function dispatchNativeRename\(/);
@@ -1718,11 +1695,17 @@ assert.match(source, /renameLibrary\.folders = \{\}/);
 assert.match(source, /eagle\.folder\.getAll\(\)/);
 assert.match(source, /showSaveDialog/);
 assert.match(source, /showOpenDialog/);
-assert.ok(
-  indexSource.indexOf("团队排序与展示状态") >
-    indexSource.indexOf("所有坐标识别都在本机离线完成"),
-  "team handoff controls should stay at the bottom of the plugin window"
-);
+assert.doesNotMatch(indexSource, /团队排序与展示状态|自动编号开关会写入状态文件/);
+assert.match(source, /consumeWorkbenchEntryRequest/,
+  "workbench entry requests must be consumed by the existing media organizer service");
+assert.match(source, /workbench-entry-request\.json/,
+  "workbench entry protocol must use PluginData rather than Library files");
+assert.match(source, /workbenchEntryMonitorTimer/,
+  "workbench entry requests must be polled even before sorting injection is ready");
+assert.match(source, /startWorkbenchEntryMonitor/,
+  "workbench entry monitor must have an explicit lifecycle start");
+assert.match(source, /已从 Eagle 工作台打开媒体智能整理/,
+  "workbench entry must leave a visible lifecycle status");
 
 // Folder rename is an Eagle-native L0 operation. Sorting protection can guard
 // plugin-owned ordering and auto-numbering, but must never wrap or reject

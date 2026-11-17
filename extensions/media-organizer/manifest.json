@@ -1,6 +1,6 @@
 {
   "id": "com.max.eagle-photo-taken-sort",
-  "version": "2.5.22-qa.98",
+  "version": "2.5.22-qa.104",
   "platform": "all",
   "arch": "all",
   "name": "媒体智能整理",
@@ -23,12 +23,13 @@
   "main": {
     "serviceMode": true,
     "keepAlive": true,
-    "childWindow": true,
+    "childWindow": false,
     "runAfterInstall": false,
     "frame": true,
     "url": "index.html",
     "width": 760,
     "height": 720,
-    "resizable": true
+    "resizable": true,
+    "show": false
   }
 }

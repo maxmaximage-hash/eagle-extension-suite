@@ -1,9 +1,17 @@
 # 跨电脑同步与交接
 
-这是一台新 Mac 从 GitHub 恢复当前 Eagle 扩展套件的唯一流程。它恢复的是源码和功能，
-不是把第一台电脑的 Library 素材、账号登录态或本机路径复制过去。
+更新时间：2026-11-17。GitHub 同步软件源码、默认模板和安装包。目标电脑保留自己的 Library、挂载路径、客户文案配置和登录状态。
 
-## 1. 拉取同一版本
+## 当前版本与入口
+
+- 工作台 2.1；运行服务 2.5.22-qa.104。
+- 交付文案 1.6：保留编辑文本与换行，粘贴夸克分享消息后提取有效 URL；模板从工作台管理。
+- 排序与自动编号 2.6、人物/环境图重命名 1.0：在 Eagle 布局面板执行。
+- 地点与元数据标签 2.6：由工作台打开独立标签面板。标签窗口没有复制、排序、改名或交付面板。
+- MAX Publisher 1.2.7；Live Photo 管家 0.2.0-dev.11（Demo）；静态照片信息 0.1.0；头像共享源 1.0.0。
+- 复制文件夹的源码保留，真实递归副本及引用验收尚未完成，不能按已交付功能使用。
+
+## 1. 获取源码或整套发行包
 
 ```zsh
 git clone https://github.com/maxmaximage-hash/eagle-extension-suite.git
@@ -11,125 +19,48 @@ cd eagle-extension-suite
 git switch main
 ```
 
-开始前确认：macOS、Eagle `4.0.0`，并完全退出 Eagle。目标电脑打开 NAS Library 时，
-使用该电脑自己的挂载路径；不要把 `/Volumes/...` 或本机 `.library` 路径写入仓库。
+也可下载 GitHub Releases 的整套 ZIP，解压后阅读 `SYNC-INSTRUCTIONS.md` 和 `PLUGIN-REGISTRY.json`。先在解压目录运行 `shasum -a 256 -c SHA256SUMS`。发布包不包含 Eagle 主程序、Library、运行状态或客户分享链接。
 
-## 2. 构建和测试
+## 2. 从源码测试和构建
+
+构建环境需要 Node.js/npm、Python 3、Git、zsh 和系统 zip/unzip。Python 3 用于正确保存含中文安装器文件名的整套 ZIP；直接下载发行包的使用者不需要安装这些构建工具。
+
+```zsh
+(cd extensions/media-organizer && npm ci && npm test)
+(cd extensions/eagle-workbench && npm test)
+(cd extensions/online-publisher && npm ci && npm test)
+(cd extensions/avatar-source-publisher && npm test)
+(cd extensions/live-photo-manager && npm test)
+(cd extensions/web-media-importer && npm test && npm run check)
+(cd extensions/xiaohongshu-post-importer && npm test && npm run check)
+zsh scripts/build-eagle-suite-release.sh
+node scripts/verify-eagle-suite-release.cjs releases/eagle-suite-v20261117-suite-sync-1
+```
+
+本机依赖和 `.eagleplugin` 属于构建产物，不进入 Git 源码历史。完整发行包包含所有运行依赖；工作台的 `delivery.js`、`delivery-entry.js` 和媒体服务的 `lib/delivery-template-core.js` 均在包内。
+
+## 3. 在目标电脑安装
+
+安装前完全退出 Eagle，确认 Eagle 4.0.0 的精确版本和当前宿主指纹，同一插件 ID 只保留一个活动来源。
+
+媒体服务的当前安装器为：
 
 ```zsh
 cd extensions/media-organizer
-npm ci
-npm test
 zsh scripts/build-github-release.sh
-cd bridge
-npm ci
-node rebuild-compatible-bridge.js --check
-cd ..
-zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --check
-cd ../..
-
-cd extensions/eagle-workbench
-npm test
-npm run package
-cd ../..
-
-cd extensions/online-publisher
-npm ci
-npm test
-npm run package:plugin
-cd ../..
-
-cd extensions/avatar-source-publisher
-npm test
-npm run package
-cd ../..
-
-cd extensions/live-photo-manager
-npm test
-cd ../..
-
-cd extensions/xiaohongshu-post-importer
-npm ci
-npm test
-npm run check
-npm run package:stable
-cd ../..
-
-cd extensions/instagram-post-importer
-# 这是 Chrome 解压扩展；源码本身就是可加载目录。
-cd ../..
+zsh releases/install-媒体智能整理-v2.5.22-qa.104.sh --check
 ```
 
-`.eagleplugin` 和 `node_modules` 是构建产物/依赖，不提交到 GitHub；每台电脑按上面的命令
-本地生成。媒体智能整理安装器的 `--check` 只做 Eagle 版本、宿主桥接指纹、包校验和唯一
-插件来源检查；检查失败时不得绕过保护去改 `app.asar`。
+已通过当前审计桥接指纹/证据的宿主，检查通过后运行同一安装器的 `--install-plugin`。安装器会备份被替换的插件，不改写宿主或 Library。原始未桥接宿主的 `--check` 会明确拒绝桥接安装路径；只安装插件可使用 `--install-plugin-only`，但这不恢复主网格的排序兼容能力。
 
-## 3. 安装 Eagle 扩展
+需要主网格通信兼容层时，应先在 `extensions/media-organizer/bridge` 阅读 README、核对版本/指纹并执行 `npm ci` 和 `node rebuild-compatible-bridge.js --check`。按当前机器的签名、备份和启动门禁评审兼容流程；不运行已永久停用的旧安装器，不复制另一台电脑的 `app.asar`。本轮 GitHub 同步没有执行任何宿主安装。
 
-先完全退出 Eagle，在媒体整理桥接目录执行一次本机桥接重建：
+整套包的 `plugins/` 目录包含其余 5 个 Eagle 插件，可通过 Eagle 插件安装入口安装；媒体服务优先使用上述受控安装器。工作台包为 `com.max.eagle-workbench-v2.1.eagleplugin`。浏览器扩展从 `assets/*.zip` 解压，在 Chrome 的 `chrome://extensions/` 中加载 Instagram、小红书和网页媒体导入器三个目录。
 
-```zsh
-cd extensions/media-organizer/bridge
-node rebuild-compatible-bridge.js --install
-cd ..
-```
+## 4. 本机数据与凭证
 
-桥接脚本只接受 Eagle `4.0.0` 原始指纹，自动备份原始 `app.asar`，重建后验证两个
-排序桥接入口，并写入本机 `bridge-evidence.json`。随后在媒体智能整理目录执行：
+排序规则、手动顺序、锁定和自动编号状态属于当前 Library，不通过 GitHub 同步。同一 NAS Library 可读取其旁边受控 sidecar；不同 Library 保持各自状态。交付模板的本机配置与正式客户文案不进入仓库，软件默认模板保留指定正文和教程。Cloudflare 发布由每个操作者授权，字体由目标电脑发现；Chrome 登录状态、目录与权限也需本机配置。
 
-```zsh
-cd extensions/media-organizer
-zsh releases/install-媒体智能整理-v2.5.22-qa.94.sh --install-plugin
-```
+## 5. 真实验收
 
-将下面这些本地生成的包分别拖入 Eagle 的插件安装入口：
-
-- `extensions/eagle-workbench/eagle-workbench-1.1.eagleplugin`
-- `extensions/online-publisher/max-eagle-publisher-1.2.7.eagleplugin`
-- `extensions/avatar-source-publisher/releases/MAX头像共享源-v1.0.0.eagleplugin`
-
-Live Photo 管家当前是 Demo，可在其目录打包后作为 Eagle 插件安装：
-
-```zsh
-cd extensions/live-photo-manager
-rm -f max-eagle-live-photo-manager-0.1.eagleplugin
-zip -qr max-eagle-live-photo-manager-0.1.eagleplugin \
-  manifest.json index.html app.js server.js styles.css logo.png plugin.js lib
-```
-
-重启 Eagle 后，从插件菜单确认工作台、媒体智能整理、MAX Publisher、头像共享源和 Live
-Photo 管家均只出现一份。
-
-## 4. 加载 Chrome 扩展
-
-在 Chrome 打开 `chrome://extensions/`，开启开发者模式，分别选择并加载：
-
-- `extensions/instagram-post-importer/`
-- `extensions/xiaohongshu-post-importer/`
-
-加载后刷新对应网页，并使用目标电脑自己的 Eagle 与 Library 做一条真实导入冒烟测试。
-Chrome 登录态、站点权限、下载目录和 Eagle 本地接口均不会从 GitHub 同步。
-
-## 5. Library 与本机设置
-
-排序规则、手动顺序、锁定状态和自动编号状态属于当前 Library 的运行数据，不放进 GitHub。
-如果两台电脑打开同一个 NAS Library，媒体智能整理会从该 Library 旁边的受控 sidecar 读取
-对应状态；如果使用不同本地 Library，两边自然保持各自独立。工作台只读显示版本和修复
-日志，不会跨库同步或修改素材。
-
-MAX Publisher 的本地水印、打码、导出不需要密钥；Cloudflare Pages 发布必须在目标电脑
-使用操作者自己的登录态。字体文件也必须在目标电脑本机存在。
-
-## 6. 交接验收
-
-目标电脑必须实际确认：
-
-1. Eagle 可打开目标 Library，插件菜单中每个 Eagle 扩展只有一个来源。
-2. 工作台显示产品版本、基本功能和版本日志，不显示无效的入口/安装登记信息。
-3. 媒体智能整理能读取普通文件夹和智能文件夹，排序、手动拖动、自动编号和地点标签可用。
-4. MAX Publisher 能完成本地水印/打码/导出；线上发布只在配置个人 Cloudflare 后验收。
-5. 两个 Chrome 扩展能在有权限访问的公开帖子上生成 Eagle 导入计划。
-6. Live Photo 与头像共享源按各自 README 的边界运行，不修改 `.library` 内部文件。
-
-任何一项失败，都应保留版本号、Eagle 版本、错误截图和复现步骤；不要直接复制第一台
-电脑的插件目录或修改 Library 内部文件来“修复”。
+目标电脑必须启动到可操作的真实 Library，记录耗时，并确认工作台和布局插件面板持续可见。手动拖动、升降序、自动编号、人物/环境图重命名必须实际操作，切换文件夹和重启后再次核对持久化；不能用测试输出、进程或桥接状态代替。交付文案需实际扫描、编辑分享链接并复制全文；标签、Publisher、Live Photo 与导入器按各自使用范围验收。复制文件夹继续保持未完成，不与这次同步混为一项验收。

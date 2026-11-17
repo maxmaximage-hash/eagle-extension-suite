@@ -36,6 +36,53 @@ assert.strictEqual(
 );
 
 assert.strictEqual(
+  runtime.isSameFolderContext(
+    "library|normal:folder-a",
+    "tag-folder:folder-a",
+    "folder-a"
+  ),
+  true,
+  "a selected rename queued by the injected window must be accepted by the host monitor for the same folder"
+);
+assert.strictEqual(
+  runtime.isSameFolderContext(
+    "library|normal:folder-a",
+    "tag-folder:folder-b",
+    "folder-b"
+  ),
+  false,
+  "a rename request must not cross into another folder"
+);
+
+const reset = runtime.resetForContext(
+  {
+    state: "running",
+    kind: "selected-media",
+    sourceContextId: "library|folder:a",
+    message: "正在写入"
+  },
+  "library|folder:b"
+);
+assert.deepStrictEqual(reset, {
+  changed: true,
+  state: {
+    state: "idle",
+    sourceContextId: "library|folder:b",
+    kind: "",
+    message: "",
+    result: null,
+    progress: null
+  }
+}, "switching folders must release transient rename state from the old folder");
+assert.strictEqual(
+  runtime.resetForContext(
+    { state: "running", sourceContextId: "library|folder:a" },
+    "library|folder:a"
+  ).changed,
+  false
+);
+
+assert.strictEqual(
   runtime.canToggleAutoNumber({
     canAutoNumber: true,
     renameRunning: true
@@ -48,6 +95,24 @@ assert.strictEqual(
     canAutoNumber: false,
     renameRunning: false
   }),
+  false
+);
+
+assert.strictEqual(
+  runtime.isStale({
+    state: "running",
+    sourceContextId: "library|folder:a",
+    lastActivityAt: 1000
+  }, 121001, 120000),
+  true,
+  "a lost rename callback must eventually release the busy UI"
+);
+assert.strictEqual(
+  runtime.isStale({
+    state: "running",
+    sourceContextId: "library|folder:a",
+    lastActivityAt: 1000
+  }, 119999, 120000),
   false
 );
 
